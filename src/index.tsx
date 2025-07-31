@@ -245,3 +245,4 @@ export * from './constants/MetropolisConstants';
 export * from './graphql/message';
 export * from './graphql/notification';
 
+export {useTranslation} from 'react-i18next';
