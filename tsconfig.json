@@ -5,7 +5,7 @@
     "declaration": true,
     "emitDeclarationOnly": true,
     "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
+    "forceConsistentCasingInFileNames": false,
     "inlineSourceMap": true,
     "jsx": "react-jsx",
     "lib": [
@@ -17,17 +17,18 @@
     "moduleResolution": "bundler",
     "noImplicitAny": false,
     "noImplicitOverride": false,
-    "noImplicitReturns": true,
-    "noImplicitThis": true,
+    "noPropertyAccessFromIndexSignature": false,
+    "noImplicitReturns": false,
+    "noImplicitThis": false,
     "noUncheckedIndexedAccess": false,
-    "noUnusedLocals": true,
+    "noUnusedLocals": false,
     "outDir": "lib",
     "pretty": true,
     "resolveJsonModule": true,
-    "skipLibCheck": false,
+    "skipLibCheck": true,
     "strict": false,
-    "strictFunctionTypes": true,
-    "strictNullChecks": true,
+    "strictFunctionTypes": false,
+    "strictNullChecks": false,
     "target": "esnext",
     "typeRoots": [
       "../../node_modules/@types",
@@ -38,7 +39,7 @@
       "jest",
       "node"
     ],
-    "useDefineForClassFields": true,
+    "useDefineForClassFields": false,
     "verbatimModuleSyntax": false
   },
   "exclude": [

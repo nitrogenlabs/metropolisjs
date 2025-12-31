@@ -2,13 +2,13 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {capitalize, orderBy, pullAllBy, uniqBy} from '@nlabs/utils';
+import { capitalize, orderBy, pullAllBy, uniqBy } from '@nlabs/utils';
 
-import {REACTION_CONSTANTS} from './reactionStore';
-import {TAG_CONSTANTS} from './tagStore';
+import { REACTION_CONSTANTS } from './reactionStore.js';
+import { TAG_CONSTANTS } from './tagStore.js';
 
-import type {ReactionType, TagType, User} from '../adapters';
-import type {PersonaType} from '../adapters/personaAdapter/personaAdapter';
+import type { ReactionType, TagType, User } from '../adapters/index.js';
+import type { PersonaType } from '../adapters/personaAdapter/personaAdapter.js';
 
 export const USER_CONSTANTS = {
   ADD_ITEM_ERROR: 'USER_ADD_ITEM_ERROR',

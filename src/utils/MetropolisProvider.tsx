@@ -2,22 +2,24 @@
  * Copyright (c) 2021-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {createContext} from 'react';
+import { createContext } from 'react';
 
-import {parseContent} from '../adapters/contentAdapter/contentAdapter';
-import {parseEvent} from '../adapters/eventAdapter/eventAdapter';
-import {parseImage} from '../adapters/imageAdapter/imageAdapter';
-import {parseLocation} from '../adapters/locationAdapter/locationAdapter';
-import {parseMessage} from '../adapters/messageAdapter/messageAdapter';
-import {parsePost} from '../adapters/postAdapter/postAdapter';
-import {parseProfile} from '../adapters/profileAdapter/profileAdapter';
-import {parseReaction} from '../adapters/reactionAdapter/reactionAdapter';
-import {parseTag} from '../adapters/tagAdapter/tagAdapter';
-import {parseTranslation} from '../adapters/translationAdapter/translationAdapter';
-import {parseUser} from '../adapters/userAdapter/userAdapter';
+import { parseContent } from '../adapters/contentAdapter/contentAdapter.js';
+import { parseEvent } from '../adapters/eventAdapter/eventAdapter.js';
+import { parseImage } from '../adapters/imageAdapter/imageAdapter.js';
+import { parseLocation } from '../adapters/locationAdapter/locationAdapter.js';
+import { parseMessage } from '../adapters/messageAdapter/messageAdapter.js';
+import { parsePost } from '../adapters/postAdapter/postAdapter.js';
+import { parseProfile } from '../adapters/profileAdapter/profileAdapter.js';
+import { parseReaction } from '../adapters/reactionAdapter/reactionAdapter.js';
+import { parseTag } from '../adapters/tagAdapter/tagAdapter.js';
+import { parseTranslation } from '../adapters/translationAdapter/translationAdapter.js';
+import { parseUser } from '../adapters/userAdapter/userAdapter.js';
 
-import type {MessageType} from '../adapters';
-import type {SessionType} from './api';
+import type { FluxFramework } from '@nlabs/arkhamjs';
+import type { MessageType } from '../adapters/index.js';
+import type { MetropolisEnvironmentConfiguration } from '../config/index.js';
+import type { SessionType } from './api.js';
 
 export interface MetropolisAdapters {
   readonly Content?: typeof parseContent;
@@ -44,16 +46,22 @@ export interface MetropolisProviderProps {
   readonly updateNotification: (notification: Notification) => void;
 }
 
-const defaultContext: {
-  adapters: MetropolisAdapters | undefined;
-  isAuth: () => boolean;
-  messages: MessageType[];
-  notifications: Notification[];
-  session: SessionType;
-  updateMessage: (message: MessageType) => void;
-  updateNotification: (notification: Notification) => void;
-} = {
+export interface MetropolisContextValue {
+  readonly adapters?: MetropolisAdapters;
+  readonly config?: MetropolisEnvironmentConfiguration;
+  readonly flux?: FluxFramework;
+  readonly isAuth: () => boolean;
+  readonly messages: MessageType[];
+  readonly notifications: Notification[];
+  readonly session: SessionType;
+  readonly updateMessage: (message: MessageType) => void;
+  readonly updateNotification: (notification: Notification) => void;
+}
+
+const defaultContext: MetropolisContextValue = {
   adapters: undefined,
+  config: undefined,
+  flux: undefined,
   isAuth: () => true,
   messages: [],
   notifications: [],
@@ -62,7 +70,7 @@ const defaultContext: {
   updateNotification: (notification: Notification) => notification
 };
 
-export const MetropolisContext = createContext(defaultContext);
+export const MetropolisContext = createContext<MetropolisContextValue>(defaultContext);
 
 export const MetropolisProvider = ({
   adapters,

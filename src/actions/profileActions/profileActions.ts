@@ -4,13 +4,13 @@
  */
 import { parseId } from '@nlabs/utils';
 
-import { validateProfileInput } from '../../adapters/profileAdapter/profileAdapter';
-import { PROFILE_CONSTANTS } from '../../stores/profileStore';
-import { appMutation, appQuery } from '../../utils/api';
-import { createBaseActions } from '../../utils/baseActionFactory';
+import { validateProfileInput } from '../../adapters/profileAdapter/profileAdapter.js';
+import { PROFILE_CONSTANTS } from '../../stores/profileStore.js';
+import { appMutation, appQuery } from '../../utils/api.js';
+import { createBaseActions } from '../../utils/baseActionFactory.js';
 
 import type { FluxFramework } from '@nlabs/arkhamjs';
-import type { ProfileType } from '../../adapters/profileAdapter/profileAdapter';
+import type { ProfileType } from '../../adapters/profileAdapter/profileAdapter.js';
 
 // Define the collection name for profiles
 const DATA_TYPE = 'profiles';
@@ -93,8 +93,7 @@ export const createProfileActions = (
         return flux.dispatch({profile: addProfile, type: PROFILE_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
-      const {addProfile} = await appMutation(flux, 'addProfile', DATA_TYPE, queryVariables, ['profileId', ...profileProps], {onSuccess});
-      return addProfile as ProfileType;
+      return await appMutation<ProfileType>(flux, 'addProfile', DATA_TYPE, queryVariables, ['profileId', ...profileProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: PROFILE_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
@@ -115,7 +114,7 @@ export const createProfileActions = (
         return flux.dispatch({profile, type: PROFILE_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
-      const {profile} = await appQuery(
+      return await appQuery<ProfileType>(
         flux,
         'profile',
         DATA_TYPE,
@@ -137,7 +136,6 @@ export const createProfileActions = (
         ],
         {onSuccess}
       );
-      return profile as ProfileType;
     } catch(error) {
       flux.dispatch({error, type: PROFILE_CONSTANTS.GET_ITEM_ERROR});
       throw error;
@@ -158,7 +156,7 @@ export const createProfileActions = (
         return flux.dispatch({profiles, type: PROFILE_CONSTANTS.GET_LIST_SUCCESS});
       };
 
-      const {profiles} = await appQuery(
+      return await appQuery<ProfileType[]>(
         flux,
         'profiles',
         DATA_TYPE,
@@ -180,7 +178,6 @@ export const createProfileActions = (
         ],
         {onSuccess}
       );
-      return profiles as ProfileType[];
     } catch(error) {
       flux.dispatch({error, type: PROFILE_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -201,8 +198,7 @@ export const createProfileActions = (
         return flux.dispatch({profile, type: PROFILE_CONSTANTS.DELETE_ITEM_SUCCESS});
       };
 
-      const {deleteProfile} = await appMutation(flux, 'deleteProfile', DATA_TYPE, queryVariables, ['profileId', ...profileProps], {onSuccess});
-      return deleteProfile as ProfileType;
+      return await appMutation<ProfileType>(flux, 'deleteProfile', DATA_TYPE, queryVariables, ['profileId', ...profileProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: PROFILE_CONSTANTS.DELETE_ITEM_ERROR});
       throw error;
@@ -223,8 +219,7 @@ export const createProfileActions = (
         return flux.dispatch({profile, type: PROFILE_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 
-      const {updateProfile} = await appMutation(flux, 'updateProfile', DATA_TYPE, queryVariables, ['profileId', ...profileProps], {onSuccess});
-      return updateProfile as ProfileType;
+      return await appMutation<ProfileType>(flux, 'updateProfile', DATA_TYPE, queryVariables, ['profileId', ...profileProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: PROFILE_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;

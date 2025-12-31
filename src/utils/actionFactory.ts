@@ -2,33 +2,33 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {createContentActions} from '../actions/contentActions/contentActions';
-import {createEventActions} from '../actions/eventActions/eventActions';
-import {createImageActions} from '../actions/imageActions/imageActions';
-import {createLocationActions} from '../actions/locationActions/locationActions';
-import {createMessageActions} from '../actions/messageActions/messageActions';
-import {createPostActions} from '../actions/postActions/postActions';
-import {createProfileActions} from '../actions/profileActions/profileActions';
-import {createReactionActions} from '../actions/reactionActions/reactionActions';
-import {createSSEActions} from '../actions/sseActions/sseActions';
-import {createTagActions} from '../actions/tagActions/tagActions';
-import {createTranslationActions} from '../actions/translationActions/translationActions';
-import {createUserActions} from '../actions/userActions/userActions';
-import {createWebsocketActions} from '../actions/websocketActions/websocketActions';
+import { createContentActions } from '../actions/contentActions/contentActions.js';
+import { createEventActions } from '../actions/eventActions/eventActions.js';
+import { createImageActions } from '../actions/imageActions/imageActions.js';
+import { createLocationActions } from '../actions/locationActions/locationActions.js';
+import { createMessageActions } from '../actions/messageActions/messageActions.js';
+import { createPostActions } from '../actions/postActions/postActions.js';
+import { createProfileActions } from '../actions/profileActions/profileActions.js';
+import { createReactionActions } from '../actions/reactionActions/reactionActions.js';
+import { createSSEActions } from '../actions/sseActions/sseActions.js';
+import { createTagActions } from '../actions/tagActions/tagActions.js';
+import { createTranslationActions } from '../actions/translationActions/translationActions.js';
+import { createUserActions } from '../actions/userActions/userActions.js';
+import { createWebsocketActions } from '../actions/websocketActions/websocketActions.js';
 
-import type {FluxFramework} from '@nlabs/arkhamjs';
-import type {ContentActionsOptions} from '../actions/contentActions/contentActions';
-import type {EventActionsOptions} from '../actions/eventActions/eventActions';
-import type {ImageActionsOptions} from '../actions/imageActions/imageActions';
-import type {LocationActionsOptions} from '../actions/locationActions/locationActions';
-import type {MessageActionsOptions} from '../actions/messageActions/messageActions';
-import type {PostActionsOptions} from '../actions/postActions/postActions';
-import type {ProfileActionsOptions} from '../actions/profileActions/profileActions';
-import type {ReactionActionsOptions} from '../actions/reactionActions/reactionActions';
-import type {SSEActionsOptions} from '../actions/sseActions/sseActions';
-import type {TagActionsOptions} from '../actions/tagActions/tagActions';
-import type {TranslationActionsOptions} from '../actions/translationActions/translationActions';
-import type {UserActionsOptions} from '../actions/userActions/userActions';
+import type { FluxFramework } from '@nlabs/arkhamjs';
+import type { ContentActionsOptions } from '../actions/contentActions/contentActions.js';
+import type { EventActionsOptions } from '../actions/eventActions/eventActions.js';
+import type { ImageActionsOptions } from '../actions/imageActions/imageActions.js';
+import type { LocationActionsOptions } from '../actions/locationActions/locationActions.js';
+import type { MessageActionsOptions } from '../actions/messageActions/messageActions.js';
+import type { PostActionsOptions } from '../actions/postActions/postActions.js';
+import type { ProfileActionsOptions } from '../actions/profileActions/profileActions.js';
+import type { ReactionActionsOptions } from '../actions/reactionActions/reactionActions.js';
+import type { SSEActionsOptions } from '../actions/sseActions/sseActions.js';
+import type { TagActionsOptions } from '../actions/tagActions/tagActions.js';
+import type { TranslationActionsOptions } from '../actions/translationActions/translationActions.js';
+import type { UserActionsOptions } from '../actions/userActions/userActions.js';
 
 export type ActionType =
   | 'content'
@@ -114,11 +114,11 @@ export const createActions = (
   actionTypes: ActionType[],
   flux: FluxFramework,
   options?: Partial<Record<ActionType, ActionOptions>>
-) => {
-  const actions: Record<string, any> = {};
+): Partial<Record<ActionType, ActionReturnType<ActionType>>> => {
+  const actions: Partial<Record<ActionType, ActionReturnType<ActionType>>> = {};
 
   actionTypes.forEach((type) => {
-    actions[type] = createAction(type, flux, options?.[type]);
+    actions[type] = createAction(type, flux, options?.[type]) as ActionReturnType<ActionType>;
   });
 
   return actions;

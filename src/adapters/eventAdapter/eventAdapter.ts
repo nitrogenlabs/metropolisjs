@@ -1,11 +1,11 @@
-import {parseArangoId, parseId, parseNum, parseString} from '@nlabs/utils';
-import {z} from 'zod';
+import { parseArangoId, parseId, parseNum, parseString } from '@nlabs/utils';
+import { z } from 'zod';
 
-import {parseDocument, removeEmptyKeys} from '../arangoAdapter/arangoAdapter';
-import {parseImage} from '../imageAdapter/imageAdapter';
-import {parseReaktorContent, parseReaktorDate, parseReaktorType} from '../reaktorAdapter/reaktorAdapter';
-import {parseTag} from '../tagAdapter/tagAdapter';
-import {parseUser} from '../userAdapter/userAdapter';
+import { parseDocument, removeEmptyKeys } from '../arangoAdapter/arangoAdapter.js';
+import { parseImage } from '../imageAdapter/imageAdapter.js';
+import { parseReaktorContent, parseReaktorDate, parseReaktorType } from '../reaktorAdapter/reaktorAdapter.js';
+import { parseTag } from '../tagAdapter/tagAdapter.js';
+import { parseUser } from '../userAdapter/userAdapter.js';
 
 export interface EventType {
   _id?: string;
@@ -81,7 +81,7 @@ const EventInputSchema = z.object({
   type: z.string().optional(),
   user: z.any().optional(),
   viewCount: z.number().optional()
-}).passthrough();
+}).loose();
 
 export const validateEventInput = (event: unknown): EventType => {
   try {

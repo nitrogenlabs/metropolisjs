@@ -3,7 +3,7 @@
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
 
-import type {ContentType} from '../adapters/contentAdapter/contentAdapter';
+import type { ContentType } from '../adapters/contentAdapter/contentAdapter.js';
 
 export const CONTENT_CONSTANTS = {
   ADD_ITEM_ERROR: 'CONTENT_ADD_ITEM_ERROR',

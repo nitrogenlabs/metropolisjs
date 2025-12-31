@@ -1,8 +1,8 @@
-import {parseArangoId, parseId, parseString} from '@nlabs/utils';
-import {z} from 'zod';
+import { parseArangoId, parseId, parseString } from '@nlabs/utils';
+import { z } from 'zod';
 
-import {parseDocument, removeEmptyKeys} from '../arangoAdapter/arangoAdapter';
-import {parseReaktorContent, parseReaktorType} from '../reaktorAdapter/reaktorAdapter';
+import { parseDocument, removeEmptyKeys } from '../arangoAdapter/arangoAdapter.js';
+import { parseReaktorContent, parseReaktorType } from '../reaktorAdapter/reaktorAdapter.js';
 
 export interface TagType {
   _id?: string;
@@ -34,7 +34,7 @@ const TagInputSchema = z.object({
   tagBy: z.string().optional(),
   tagId: z.string().optional(),
   userId: z.string().optional()
-}).passthrough();
+}).loose();
 
 export const validateTagInput = (tag: unknown): TagType => {
   try {

@@ -1,9 +1,9 @@
-import {parseArangoId, parseChar, parseEmail, parseId, parseNum, parseString, parseVarChar} from '@nlabs/utils';
-import {z} from 'zod';
+import { parseArangoId, parseChar, parseEmail, parseId, parseNum, parseString, parseVarChar } from '@nlabs/utils';
+import { z } from 'zod';
 
-import {parseDocument, removeEmptyKeys} from '../arangoAdapter/arangoAdapter';
-import {parseReaktorDate, parseReaktorItemId, parseReaktorName, parseReaktorType} from '../reaktorAdapter/reaktorAdapter';
-import {parseTag} from '../tagAdapter/tagAdapter';
+import { parseDocument, removeEmptyKeys } from '../arangoAdapter/arangoAdapter.js';
+import { parseReaktorDate, parseReaktorItemId, parseReaktorName, parseReaktorType } from '../reaktorAdapter/reaktorAdapter.js';
+import { parseTag } from '../tagAdapter/tagAdapter.js';
 
 export interface User {
   _id?: string;
@@ -66,7 +66,7 @@ const UserInputSchema = z.object({
   currency: z.string().length(3).optional(),
   deviceToken: z.string().max(160).optional(),
   dob: z.number().optional(),
-  email: z.string().email().optional(),
+  email: z.email().optional(),
   first: z.string().max(160).optional(),
   gender: z.string().length(1).optional(),
   id: z.string().optional(),
@@ -97,7 +97,7 @@ const UserInputSchema = z.object({
   verifiedPhoneExpires: z.number().optional(),
   verifiedSmsCode: z.number().optional(),
   zip: z.string().max(20).optional()
-}).passthrough();
+}).loose();
 
 const validatePhone = (phone?: string): string | undefined => {
   if(!phone) {
@@ -295,6 +295,6 @@ export const clearUserCache = (): void => {
 
 export const getUserCacheSize = (): number => userCache.size;
 
-export {userCache};
+export { userCache };
 
 export const parseUserLegacy = (user: User): User => parseUser(user);

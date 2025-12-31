@@ -1,9 +1,9 @@
-import {parseArangoId, parseBoolean, parseChar, parseId, parseNum, parseString} from '@nlabs/utils';
-import {z} from 'zod';
+import { parseArangoId, parseBoolean, parseChar, parseId, parseNum, parseString } from '@nlabs/utils';
+import { z } from 'zod';
 
-import {parseDocument, removeEmptyKeys} from '../arangoAdapter/arangoAdapter';
-import {parseImage} from '../imageAdapter/imageAdapter';
-import {parseTag} from '../tagAdapter/tagAdapter';
+import { parseDocument, removeEmptyKeys } from '../arangoAdapter/arangoAdapter.js';
+import { parseImage } from '../imageAdapter/imageAdapter.js';
+import { parseTag } from '../tagAdapter/tagAdapter.js';
 
 export interface ProfileType {
   _id?: string;
@@ -61,7 +61,7 @@ const ProfileInputSchema = z.object({
   thumbUrl: z.string().optional(),
   userId: z.string().optional(),
   viewCount: z.number().optional()
-}).passthrough();
+}).loose();
 
 export const validateProfileInput = (profile: unknown): ProfileType => {
   try {

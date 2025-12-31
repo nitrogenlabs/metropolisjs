@@ -2,13 +2,13 @@
  * Copyright (c) 2021-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {validateTagInput} from '../../adapters/tagAdapter/tagAdapter';
-import {TAG_CONSTANTS} from '../../stores/tagStore';
-import {appMutation, appQuery} from '../../utils/api';
+import { validateTagInput } from '../../adapters/tagAdapter/tagAdapter.js';
+import { TAG_CONSTANTS } from '../../stores/tagStore.js';
+import { appMutation, appQuery } from '../../utils/api.js';
 
-import type {FluxFramework} from '@nlabs/arkhamjs';
-import type {TagType} from '../../adapters/tagAdapter/tagAdapter';
-import type {ReaktorDbCollection} from '../../utils/api';
+import type { FluxFramework } from '@nlabs/arkhamjs';
+import type { TagType } from '../../adapters/tagAdapter/tagAdapter.js';
+import type { ReaktorDbCollection } from '../../utils/api.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'tags';
 
@@ -46,25 +46,19 @@ export interface TagActions {
   updateTagAdapterOptions: (options: TagAdapterOptions) => void;
 }
 
-// Default validation function
 const defaultTagValidator = (input: unknown, options?: TagAdapterOptions) => validateTagInput(input);
 
-// Enhanced validation function that merges custom logic with defaults
 const createTagValidator = (
   customAdapter?: (input: unknown, options?: TagAdapterOptions) => any,
   options?: TagAdapterOptions
 ) => (input: unknown, validatorOptions?: TagAdapterOptions) => {
   const mergedOptions = {...options, ...validatorOptions};
-
-  // Start with default validation
   let validated = defaultTagValidator(input, mergedOptions);
 
-  // Apply custom validation if provided
   if(customAdapter) {
     validated = customAdapter(validated, mergedOptions);
   }
 
-  // Apply custom validation from options if provided
   if(mergedOptions?.customValidation) {
     validated = mergedOptions.customValidation(validated) as TagType;
   }
@@ -72,40 +66,14 @@ const createTagValidator = (
   return validated;
 };
 
-/**
- * Factory function to create TagActions with enhanced adapter injection capabilities.
- * Custom adapters are merged with default behavior, allowing partial overrides.
- *
- * @example
- * // Basic usage with default adapters
- * const tagActions = createTagActions(flux);
- *
- * @example
- * // Custom adapter that extends default behavior
- * const customTagAdapter = (input: unknown, options?: TagAdapterOptions) => {
- *   // input is already validated by default adapter
- *   if (input.name && input.name.length > 50) {
- *     throw new Error('Tag name too long');
- *   }
- *   return input;
- * };
- *
- * const tagActions = createTagActions(flux, {
- *   tagAdapter: customTagAdapter
- * });
- */
 export const createTagActions = (
   flux: FluxFramework,
   options?: TagActionsOptions
 ): TagActions => {
-  // Initialize adapter state
   let tagAdapterOptions: TagAdapterOptions = options?.tagAdapterOptions || {};
   let customTagAdapter = options?.tagAdapter;
-
-  // Create validators that merge custom adapters with defaults
   let validateTag = createTagValidator(customTagAdapter, tagAdapterOptions);
 
-  // Update functions that recreate validators
   const updateTagAdapter = (adapter: (input: unknown, options?: TagAdapterOptions) => any): void => {
     customTagAdapter = adapter;
     validateTag = createTagValidator(customTagAdapter, tagAdapterOptions);
@@ -116,7 +84,6 @@ export const createTagActions = (
     validateTag = createTagValidator(customTagAdapter, tagAdapterOptions);
   };
 
-  // Action implementations
   const addTag = async (tag: Partial<TagType>, tagProps: string[] = []): Promise<TagType> => {
     try {
       const queryVariables = {
@@ -131,7 +98,7 @@ export const createTagActions = (
         return flux.dispatch({tag, type: TAG_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
-      const {tag: addedTag} = await appMutation(
+      return await appMutation<TagType>(
         flux,
         'addTag',
         DATA_TYPE,
@@ -139,8 +106,6 @@ export const createTagActions = (
         ['category', 'id', 'name', 'tagId', ...tagProps],
         {onSuccess}
       );
-
-      return addedTag as TagType;
     } catch(error) {
       flux.dispatch({error, type: TAG_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
@@ -161,7 +126,7 @@ export const createTagActions = (
         return flux.dispatch({tag, type: TAG_CONSTANTS.ADD_PROFILE_SUCCESS});
       };
 
-      const {tag: addedTag} = await appMutation(
+      return await appMutation<TagType>(
         flux,
         'addTagToProfile',
         DATA_TYPE,
@@ -169,8 +134,6 @@ export const createTagActions = (
         ['category', 'id', 'name', 'tagId', ...tagProps],
         {onSuccess}
       );
-
-      return addedTag as TagType;
     } catch(error) {
       flux.dispatch({error, type: TAG_CONSTANTS.ADD_PROFILE_ERROR});
       throw error;
@@ -191,7 +154,7 @@ export const createTagActions = (
         return flux.dispatch({tag, type: TAG_CONSTANTS.REMOVE_ITEM_SUCCESS});
       };
 
-      const {tag: deletedTag} = await appMutation(
+      return await appMutation<TagType>(
         flux,
         'deleteTag',
         DATA_TYPE,
@@ -199,8 +162,6 @@ export const createTagActions = (
         ['category', 'id', 'name', 'tagId', ...tagProps],
         {onSuccess}
       );
-
-      return deletedTag as TagType;
     } catch(error) {
       flux.dispatch({error, type: TAG_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
@@ -224,7 +185,7 @@ export const createTagActions = (
         });
       };
 
-      const {tag: deletedTag} = await appMutation(
+      return await appMutation<TagType>(
         flux,
         'deleteTagFromProfile',
         DATA_TYPE,
@@ -232,8 +193,6 @@ export const createTagActions = (
         ['category', 'id', 'name', 'tagId', ...tagProps],
         {onSuccess}
       );
-
-      return deletedTag as TagType;
     } catch(error) {
       flux.dispatch({error, type: TAG_CONSTANTS.REMOVE_PROFILE_ERROR});
       throw error;
@@ -274,7 +233,7 @@ export const createTagActions = (
         });
       };
 
-      const {tags: tagsList} = await appQuery(
+      return await appQuery<TagType[]>(
         flux,
         'tags',
         DATA_TYPE,
@@ -282,8 +241,6 @@ export const createTagActions = (
         ['category', 'id', 'name', 'tagId', ...tagProps],
         {onSuccess}
       );
-
-      return tagsList as TagType[];
     } catch(error) {
       flux.dispatch({error, type: TAG_CONSTANTS.GET_LIST_SUCCESS});
       throw error;
@@ -304,7 +261,7 @@ export const createTagActions = (
         return flux.dispatch({tag, type: TAG_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 
-      const {tag: updatedTag} = await appMutation(
+      return await appMutation<TagType>(
         flux,
         'updateTag',
         DATA_TYPE,
@@ -312,15 +269,12 @@ export const createTagActions = (
         ['category', 'id', 'name', 'tagId', ...tagProps],
         {onSuccess}
       );
-
-      return updatedTag as TagType;
     } catch(error) {
       flux.dispatch({error, type: TAG_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;
     }
   };
 
-  // Return the actions object
   return {
     addTag,
     addTagToProfile,

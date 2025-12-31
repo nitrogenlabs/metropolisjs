@@ -2,7 +2,7 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import type {EventType} from '../adapters/eventAdapter/eventAdapter';
+import type { EventType } from '../adapters/eventAdapter/eventAdapter.js';
 
 export const EVENT_CONSTANTS = {
   ADD_ITEM_ERROR: 'EVENT_ADD_ITEM_ERROR',

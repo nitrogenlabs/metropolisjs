@@ -3,14 +3,14 @@
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
 
-import { validateMessageInput } from '../../adapters/messageAdapter/messageAdapter';
-import { MESSAGE_CONSTANTS } from '../../stores/messageStore';
-import { appMutation, appQuery } from '../../utils/api';
+import { validateMessageInput } from '../../adapters/messageAdapter/messageAdapter.js';
+import { MESSAGE_CONSTANTS } from '../../stores/messageStore.js';
+import { appMutation, appQuery } from '../../utils/api.js';
 
 import type { FluxFramework } from '@nlabs/arkhamjs';
-import type { ConversationType } from '../../adapters/conversationAdapter/conversationAdapter';
-import type { MessageType } from '../../adapters/messageAdapter/messageAdapter';
-import type { ApiResultsType, ReaktorDbCollection } from '../../utils/api';
+import type { ConversationType } from '../../adapters/conversationAdapter/conversationAdapter.js';
+import type { MessageType } from '../../adapters/messageAdapter/messageAdapter.js';
+import type { ApiResultsType, ReaktorDbCollection } from '../../utils/api.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'messages';
 
@@ -95,7 +95,7 @@ export const createMessageActions = (
         return flux.dispatch({message, type: MESSAGE_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
-      const {message: addedMessage} = await appMutation(
+      return await appMutation<MessageType>(
         flux,
         'sendMessage',
         DATA_TYPE,
@@ -103,7 +103,6 @@ export const createMessageActions = (
         ['added', 'content', 'modified', 'messageId', 'user { userId, username }', ...messageProps],
         {onSuccess}
       );
-      return addedMessage as MessageType;
     } catch(error) {
       flux.dispatch({error, type: MESSAGE_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
@@ -124,7 +123,7 @@ export const createMessageActions = (
         return flux.dispatch({conversation, type: MESSAGE_CONSTANTS.GET_CONVO_LIST_SUCCESS});
       };
 
-      const {directConversation: conversation} = await appQuery(
+      return await appQuery<ConversationType>(
         flux,
         'directConversation',
         DATA_TYPE,
@@ -132,7 +131,6 @@ export const createMessageActions = (
         ['added', 'conversationId', 'modified', 'name', 'users { userId, username }'],
         {onSuccess}
       );
-      return conversation as ConversationType;
     } catch(error) {
       flux.dispatch({error, type: MESSAGE_CONSTANTS.GET_CONVO_LIST_ERROR});
       throw error;
@@ -158,7 +156,7 @@ export const createMessageActions = (
         });
       };
 
-      const {messages: messagesList} = await appQuery(
+      return await appQuery<MessageType[]>(
         flux,
         'messages',
         DATA_TYPE,
@@ -166,7 +164,6 @@ export const createMessageActions = (
         ['added', 'content', 'modified', 'messageId', 'user { userId, username }', ...messageProps],
         {onSuccess}
       );
-      return messagesList as MessageType[];
     } catch(error) {
       flux.dispatch({error, type: MESSAGE_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -191,7 +188,7 @@ export const createMessageActions = (
         return flux.dispatch({conversations, type: MESSAGE_CONSTANTS.GET_CONVO_LIST_SUCCESS});
       };
 
-      const {conversations: conversationsList} = await appQuery(
+      return await appQuery<ConversationType[]>(
         flux,
         'conversations',
         DATA_TYPE,
@@ -199,7 +196,6 @@ export const createMessageActions = (
         ['added', 'content', 'conversationId', 'modified', 'name', 'thumbUrl', 'users { userId, username }'],
         {onSuccess}
       );
-      return conversationsList as ConversationType[];
     } catch(error) {
       flux.dispatch({error, type: MESSAGE_CONSTANTS.GET_CONVO_LIST_ERROR});
       throw error;

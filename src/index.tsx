@@ -4,11 +4,11 @@
  */
 import {useFlux} from '@nlabs/arkhamjs-utils-react';
 import i18n from 'i18next';
-import React, {useEffect} from 'react';
+import {useEffect, useMemo} from 'react';
 import {I18nextProvider} from 'react-i18next';
 
-import {createWebsocketActions} from './actions/websocketActions/websocketActions';
-import {Config, type MetropolisConfiguration} from './config';
+import {createWebsocketActions} from './actions/websocketActions/websocketActions.js';
+import {resolveEnvironmentConfig} from './config/index.js';
 import {
   app,
   events,
@@ -19,17 +19,20 @@ import {
   tags,
   users,
   websocket
-} from './stores';
-import {refreshSession} from './utils/api';
-import {initI18n} from './utils/i18n';
-import {MetropolisContext, type MetropolisAdapters} from './utils/MetropolisProvider';
+} from './stores/index.js';
+import {refreshSession} from './utils/api.js';
+import {initI18n} from './utils/i18n.js';
+import {MetropolisContext} from './utils/MetropolisProvider.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 
-export {MetropolisContext, MetropolisProvider} from './utils/MetropolisProvider';
+import type {MetropolisConfiguration, MetropolisEnvironmentConfiguration} from './config/index.js';
+import type {MetropolisAdapters} from './utils/MetropolisProvider.js';
 
-export type {MetropolisConfiguration} from './config';
-export type {MetropolisAdapters} from './utils/MetropolisProvider';
+export {MetropolisContext, MetropolisProvider} from './utils/MetropolisProvider.js';
+
+export type {MetropolisConfiguration} from './config/index.js';
+export type {MetropolisAdapters} from './utils/MetropolisProvider.js';
 
 export const onInit = (flux: FluxFramework) => {
   try {
@@ -56,7 +59,7 @@ export const onInit = (flux: FluxFramework) => {
   }
 };
 
-export * from './stores';
+export * from './stores/index.js';
 
 export {
   appMutation,
@@ -67,9 +70,10 @@ export {
   uploadImage,
   type ApiResultsType,
   type ReaktorDbCollection
-} from './utils/api';
+} from './utils/api.js';
 
-export {Config} from './config';
+export {resolveEnvironmentConfig} from './config/index.js';
+export {getConfigFromFlux} from './utils/configUtils.js';
 
 export interface MetropolisProps {
   readonly adapters?: MetropolisAdapters;
@@ -90,8 +94,18 @@ export interface ComplexTranslation {
 export type ComplexTranslations = Record<string, ComplexTranslation>;
 
 export const Metropolis = ({adapters, children, config = {}, translations = {}}: MetropolisProps) => {
-  Config.set(config);
   const flux = useFlux();
+
+  // Resolve environment-specific configuration
+  const resolvedConfig = useMemo<MetropolisEnvironmentConfiguration>(() => {
+    return resolveEnvironmentConfig(config);
+  }, [config]);
+
+  // Merge adapters from config with prop adapters (prop takes precedence)
+  const mergedAdapters = useMemo(() => {
+    return {...resolvedConfig.adapters, ...adapters};
+  }, [resolvedConfig.adapters, adapters]);
+
   const websockets = createWebsocketActions(flux);
   // const [messages, setMessages] = useState<MessageType[]>([]);
   // const [notifications, setNotifications] = useState<any[]>([]);
@@ -146,6 +160,9 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
   // useFluxListener(UPDATE_SESSION, onUpdateSession);
 
   useEffect(() => {
+    // Store config in flux state for access by actions
+    flux.setState('app.config', resolvedConfig);
+
     // Initialize
     onInit(flux);
     websockets.wsInit();
@@ -183,13 +200,23 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
     //   messageSubscription.unsubscribe();
     //   notificationSubscription.unsubscribe();
     // };
-  }, []);
+  }, [flux, resolvedConfig]);
+
+  // Compute isAuth function from config or default
+  const isAuth = useMemo(() => {
+    return resolvedConfig.isAuth || (() => {
+      const sessionState = flux.getState('user.session', {});
+      return !!sessionState.userActive;
+    });
+  }, [resolvedConfig.isAuth, flux]);
 
   return (
     <MetropolisContext.Provider
       value={{
-        adapters,
-        isAuth: () => true,
+        adapters: mergedAdapters,
+        config: resolvedConfig,
+        flux,
+        isAuth,
         messages,
         notifications,
         session,
@@ -205,44 +232,59 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
 
 export default Metropolis;
 
-export {useMetropolis} from './utils/useMetropolis';
+export {
+  useContentActions,
+  useEventActions,
+  useImageActions,
+  useLocationActions,
+  useMessageActions, useMetropolis,
+  useMetropolisConfig,
+  useMetropolisFlux, usePostActions,
+  useProfileActions,
+  useReactionActions,
+  useTagActions,
+  useTranslationActions,
+  useUserActions,
+  useWebsocketActions
+} from './utils/useMetropolis.js';
 
 // Export new consolidated action factory (replaces all individual createXxxActions)
 export {
   createAction,
   createActions,
   createAllActions, type ActionOptions, type ActionReturnType, type ActionType, type ActionTypes
-} from './utils/actionFactory';
+} from './utils/actionFactory.js';
 
 // Export new consolidated utilities
 export {
   createValidatorFactory,
   createValidatorManager,
   type BaseAdapterOptions
-} from './utils/validatorFactory';
+} from './utils/validatorFactory.js';
 
 export {
   createBaseActions,
   type BaseActionOptions
-} from './utils/baseActionFactory';
+} from './utils/baseActionFactory.js';
 
 // Export adapters
-export * from './adapters';
+export * from './adapters/index.js';
 
 // Export stores
-export * from './stores';
+export * from './stores/index.js';
 
 // Export utilities (excluding api to avoid conflicts)
-export * from './utils/app';
-export * from './utils/dateUtils';
-export * from './utils/file';
-export * from './utils/location';
+export * from './utils/app.js';
+export * from './utils/dateUtils.js';
+export * from './utils/file.js';
+export * from './utils/location.js';
 
 // Export constants
-export * from './constants/MetropolisConstants';
+export * from './constants/MetropolisConstants.js';
 
 // Export GraphQL (excluding session to avoid SessionType conflict)
-export * from './graphql/message';
-export * from './graphql/notification';
+export * from './graphql/message.js';
+export * from './graphql/notification.js';
 
 export {useTranslation} from 'react-i18next';
+

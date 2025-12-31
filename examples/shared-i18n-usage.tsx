@@ -3,15 +3,17 @@
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
 
-import React from 'react';
+import {useState} from 'react';
 import {Metropolis} from '../src/index';
 import {i18n} from '../src/utils/i18n';
+
+import type {FC} from 'react';
 
 // GothamJS would import t from i18next like this:
 // import {t as i18n} from 'i18next';
 
 // Mock GothamJS component that uses the same i18next instance
-const GothamJSComponent: React.FC = () => {
+const GothamJSComponent: FC = () => {
   // In a real GothamJS component, you would import {t as i18n} from 'i18next'
   // This gives you the same function name as MetropolisJS for consistency
   // For this example, we'll simulate it by using the same i18n function
@@ -53,13 +55,23 @@ const sharedTranslations = {
 };
 
 // Example showing how both libraries work together
-const ProjectX: React.FC = () => {
+const ProjectX: FC = () => {
   return (
     <Metropolis
       translations={sharedTranslations}
       config={{
-        apiUrl: 'https://api.projectx.com',
-        websocketUrl: 'wss://ws.projectx.com'
+        development: {
+          environment: 'development',
+          app: {
+            api: {
+              url: 'https://api.projectx.com',
+              public: 'https://api.projectx.com/public'
+            },
+            urls: {
+              websocket: 'wss://ws.projectx.com'
+            }
+          }
+        }
       }}
     >
       <div className="project-x">
@@ -87,7 +99,7 @@ const ProjectX: React.FC = () => {
 };
 
 // Example of how GothamJS would typically be used in a real project
-const RealWorldExample: React.FC = () => {
+const RealWorldExample: FC = () => {
   // In a real project, GothamJS would be imported like this:
   // import {GothamComponent} from '@nlabs/gothamjs';
   // import {t} from 'i18next';
@@ -99,12 +111,10 @@ const RealWorldExample: React.FC = () => {
         'gotham_widget_title': 'GothamJS Widget',
         'shared_status': 'Status: {{status}}',
         'shared_user_info': 'User: {{username}} ({{role}})',
-        'shared_actions': {
-          'edit': 'Edit',
-          'delete': 'Delete',
-          'view': 'View',
-          'create': 'Create'
-        }
+        'shared_actions_edit': 'Edit',
+        'shared_actions_delete': 'Delete',
+        'shared_actions_view': 'View',
+        'shared_actions_create': 'Create'
       }}
     >
       <div>
@@ -134,8 +144,8 @@ const RealWorldExample: React.FC = () => {
 };
 
 // Example showing dynamic translation updates
-const DynamicTranslationExample: React.FC = () => {
-  const [currentLanguage, setCurrentLanguage] = React.useState('en');
+const DynamicTranslationExample: FC = () => {
+  const [currentLanguage, setCurrentLanguage] = useState('en');
 
   const translations = {
     en: {

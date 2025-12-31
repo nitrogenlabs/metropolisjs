@@ -1,13 +1,13 @@
-import {ApiError, graphqlQuery, post} from '@nlabs/rip-hunter';
-import {camelCase, isEmpty, upperFirst} from '@nlabs/utils';
-import {DateTime} from 'luxon';
+import { ApiError, graphqlQuery, post } from '@nlabs/rip-hunter';
+import { camelCase, isEmpty, upperFirst } from '@nlabs/utils';
+import { DateTime } from 'luxon';
 
-import {Config} from '../config';
-import {APP_CONSTANTS} from '../stores/appStore';
-import {USER_CONSTANTS} from '../stores/userStore';
+import { getConfigFromFlux } from './configUtils.js';
+import { APP_CONSTANTS } from '../stores/appStore.js';
+import { USER_CONSTANTS } from '../stores/userStore.js';
 
-import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
-import type {HunterOptionsType, HunterQueryType} from '@nlabs/rip-hunter';
+import type { FluxAction, FluxFramework } from '@nlabs/arkhamjs';
+import type { HunterOptionsType, HunterQueryType } from '@nlabs/rip-hunter';
 
 export interface ApiOptions {
   readonly onSuccess?: (data: any) => Promise<FluxAction>;
@@ -85,7 +85,8 @@ export const getGraphql = async (
     token = currentToken;
 
     if(expiredDiff > 0) {
-      const sessionMin: number = Config.get('app.session.minMinutes', 0);
+      const config = getConfigFromFlux(flux);
+      const sessionMin: number = config.app?.session?.minMinutes || 0;
       const issuedDate: DateTime = DateTime.fromMillis(expires);
       const issuedDiff: number = Math.round(nowDate.diff(issuedDate, 'minutes').toObject().minutes);
 
@@ -165,43 +166,46 @@ export const createMutation = (
   returnProperties: string[] = []
 ) => createQuery(name, dataType, variables, returnProperties, 'mutation');
 
-export const appQuery = (
+export const appQuery = <T>(
   flux: FluxFramework,
   name: string,
   dataType: ReaktorDbCollection,
   queryVariables: ApiQueryVariables,
   returnProperties: string[],
   options: ApiOptions = {}
-): Promise<ApiResultsType> => {
+): Promise<T> => {
   const query = createQuery(name, dataType, queryVariables, returnProperties);
-  const appUrl: string = Config.get('app.api.url');
-  return getGraphql(flux, appUrl, true, query, options);
+  const config = getConfigFromFlux(flux);
+  const appUrl: string = config.app?.api?.url || '';
+  return getGraphql(flux, appUrl, true, query, options) as Promise<T>;
 };
 
-export const appMutation = (
+export const appMutation = <T>(
   flux: FluxFramework,
   name: string,
   dataType: ReaktorDbCollection,
   queryVariables: ApiQueryVariables,
   returnProperties: string[],
   options: ApiOptions = {}
-): Promise<ApiResultsType> => {
+): Promise<T> => {
   const query = createMutation(name, dataType, queryVariables, returnProperties);
-  const appUrl: string = Config.get('app.api.url');
-  return getGraphql(flux, appUrl, true, query, options);
+  const config = getConfigFromFlux(flux);
+  const appUrl: string = config.app?.api?.url || '';
+  return getGraphql(flux, appUrl, true, query, options) as Promise<T>;
 };
 
-export const publicQuery = (
+export const publicQuery = <T>(
   flux: FluxFramework,
   name: string,
   dataType: ReaktorDbCollection,
   queryVariables: ApiQueryVariables,
   returnProperties: string[],
   options: ApiOptions = {}
-): Promise<ApiResultsType> => {
+  ): Promise<T> => {
   const query = createQuery(name, dataType, queryVariables, returnProperties);
-  const publicUrl: string = Config.get('app.api.public');
-  return getGraphql(flux, publicUrl, false, query, options);
+  const config = getConfigFromFlux(flux);
+  const publicUrl: string = config.app?.api?.public || '';
+  return getGraphql(flux, publicUrl, false, query, options) as Promise<T>;
 };
 
 export const publicMutation = <T>(
@@ -213,7 +217,8 @@ export const publicMutation = <T>(
   options: ApiOptions = {}
 ): Promise<T> => {
   const query = createMutation(name, dataType, queryVariables, returnProperties);
-  const publicUrl: string = Config.get('app.api.public');
+  const config = getConfigFromFlux(flux);
+  const publicUrl: string = config.app?.api?.public || '';
   return getGraphql(flux, publicUrl, false, query, options) as Promise<T>;
 };
 
@@ -225,7 +230,8 @@ export const uploadImage = (
   const token = flux.getState('user.session.token');
   const headers = new Headers();
   headers.set('Authorization', `Bearer ${token}`);
-  const uploadImageUrl: string = Config.get('app.api.uploadImage');
+  const config = getConfigFromFlux(flux);
+  const uploadImageUrl: string = config.app?.api?.uploadImage || '';
   return post(uploadImageUrl, image, {headers, ...options});
 };
 

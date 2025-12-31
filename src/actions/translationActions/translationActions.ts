@@ -3,15 +3,15 @@
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
 
-import {TRANSLATION_CONSTANTS} from '../../stores/translationStore';
-import {appMutation, appQuery} from '../../utils/api';
-import {createBaseActions} from '../../utils/baseActionFactory';
-import {initI18n, updateI18nResources} from '../../utils/i18n';
+import {TRANSLATION_CONSTANTS} from '../../stores/translationStore.js';
+import {appMutation, appQuery} from '../../utils/api.js';
+import {createBaseActions} from '../../utils/baseActionFactory.js';
 
-import type {TranslationType} from '../../stores/translationStore';
-import type {ReaktorDbCollection} from '../../utils/api';
-import type {BaseAdapterOptions} from '../../utils/validatorFactory';
 import type {FluxFramework} from '@nlabs/arkhamjs';
+import type {TranslationType} from '../../stores/translationStore.js';
+import type {ReaktorDbCollection} from '../../utils/api.js';
+import {initI18n, updateI18nResources} from '../../utils/i18n.js';
+import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'translations';
 
@@ -100,7 +100,7 @@ export const createTranslationActions = (
         return result;
       };
 
-      const {translations: addedTranslations} = await appMutation(
+      return await appMutation<TranslationType[]>(
         flux,
         'addTranslations',
         DATA_TYPE,
@@ -108,7 +108,6 @@ export const createTranslationActions = (
         ['key', 'locale', 'value', 'namespace', ...translationProps],
         {onSuccess}
       );
-      return addedTranslations as TranslationType[];
     } catch(error) {
       flux.dispatch({error, type: TRANSLATION_CONSTANTS.ADD_TRANSLATIONS_ERROR});
       throw error;
@@ -158,7 +157,7 @@ export const createTranslationActions = (
         return result;
       };
 
-      const {translations: fetchedTranslations} = await appQuery(
+      return await appQuery<TranslationType[]>(
         flux,
         'getTranslations',
         DATA_TYPE,
@@ -166,7 +165,6 @@ export const createTranslationActions = (
         ['key', 'locale', 'value', 'namespace', ...translationProps],
         {onSuccess}
       );
-      return fetchedTranslations as TranslationType[];
     } catch(error) {
       flux.dispatch({error, type: TRANSLATION_CONSTANTS.GET_TRANSLATIONS_ERROR});
       throw error;

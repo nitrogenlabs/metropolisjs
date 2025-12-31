@@ -1,7 +1,7 @@
-import {parseArangoId, parseId, parseNum, parseString, parseUrl} from '@nlabs/utils';
-import {z} from 'zod';
+import { parseArangoId, parseId, parseNum, parseString, parseUrl } from '@nlabs/utils';
+import { z } from 'zod';
 
-import {parseDocument, removeEmptyKeys} from '../arangoAdapter/arangoAdapter';
+import { parseDocument, removeEmptyKeys } from '../arangoAdapter/arangoAdapter.js';
 
 export interface ImageType {
   _id?: string;
@@ -56,7 +56,7 @@ const ImageInputSchema = z.object({
   _oldRev: z.string().optional(),
   _from: z.string().optional(),
   _to: z.string().optional()
-}).passthrough();
+}).loose();
 
 export const validateImageInput = (image: unknown): ImageType => {
   try {

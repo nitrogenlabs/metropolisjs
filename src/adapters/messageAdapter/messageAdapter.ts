@@ -1,9 +1,9 @@
-import {parseArangoId, parseId} from '@nlabs/utils';
-import {z} from 'zod';
+import { parseArangoId, parseId } from '@nlabs/utils';
+import { z } from 'zod';
 
-import {parseDocument, removeEmptyKeys} from '../arangoAdapter/arangoAdapter';
-import {parseFile} from '../fileAdapter/fileAdapter';
-import {parseImage} from '../imageAdapter/imageAdapter';
+import { parseDocument, removeEmptyKeys } from '../arangoAdapter/arangoAdapter.js';
+import { parseFile } from '../fileAdapter/fileAdapter.js';
+import { parseImage } from '../imageAdapter/imageAdapter.js';
 
 export interface MessageType {
   _id?: string;
@@ -50,7 +50,7 @@ const MessageInputSchema = z.object({
   _oldRev: z.string().optional(),
   _from: z.string().optional(),
   _to: z.string().optional()
-}).passthrough();
+}).loose();
 
 export const validateMessageInput = (message: unknown): MessageType => {
   try {

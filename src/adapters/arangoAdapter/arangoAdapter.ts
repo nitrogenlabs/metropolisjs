@@ -1,5 +1,5 @@
-import {parseArangoId, parseId, parseNum} from '@nlabs/utils';
-import {z} from 'zod';
+import { parseArangoId, parseId, parseNum } from '@nlabs/utils';
+import { z } from 'zod';
 
 export interface DocumentType {
   _from?: string;
@@ -31,7 +31,7 @@ const DocumentInputSchema = z.object({
   added: z.number().optional(),
   id: z.string().optional(),
   modified: z.number().optional()
-}).passthrough();
+}).loose();
 
 export const validateDocumentInput = (doc: unknown): DocumentType => {
   try {

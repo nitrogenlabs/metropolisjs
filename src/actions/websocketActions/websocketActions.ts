@@ -4,10 +4,10 @@
  */
 import Sockette from 'sockette';
 
-import {Config} from '../../config';
-import {WEBSOCKET_CONSTANTS} from '../../stores/websocketStore';
+import { getConfigFromFlux } from '../../utils/configUtils.js';
+import { WEBSOCKET_CONSTANTS } from '../../stores/websocketStore.js';
 
-import type {FluxFramework} from '@nlabs/arkhamjs';
+import type { FluxFramework } from '@nlabs/arkhamjs';
 
 interface WebSocketMessage {
   type: string;
@@ -63,7 +63,8 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
       return ws;
     }
 
-    const websocketUrl: string = Config.get('app.urls.websocket');
+    const config = getConfigFromFlux(flux);
+    const websocketUrl: string = config.app?.urls?.websocket || '';
     const sessionToken: string = token || flux.getState('user.session.token');
 
     if(sessionToken) {

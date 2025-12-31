@@ -2,17 +2,17 @@
  * Copyright (c) 2025-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {parseId} from '@nlabs/utils';
+import { parseId } from '@nlabs/utils';
 
-import {parseContentInput} from '../../adapters/contentAdapter/contentAdapter';
-import {CONTENT_CONSTANTS} from '../../stores/contentStore';
-import {appMutation, appQuery} from '../../utils/api';
-import {createBaseActions} from '../../utils/baseActionFactory';
+import { parseContentInput } from '../../adapters/contentAdapter/contentAdapter.js';
+import { CONTENT_CONSTANTS } from '../../stores/contentStore.js';
+import { appMutation, appQuery } from '../../utils/api.js';
+import { createBaseActions } from '../../utils/baseActionFactory.js';
 
-import type {FluxFramework} from '@nlabs/arkhamjs';
-import type {ContentInputType, ContentType} from '../../adapters/contentAdapter/contentAdapter';
-import type {ReaktorDbCollection} from '../../utils/api';
-import type {BaseAdapterOptions} from '../../utils/validatorFactory';
+import type { FluxFramework } from '@nlabs/arkhamjs';
+import type { ContentInputType, ContentType } from '../../adapters/contentAdapter/contentAdapter.js';
+import type { ReaktorDbCollection } from '../../utils/api.js';
+import type { BaseAdapterOptions } from '../../utils/validatorFactory.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'contents';
 
@@ -72,8 +72,7 @@ export const createContentActions = (
         return flux.dispatch({content: addContent, type: CONTENT_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
-      const {content: addedContent} = await appMutation(flux, 'addContent', DATA_TYPE, queryVariables, ['contentId', 'key', 'locale', 'content', ...contentProps], {onSuccess});
-      return addedContent as ContentType;
+      return await appMutation<ContentType>(flux, 'addContent', DATA_TYPE, queryVariables, ['contentId', 'key', 'locale', 'content', ...contentProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: CONTENT_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
@@ -94,7 +93,7 @@ export const createContentActions = (
         return flux.dispatch({content, type: CONTENT_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
-      const {content: contentResult} = await appQuery(
+      return await appQuery<ContentType>(
         flux,
         'content',
         DATA_TYPE,
@@ -111,7 +110,6 @@ export const createContentActions = (
         ],
         {onSuccess}
       );
-      return contentResult as ContentType;
     } catch(error) {
       flux.dispatch({error, type: CONTENT_CONSTANTS.GET_ITEM_ERROR});
       throw error;
@@ -136,7 +134,7 @@ export const createContentActions = (
         return flux.dispatch({content, type: CONTENT_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
-      const {content: contentResult} = await appQuery(
+      return await appQuery<ContentType>(
         flux,
         'contentByKey',
         DATA_TYPE,
@@ -153,7 +151,6 @@ export const createContentActions = (
         ],
         {onSuccess}
       );
-      return contentResult as ContentType;
     } catch(error) {
       flux.dispatch({error, type: CONTENT_CONSTANTS.GET_ITEM_ERROR});
       throw error;
@@ -177,7 +174,7 @@ export const createContentActions = (
         });
       };
 
-      const {contentsByCategory: list} = await appQuery(
+      return await appQuery<ContentType[]>(
         flux,
         'contentsByCategory',
         DATA_TYPE,
@@ -194,7 +191,6 @@ export const createContentActions = (
         ],
         {onSuccess}
       );
-      return list as ContentType[];
     } catch(error) {
       flux.dispatch({error, type: CONTENT_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -211,7 +207,7 @@ export const createContentActions = (
         });
       };
 
-      const {contentsList: list} = await appQuery(
+      return await appQuery<ContentType[]>(
         flux,
         'contentsList',
         DATA_TYPE,
@@ -228,7 +224,6 @@ export const createContentActions = (
         ],
         {onSuccess}
       );
-      return list as ContentType[];
     } catch(error) {
       flux.dispatch({error, type: CONTENT_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -249,8 +244,7 @@ export const createContentActions = (
         return flux.dispatch({content: deleteContent, type: CONTENT_CONSTANTS.REMOVE_ITEM_SUCCESS});
       };
 
-      const {content: deletedContent} = await appMutation(flux, 'deleteContent', DATA_TYPE, queryVariables, ['contentId', ...contentProps], {onSuccess});
-      return deletedContent as ContentType;
+      return await appMutation<ContentType>(flux, 'deleteContent', DATA_TYPE, queryVariables, ['contentId', ...contentProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: CONTENT_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
@@ -271,8 +265,7 @@ export const createContentActions = (
         return flux.dispatch({content: updateContent, type: CONTENT_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 
-      const {content: updatedContent} = await appMutation(flux, 'updateContent', DATA_TYPE, queryVariables, ['contentId', ...contentProps], {onSuccess});
-      return updatedContent as ContentType;
+      return await appMutation<ContentType>(flux, 'updateContent', DATA_TYPE, queryVariables, ['contentId', ...contentProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: CONTENT_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;

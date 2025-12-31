@@ -1,8 +1,8 @@
-import {parseArangoId, parseId, parseUsername} from '@nlabs/utils';
-import {z} from 'zod';
+import { parseArangoId, parseId, parseUsername } from '@nlabs/utils';
+import { z } from 'zod';
 
-import {parseDocument, removeEmptyKeys} from '../arangoAdapter/arangoAdapter';
-import {parseReaktorDate} from '../reaktorAdapter/reaktorAdapter';
+import { parseDocument, removeEmptyKeys } from '../arangoAdapter/arangoAdapter.js';
+import { parseReaktorDate } from '../reaktorAdapter/reaktorAdapter.js';
 
 export interface SessionType {
   _id?: string;
@@ -42,7 +42,7 @@ const SessionInputSchema = z.object({
   token: z.string().optional(),
   userId: z.string().optional(),
   username: z.string().optional()
-}).passthrough();
+}).loose();
 
 export const validateSessionInput = (session: unknown): SessionType => {
   try {

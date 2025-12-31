@@ -2,18 +2,18 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {get as httpGet} from '@nlabs/rip-hunter';
+import { get as httpGet } from '@nlabs/rip-hunter';
 
-import {validateLocationInput} from '../../adapters/locationAdapter/locationAdapter';
-import {Config} from '../../config';
-import {LOCATION_CONSTANTS} from '../../stores/locationStore';
-import {appMutation} from '../../utils/api';
-import {autoCompleteLocation} from '../../utils/location';
+import { validateLocationInput } from '../../adapters/locationAdapter/locationAdapter.js';
+import { getConfigFromFlux } from '../../utils/configUtils.js';
+import { LOCATION_CONSTANTS } from '../../stores/locationStore.js';
+import { appMutation } from '../../utils/api.js';
+import { autoCompleteLocation } from '../../utils/location.js';
 
-import type {FluxFramework} from '@nlabs/arkhamjs';
-import type {User} from '../../adapters';
-import type {LocationType} from '../../adapters/locationAdapter/locationAdapter';
-import type {ApiResultsType, ReaktorDbCollection} from '../../utils/api';
+import type { FluxFramework } from '@nlabs/arkhamjs';
+import type { User } from '../../adapters/index.js';
+import type { LocationType } from '../../adapters/locationAdapter/locationAdapter.js';
+import type { ApiResultsType, ReaktorDbCollection } from '../../utils/api.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'locations';
 
@@ -145,7 +145,7 @@ export const createLocationActions = (
         return flux.dispatch({location: addLocation, type: LOCATION_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
-      const {location: addedLocation} = await appMutation(
+      return await appMutation<LocationType>(
         flux,
         'addLocation',
         DATA_TYPE,
@@ -166,7 +166,6 @@ export const createLocationActions = (
         ],
         {onSuccess}
       );
-      return addedLocation as LocationType;
     } catch(error) {
       flux.dispatch({error, type: LOCATION_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
@@ -187,7 +186,7 @@ export const createLocationActions = (
         return flux.dispatch({location, type: LOCATION_CONSTANTS.REMOVE_ITEM_SUCCESS});
       };
 
-      const {location: deletedLocation} = await appMutation(
+      return await appMutation<LocationType>(
         flux,
         'deleteLocation',
         DATA_TYPE,
@@ -195,7 +194,6 @@ export const createLocationActions = (
         ['id'],
         {onSuccess}
       );
-      return deletedLocation as LocationType;
     } catch(error) {
       flux.dispatch({error, type: LOCATION_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
@@ -250,7 +248,11 @@ export const createLocationActions = (
   });
 
   const getGoogleLocation = async (address: string): Promise<{latitude: number; location: string; longitude: number}> => {
-    const {key: googleKey, url: googleUrl} = Config.get('google.maps') as {key: string; url: string};
+    // Note: google.maps config is not part of standard MetropolisEnvironmentConfiguration
+    // Uses empty object as default if not provided in config
+    const config = getConfigFromFlux(flux);
+    const googleMaps = (config as any).google?.maps || {};
+    const {key: googleKey = '', url: googleUrl = ''} = googleMaps as {key?: string; url?: string};
     const formatAddress: string = encodeURI(address);
     const url: string = `${googleUrl}?address=${formatAddress}&key=${googleKey}`;
 
@@ -287,7 +289,7 @@ export const createLocationActions = (
         return flux.dispatch({location: getLocation, type: LOCATION_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
-      const {location: locationResult} = await appMutation(
+      return await appMutation<LocationType>(
         flux,
         'getLocation',
         DATA_TYPE,
@@ -308,7 +310,6 @@ export const createLocationActions = (
         ],
         {onSuccess}
       );
-      return locationResult as LocationType;
     } catch(error) {
       flux.dispatch({error, type: LOCATION_CONSTANTS.GET_ITEM_ERROR});
       throw error;
@@ -336,7 +337,7 @@ export const createLocationActions = (
         });
       };
 
-      const {locationsByItem} = await appMutation(
+      return await appMutation<LocationType[]>(
         flux,
         'locationsByItem',
         DATA_TYPE,
@@ -357,7 +358,6 @@ export const createLocationActions = (
         ],
         {onSuccess}
       );
-      return locationsByItem as LocationType[];
     } catch(error) {
       flux.dispatch({error, type: LOCATION_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -381,7 +381,7 @@ export const createLocationActions = (
         return flux.dispatch({location: updateLocation, type: LOCATION_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 
-      const {location: updatedLocation} = await appMutation(
+      return await appMutation<LocationType>(
         flux,
         'updateLocation',
         DATA_TYPE,
@@ -402,7 +402,6 @@ export const createLocationActions = (
         ],
         {onSuccess}
       );
-      return updatedLocation as LocationType;
     } catch(error) {
       flux.dispatch({error, type: LOCATION_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;

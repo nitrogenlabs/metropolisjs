@@ -2,7 +2,7 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import type {ImageType} from '../adapters/imageAdapter/imageAdapter';
+import type { ImageType } from '../adapters/imageAdapter/imageAdapter.js';
 
 export const IMAGE_CONSTANTS = {
   ADD_ITEM_ERROR: 'IMAGE_ADD_ITEM_ERROR',

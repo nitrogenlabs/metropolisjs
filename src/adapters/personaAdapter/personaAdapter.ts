@@ -1,7 +1,7 @@
-import {parseArangoId, parseId} from '@nlabs/utils';
-import {z} from 'zod';
+import { parseArangoId, parseId } from '@nlabs/utils';
+import { z } from 'zod';
 
-import {parseDocument, removeEmptyKeys} from '../arangoAdapter/arangoAdapter';
+import { parseDocument, removeEmptyKeys } from '../arangoAdapter/arangoAdapter.js';
 
 export interface PersonaType {
   _id?: string;
@@ -31,7 +31,7 @@ const PersonaInputSchema = z.object({
   _to: z.string().optional(),
   id: z.string().optional(),
   personaId: z.string().optional()
-}).passthrough();
+}).loose();
 
 export const validatePersonaInput = (persona: unknown): PersonaType => {
   try {

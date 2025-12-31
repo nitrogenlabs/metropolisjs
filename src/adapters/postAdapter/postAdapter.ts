@@ -1,14 +1,14 @@
-import {parseArangoId, parseId, parseNum, parseString, parseVarChar} from '@nlabs/utils';
-import {z} from 'zod';
+import { parseArangoId, parseId, parseNum, parseString, parseVarChar } from '@nlabs/utils';
+import { z } from 'zod';
 
-import {parseDocument, removeEmptyKeys} from '../arangoAdapter/arangoAdapter';
-import {parseFile} from '../fileAdapter/fileAdapter';
+import { parseDocument, removeEmptyKeys } from '../arangoAdapter/arangoAdapter.js';
+import { parseFile } from '../fileAdapter/fileAdapter.js';
 import {
-  parseReaktorContent,
-  parseReaktorDate,
-  parseReaktorType
-} from '../reaktorAdapter/reaktorAdapter';
-import {parseTag} from '../tagAdapter/tagAdapter';
+    parseReaktorContent,
+    parseReaktorDate,
+    parseReaktorType
+} from '../reaktorAdapter/reaktorAdapter.js';
+import { parseTag } from '../tagAdapter/tagAdapter.js';
 
 const MAX_CONTENT_LENGTH: number = 100000;
 
@@ -67,7 +67,7 @@ const PostInputSchema = z.object({
   _oldRev: z.string().optional(),
   _from: z.string().optional(),
   _to: z.string().optional()
-}).passthrough();
+}).loose();
 
 export const validatePostInput = (post: unknown): PostType => {
   try {

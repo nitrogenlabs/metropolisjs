@@ -1,7 +1,7 @@
-import {parseArangoId, parseId, parseVarChar} from '@nlabs/utils';
-import {z} from 'zod';
+import { parseArangoId, parseId, parseVarChar } from '@nlabs/utils';
+import { z } from 'zod';
 
-import {parseDocument, removeEmptyKeys} from '../arangoAdapter/arangoAdapter';
+import { parseDocument, removeEmptyKeys } from '../arangoAdapter/arangoAdapter.js';
 
 export interface ReactionType {
   _id?: string;
@@ -36,7 +36,7 @@ const ReactionInputSchema = z.object({
   reactionId: z.string().optional(),
   type: z.string(),
   value: z.string().max(32).optional()
-}).passthrough();
+}).loose();
 
 export const validateReactionInput = (reaction: unknown): ReactionType => {
   try {

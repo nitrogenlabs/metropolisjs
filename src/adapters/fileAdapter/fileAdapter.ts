@@ -1,8 +1,8 @@
-import {parseArangoId, parseId, parseNum, parseString, parseUrl} from '@nlabs/utils';
-import {z} from 'zod';
+import { parseArangoId, parseId, parseNum, parseString, parseUrl } from '@nlabs/utils';
+import { z } from 'zod';
 
-import {parseDocument} from '../arangoAdapter/arangoAdapter';
-import {parseReaktorContent, parseReaktorType} from '../reaktorAdapter/reaktorAdapter';
+import { parseDocument } from '../arangoAdapter/arangoAdapter.js';
+import { parseReaktorContent, parseReaktorType } from '../reaktorAdapter/reaktorAdapter.js';
 
 export interface FileType {
   _from?: string;
@@ -51,7 +51,7 @@ const FileInputSchema = z.object({
   name: z.string().optional(),
   url: z.string().optional(),
   userId: z.string().optional()
-}).passthrough();
+}).loose();
 
 export const validateFileInput = (file: unknown): FileType => {
   try {

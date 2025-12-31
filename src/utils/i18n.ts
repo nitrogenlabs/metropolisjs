@@ -5,7 +5,7 @@
 import { init, t } from 'i18next';
 
 // Import types from the main index
-import type { ComplexTranslations, SimpleTranslations } from '../index';
+import type { ComplexTranslations, SimpleTranslations } from '../index.js';
 
 let initialized = false;
 let currentResources: Record<string, Record<string, Record<string, string>>> = {};

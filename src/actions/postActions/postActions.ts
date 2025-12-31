@@ -2,17 +2,17 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {parseId, parseNum} from '@nlabs/utils';
+import { parseId, parseNum } from '@nlabs/utils';
 
-import {validatePostInput} from '../../adapters/postAdapter/postAdapter';
-import {POST_CONSTANTS} from '../../stores/postStore';
-import {appMutation, appQuery} from '../../utils/api';
-import {createBaseActions} from '../../utils/baseActionFactory';
+import { validatePostInput } from '../../adapters/postAdapter/postAdapter.js';
+import { POST_CONSTANTS } from '../../stores/postStore.js';
+import { appMutation, appQuery } from '../../utils/api.js';
+import { createBaseActions } from '../../utils/baseActionFactory.js';
 
-import type {FluxFramework} from '@nlabs/arkhamjs';
-import type {PostType} from '../../adapters/postAdapter/postAdapter';
-import type {ReaktorDbCollection} from '../../utils/api';
-import type {BaseAdapterOptions} from '../../utils/validatorFactory';
+import type { FluxFramework } from '@nlabs/arkhamjs';
+import type { PostType } from '../../adapters/postAdapter/postAdapter.js';
+import type { ReaktorDbCollection } from '../../utils/api.js';
+import type { BaseAdapterOptions } from '../../utils/validatorFactory.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'posts';
 
@@ -74,8 +74,7 @@ export const createPostActions = (
         return flux.dispatch({post: addPost, type: POST_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
-      const {post: addedPost} = await appMutation(flux, 'addPost', DATA_TYPE, queryVariables, ['postId', ...postProps], {onSuccess});
-      return addedPost as PostType;
+      return await appMutation<PostType>(flux, 'addPost', DATA_TYPE, queryVariables, ['postId', ...postProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: POST_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
@@ -96,7 +95,7 @@ export const createPostActions = (
         return flux.dispatch({post, type: POST_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
-      const {post: postResult} = await appQuery(
+      return await appQuery<PostType>(
         flux,
         'post',
         DATA_TYPE,
@@ -115,7 +114,6 @@ export const createPostActions = (
         ],
         {onSuccess}
       );
-      return postResult as PostType;
     } catch(error) {
       flux.dispatch({error, type: POST_CONSTANTS.GET_ITEM_ERROR});
       throw error;
@@ -147,7 +145,7 @@ export const createPostActions = (
         });
       };
 
-      const {postsByLatest: list} = await appQuery(
+      return await appQuery<PostType[]>(
         flux,
         'postsByLatest',
         DATA_TYPE,
@@ -166,7 +164,6 @@ export const createPostActions = (
         ],
         {onSuccess}
       );
-      return list as PostType[];
     } catch(error) {
       flux.dispatch({error, type: POST_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -208,7 +205,7 @@ export const createPostActions = (
         });
       };
 
-      const {getPostsByLocation: list} = await appQuery(
+      return await appQuery<PostType[]>(
         flux,
         'postsByLocation',
         DATA_TYPE,
@@ -227,7 +224,6 @@ export const createPostActions = (
         ],
         {onSuccess}
       );
-      return list as PostType[];
     } catch(error) {
       flux.dispatch({error, type: POST_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -274,7 +270,7 @@ export const createPostActions = (
         });
       };
 
-      const {getPostsByReactions: list} = await appQuery(
+      return await appQuery<PostType[]>(
         flux,
         'postsByReactions',
         DATA_TYPE,
@@ -293,7 +289,6 @@ export const createPostActions = (
         ],
         {onSuccess}
       );
-      return list as PostType[];
     } catch(error) {
       flux.dispatch({error, type: POST_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -340,7 +335,7 @@ export const createPostActions = (
         });
       };
 
-      const {getPostsByTags: list} = await appQuery(
+      return await appQuery<PostType[]>(
         flux,
         'postsByTags',
         DATA_TYPE,
@@ -359,7 +354,6 @@ export const createPostActions = (
         ],
         {onSuccess}
       );
-      return list as PostType[];
     } catch(error) {
       flux.dispatch({error, type: POST_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -380,8 +374,7 @@ export const createPostActions = (
         return flux.dispatch({post: deletePost, type: POST_CONSTANTS.REMOVE_ITEM_SUCCESS});
       };
 
-      const {post: deletedPost} = await appMutation(flux, 'deletePost', DATA_TYPE, queryVariables, ['postId', ...postProps], {onSuccess});
-      return deletedPost as PostType;
+      return await appMutation<PostType>(flux, 'deletePost', DATA_TYPE, queryVariables, ['postId', ...postProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: POST_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
@@ -402,8 +395,7 @@ export const createPostActions = (
         return flux.dispatch({post: updatePost, type: POST_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 
-      const {post: updatedPost} = await appMutation(flux, 'updatePost', DATA_TYPE, queryVariables, ['postId', ...postProps], {onSuccess});
-      return updatedPost as PostType;
+      return await appMutation<PostType>(flux, 'updatePost', DATA_TYPE, queryVariables, ['postId', ...postProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: POST_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;

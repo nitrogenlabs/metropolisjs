@@ -1,13 +1,40 @@
 import {createTranslationActions} from './translationActions';
 
-const mockFlux = {
-  dispatch: () => {},
-  getState: () => ({translations: {}}),
-  isInit: false,
-  pluginTypes: [],
-  state: {},
-  storeActions: {}
-} as any;
+const createMockFlux = () => {
+  const defaultConfig = {
+    app: {
+      api: {
+        public: 'http://localhost:3000/public',
+        url: 'http://localhost:3000/app'
+      }
+    },
+    environment: 'test',
+    isAuth: () => true
+  };
+
+  const mockState = {
+    'app.config': defaultConfig,
+    'translations': {
+      translations: {}
+    }
+  };
+
+  return {
+    dispatch: () => {},
+    getState: (key) => {
+      if (key) {
+        return mockState[key];
+      }
+      return mockState;
+    },
+    isInit: false,
+    pluginTypes: [],
+    state: mockState,
+    storeActions: {}
+  };
+};
+
+const mockFlux = createMockFlux();
 
 describe('translationActions', () => {
   let translationActions;

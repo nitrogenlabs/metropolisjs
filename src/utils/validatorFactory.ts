@@ -71,17 +71,26 @@ export const createValidatorManager = <T extends BaseAdapterOptions>(
   let adapterOptions: T = {...defaultOptions, ...initialOptions};
   let customAdapter: ((input: unknown, options?: T) => any) | undefined;
 
-  let validator = createValidatorFactory(defaultValidator, customAdapter, adapterOptions);
-
   const updateAdapter = (adapter: (input: unknown, options?: T) => any): void => {
     customAdapter = adapter;
-    validator = createValidatorFactory(defaultValidator, customAdapter, adapterOptions);
   };
 
   const updateOptions = (options: T): void => {
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     adapterOptions = {...adapterOptions, ...options} as T;
-    validator = createValidatorFactory(defaultValidator, customAdapter, adapterOptions);
+  };
+
+  // Create validator function that always uses current customAdapter and adapterOptions
+  const validator = (input: unknown, validatorOptions?: T) => {
+    const mergedOptions = {...adapterOptions, ...validatorOptions};
+    let validated = defaultValidator(input, mergedOptions as T);
+    if(customAdapter) {
+      validated = customAdapter(validated, mergedOptions as T);
+    }
+    if(mergedOptions?.customValidation) {
+      validated = mergedOptions.customValidation(validated);
+    }
+    return validated;
   };
 
   return {

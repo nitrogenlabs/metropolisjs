@@ -2,9 +2,9 @@
  * Copyright (c) 2021-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {DateTime} from 'luxon';
+import { DateTime } from 'luxon';
 
-import type {TagType} from '../adapters/tagAdapter/tagAdapter';
+import type { TagType } from '../adapters/tagAdapter/tagAdapter.js';
 
 export const TAG_CONSTANTS = {
   ADD_ITEM_ERROR: 'TAG_ADD_ITEM_ERROR',

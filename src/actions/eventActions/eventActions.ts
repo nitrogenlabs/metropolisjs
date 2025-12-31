@@ -2,16 +2,16 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {parseId, parseNum} from '@nlabs/utils';
+import { parseId, parseNum } from '@nlabs/utils';
 
-import {validateEventInput} from '../../adapters/eventAdapter/eventAdapter';
-import {EVENT_CONSTANTS} from '../../stores/eventStore';
-import {appMutation, appQuery} from '../../utils/api';
+import { validateEventInput } from '../../adapters/eventAdapter/eventAdapter.js';
+import { EVENT_CONSTANTS } from '../../stores/eventStore.js';
+import { appMutation, appQuery } from '../../utils/api.js';
 
-import type {FluxFramework} from '@nlabs/arkhamjs';
-import type {EventType} from '../../adapters/eventAdapter/eventAdapter';
-import type {ReaktorDbCollection} from '../../utils/api';
-import type {PostApiResultsType} from '../postActions/postActions';
+import type { FluxFramework } from '@nlabs/arkhamjs';
+import type { EventType } from '../../adapters/eventAdapter/eventAdapter.js';
+import type { ReaktorDbCollection } from '../../utils/api.js';
+import type { PostApiResultsType } from '../postActions/postActions.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'posts';
 
@@ -123,8 +123,7 @@ export const createEventActions = (
         return flux.dispatch({event: addPost, type: EVENT_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
-      const {addEvent} = await appMutation(flux, 'addEvent', DATA_TYPE, queryVariables, ['eventId', ...eventProps], {onSuccess});
-      return addEvent as EventType;
+      return await appMutation<EventType>(flux, 'addEvent', DATA_TYPE, queryVariables, ['eventId', ...eventProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
@@ -145,7 +144,7 @@ export const createEventActions = (
         return flux.dispatch({event, type: EVENT_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
-      const {event} = await appQuery(
+      return await appQuery<EventType>(
         flux,
         'event',
         DATA_TYPE,
@@ -169,7 +168,6 @@ export const createEventActions = (
         ],
         {onSuccess}
       );
-      return event as EventType;
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.GET_ITEM_ERROR});
       throw error;
@@ -208,7 +206,7 @@ export const createEventActions = (
         });
       };
 
-      const {eventsByTags: list} = await appQuery(
+      return await appQuery<EventType[]>(
         flux,
         'eventsByTags',
         DATA_TYPE,
@@ -232,7 +230,6 @@ export const createEventActions = (
         ],
         {onSuccess}
       );
-      return list as EventType[];
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -269,7 +266,7 @@ export const createEventActions = (
         });
       };
 
-      const {eventsByReactions: list} = await appQuery(
+      return await appQuery<EventType[]>(
         flux,
         'eventsByReactions',
         DATA_TYPE,
@@ -293,7 +290,6 @@ export const createEventActions = (
         ],
         {onSuccess}
       );
-      return list as EventType[];
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -314,8 +310,7 @@ export const createEventActions = (
         return flux.dispatch({event, type: EVENT_CONSTANTS.REMOVE_ITEM_SUCCESS});
       };
 
-      const {deleteEvent} = await appMutation(flux, 'deleteEvent', DATA_TYPE, queryVariables, ['eventId', ...eventProps], {onSuccess});
-      return deleteEvent as EventType;
+      return await appMutation<EventType>(flux, 'deleteEvent', DATA_TYPE, queryVariables, ['eventId', ...eventProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
@@ -336,8 +331,7 @@ export const createEventActions = (
         return flux.dispatch({event: updatedEvent, type: EVENT_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 
-      const {updateEvent} = await appMutation(flux, 'updateEvent', DATA_TYPE, queryVariables, ['eventId', ...eventProps], {onSuccess});
-      return updateEvent as EventType;
+      return await appMutation<EventType>(flux, 'updateEvent', DATA_TYPE, queryVariables, ['eventId', ...eventProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;

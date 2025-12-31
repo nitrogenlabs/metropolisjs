@@ -1,8 +1,8 @@
-import {parseArangoId, parseId, parseString} from '@nlabs/utils';
-import {z} from 'zod';
+import { parseArangoId, parseId, parseString } from '@nlabs/utils';
+import { z } from 'zod';
 
-import {parseDocument, removeEmptyKeys} from '../arangoAdapter/arangoAdapter';
-import {parseUser} from '../userAdapter/userAdapter';
+import { parseDocument, removeEmptyKeys } from '../arangoAdapter/arangoAdapter.js';
+import { parseUser } from '../userAdapter/userAdapter.js';
 
 export interface ConversationType {
   _id?: string;
@@ -43,7 +43,7 @@ const ConversationInputSchema = z.object({
   name: z.string().max(160).optional(),
   type: z.string(),
   users: z.array(z.any()).optional()
-}).passthrough();
+}).loose();
 
 export const validateConversationInput = (conversation: unknown): ConversationType => {
   try {

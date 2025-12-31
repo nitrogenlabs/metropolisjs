@@ -2,17 +2,17 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {parseString} from '@nlabs/utils';
+import { parseString } from '@nlabs/utils';
 
-import {validateImageInput} from '../../adapters/imageAdapter/imageAdapter';
-import {Config} from '../../config';
-import {IMAGE_CONSTANTS} from '../../stores/imageStore';
-import {appMutation, appQuery, uploadImage} from '../../utils/api';
-import {convertFileToBase64} from '../../utils/file';
+import { validateImageInput } from '../../adapters/imageAdapter/imageAdapter.js';
+import { getConfigFromFlux } from '../../utils/configUtils.js';
+import { IMAGE_CONSTANTS } from '../../stores/imageStore.js';
+import { appMutation, appQuery, uploadImage } from '../../utils/api.js';
+import { convertFileToBase64 } from '../../utils/file.js';
 
-import type {FluxFramework} from '@nlabs/arkhamjs';
-import type {ImageType} from '../../adapters/imageAdapter/imageAdapter';
-import type {ApiResultsType, ReaktorDbCollection} from '../../utils/api';
+import type { FluxFramework } from '@nlabs/arkhamjs';
+import type { ImageType } from '../../adapters/imageAdapter/imageAdapter.js';
+import type { ApiResultsType, ReaktorDbCollection } from '../../utils/api.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'images';
 
@@ -163,8 +163,7 @@ export const createImageActions = (
         return flux.dispatch({image: deleteImage, type: IMAGE_CONSTANTS.REMOVE_ITEM_SUCCESS});
       };
 
-      const {deleteImage} = await appMutation(flux, 'deleteImage', DATA_TYPE, queryVariables, ['id', ...imageProps], {onSuccess});
-      return deleteImage as ImageType;
+      return await appMutation<ImageType>(flux, 'deleteImage', DATA_TYPE, queryVariables, ['id', ...imageProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: IMAGE_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
@@ -203,7 +202,11 @@ export const createImageActions = (
     try {
       const savedImages = await Promise.all(
         imageFiles.map(async (file: File) => {
-          const base64: string = await convertFileToBase64(file, Config.get('app.images.maxImageSize'));
+          const config = getConfigFromFlux(flux);
+          // Note: app.images.maxImageSize is not part of standard MetropolisEnvironmentConfiguration
+          // Uses default value if not provided in config
+          const maxImageSize = (config as any).app?.images?.maxImageSize || 5242880;
+          const base64: string = await convertFileToBase64(file, maxImageSize);
           const {type: fileType} = file;
           return add({base64, fileType, itemId}, itemType);
         })
@@ -231,8 +234,7 @@ export const createImageActions = (
         return flux.dispatch({itemId, count, type: IMAGE_CONSTANTS.GET_COUNT_SUCCESS});
       };
 
-      const {imageCount} = await appQuery(flux, 'imageCount', DATA_TYPE, queryVariables, ['count'], {onSuccess});
-      return imageCount as number;
+      return await appQuery<number>(flux, 'imageCount', DATA_TYPE, queryVariables, ['count'], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: IMAGE_CONSTANTS.GET_COUNT_ERROR});
       throw error;
@@ -270,7 +272,7 @@ export const createImageActions = (
         });
       };
 
-      const {imagesByItem} = await appQuery(
+      return await appQuery<ImageType[]>(
         flux,
         'imagesByItem',
         DATA_TYPE,
@@ -288,7 +290,6 @@ export const createImageActions = (
         ],
         {onSuccess}
       );
-      return imagesByItem as ImageType[];
     } catch(error) {
       flux.dispatch({error, type: IMAGE_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -325,7 +326,7 @@ export const createImageActions = (
         });
       };
 
-      const {imagesByReactions} = await appQuery(
+      return await appQuery<ImageType[]>(
         flux,
         'imagesByReactions',
         DATA_TYPE,
@@ -343,14 +344,12 @@ export const createImageActions = (
         ],
         {onSuccess}
       );
-      return imagesByReactions as ImageType[];
     } catch(error) {
       flux.dispatch({error, type: IMAGE_CONSTANTS.GET_LIST_ERROR});
       throw error;
     }
   };
 
-  // Return the actions object
   return {
     add,
     delete: deleteImage,

@@ -2,15 +2,15 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {Flux} from '@nlabs/arkhamjs';
+import { Flux } from '@nlabs/arkhamjs';
 
-import {validateReactionInput} from '../../adapters/reactionAdapter/reactionAdapter';
-import {REACTION_CONSTANTS} from '../../stores/reactionStore';
-import {appMutation, appQuery} from '../../utils/api';
+import { validateReactionInput } from '../../adapters/reactionAdapter/reactionAdapter.js';
+import { REACTION_CONSTANTS } from '../../stores/reactionStore.js';
+import { appMutation, appQuery } from '../../utils/api.js';
 
-import type {FluxFramework} from '@nlabs/arkhamjs';
-import type {ReactionType} from '../../adapters/reactionAdapter/reactionAdapter';
-import type {ReaktorDbCollection} from '../../utils/api';
+import type { FluxFramework } from '@nlabs/arkhamjs';
+import type { ReactionType } from '../../adapters/reactionAdapter/reactionAdapter.js';
+import type { ReaktorDbCollection } from '../../utils/api.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'reactions';
 
@@ -45,25 +45,20 @@ export interface ReactionActions {
   updateReactionAdapterOptions: (options: ReactionAdapterOptions) => void;
 }
 
-// Default validation function
 const defaultReactionValidator = (input: unknown, options?: ReactionAdapterOptions) => validateReactionInput(input);
 
-// Enhanced validation function that merges custom logic with defaults
 const createReactionValidator = (
   customAdapter?: (input: unknown, options?: ReactionAdapterOptions) => any,
   options?: ReactionAdapterOptions
 ) => (input: unknown, validatorOptions?: ReactionAdapterOptions) => {
   const mergedOptions = {...options, ...validatorOptions};
 
-  // Start with default validation
   let validated = defaultReactionValidator(input, mergedOptions);
 
-  // Apply custom validation if provided
   if(customAdapter) {
     validated = customAdapter(validated, mergedOptions);
   }
 
-  // Apply custom validation from options if provided
   if(mergedOptions?.customValidation) {
     validated = mergedOptions.customValidation(validated) as ReactionType;
   }
@@ -71,40 +66,14 @@ const createReactionValidator = (
   return validated;
 };
 
-/**
- * Factory function to create ReactionActions with enhanced adapter injection capabilities.
- * Custom adapters are merged with default behavior, allowing partial overrides.
- *
- * @example
- * // Basic usage with default adapters
- * const reactionActions = createReactionActions(flux);
- *
- * @example
- * // Custom adapter that extends default behavior
- * const customReactionAdapter = (input: unknown, options?: ReactionAdapterOptions) => {
- *   // input is already validated by default adapter
- *   if (input.value && input.value > 5) {
- *     throw new Error('Reaction value too high');
- *   }
- *   return input;
- * };
- *
- * const reactionActions = createReactionActions(flux, {
- *   reactionAdapter: customReactionAdapter
- * });
- */
 export const createReactionActions = (
   flux: FluxFramework,
   options?: ReactionActionsOptions
 ): ReactionActions => {
-  // Initialize adapter state
   let reactionAdapterOptions: ReactionAdapterOptions = options?.reactionAdapterOptions || {};
   let customReactionAdapter = options?.reactionAdapter;
-
-  // Create validators that merge custom adapters with defaults
   let validateReaction = createReactionValidator(customReactionAdapter, reactionAdapterOptions);
 
-  // Update functions that recreate validators
   const updateReactionAdapter = (adapter: (input: unknown, options?: ReactionAdapterOptions) => any): void => {
     customReactionAdapter = adapter;
     validateReaction = createReactionValidator(customReactionAdapter, reactionAdapterOptions);
@@ -115,7 +84,6 @@ export const createReactionActions = (
     validateReaction = createReactionValidator(customReactionAdapter, reactionAdapterOptions);
   };
 
-  // Action implementations
   const addReaction = async (
     itemId: string,
     itemType: string,
@@ -146,11 +114,9 @@ export const createReactionActions = (
         return Flux.dispatch({itemId, itemType, reaction, type: REACTION_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
-      const {reaction: addedReaction} = await appMutation(flux, 'addReaction', DATA_TYPE, queryVariables, ['id', 'name', 'value', ...reactionProps], {
+      return await appMutation<ReactionType>(flux, 'addReaction', DATA_TYPE, queryVariables, ['id', 'name', 'value', ...reactionProps], {
         onSuccess
       });
-
-      return addedReaction as ReactionType;
     } catch(error) {
       flux.dispatch({error, type: REACTION_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
@@ -185,11 +151,9 @@ export const createReactionActions = (
         });
       };
 
-      const {reaction: deletedReaction} = await appMutation(flux, 'deleteReaction', DATA_TYPE, queryVariables, ['id', 'name', 'value', ...reactionProps], {
+      return await appMutation<ReactionType>(flux, 'deleteReaction', DATA_TYPE, queryVariables, ['id', 'name', 'value', ...reactionProps], {
         onSuccess
       });
-
-      return deletedReaction as ReactionType;
     } catch(error) {
       flux.dispatch({error, type: REACTION_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
@@ -219,7 +183,7 @@ export const createReactionActions = (
         });
       };
 
-      const {count: reactionCount} = await appQuery(
+      return await appQuery<number>(
         flux,
         'reactionCount',
         DATA_TYPE,
@@ -227,7 +191,6 @@ export const createReactionActions = (
         ['count'],
         {onSuccess}
       );
-      return reactionCount as number;
     } catch(error) {
       flux.dispatch({error, type: REACTION_CONSTANTS.GET_COUNT_ERROR});
       throw error;
@@ -261,7 +224,7 @@ export const createReactionActions = (
         });
       };
 
-      const {hasReaction: hasReactionResult} = await appQuery(
+      return await appQuery<boolean>(
         flux,
         'hasReaction',
         DATA_TYPE,
@@ -269,7 +232,6 @@ export const createReactionActions = (
         [],
         {onSuccess}
       );
-      return hasReactionResult as boolean;
     } catch(error) {
       flux.dispatch({error, type: REACTION_CONSTANTS.HAS_ERROR});
       throw error;

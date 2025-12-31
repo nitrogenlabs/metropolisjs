@@ -2,9 +2,9 @@
  * Copyright (c) 2025-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {useCallback, useEffect, useMemo, useRef} from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
-import {useMetropolis} from './useMetropolis';
+import { useMetropolis } from './useMetropolis.js';
 
 export interface UseTranslationsOptions {
   readonly locale?: string;
@@ -40,6 +40,7 @@ export const useTranslations = (options: UseTranslationsOptions = {}): UseTransl
     }
 
     const translation = translationActions.getTranslation(key, locale, namespace);
+
     if (translation) {
       return translation;
     }
@@ -52,7 +53,10 @@ export const useTranslations = (options: UseTranslationsOptions = {}): UseTransl
   }, [translationActions, locale, namespace, autoProcess]);
 
   const hasTranslation = useCallback((key: string): boolean => {
-    if (!translationActions) return false;
+    if (!translationActions) {
+      return false;
+    }
+
     return translationActions.hasTranslation(key, locale, namespace);
   }, [translationActions, locale, namespace]);
 

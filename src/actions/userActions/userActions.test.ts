@@ -1,13 +1,37 @@
 import {createUserActions} from './userActions';
 
-const mockFlux = {
-  dispatch: () => {},
-  getState: () => ({}),
-  isInit: false,
-  pluginTypes: [],
-  state: {},
-  storeActions: {}
+const createMockFlux = () => {
+  const defaultConfig = {
+    app: {
+      api: {
+        public: 'http://localhost:3000/public',
+        url: 'http://localhost:3000/app'
+      }
+    },
+    environment: 'test',
+    isAuth: () => true
+  };
+
+  const mockState = {
+    'app.config': defaultConfig
+  };
+
+  return {
+    dispatch: () => {},
+    getState: (key) => {
+      if (key) {
+        return mockState[key];
+      }
+      return mockState;
+    },
+    isInit: false,
+    pluginTypes: [],
+    state: mockState,
+    storeActions: {}
+  };
 };
+
+const mockFlux = createMockFlux();
 
 describe('userActions', () => {
   let userActions;

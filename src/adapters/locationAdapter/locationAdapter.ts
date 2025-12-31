@@ -1,7 +1,7 @@
-import {parseArangoId, parseChar, parseId, parseNum, parseString, parseVarChar} from '@nlabs/utils';
-import {z} from 'zod';
+import { parseArangoId, parseChar, parseId, parseNum, parseString, parseVarChar } from '@nlabs/utils';
+import { z } from 'zod';
 
-import {parseDocument, removeEmptyKeys} from '../arangoAdapter/arangoAdapter';
+import { parseDocument, removeEmptyKeys } from '../arangoAdapter/arangoAdapter.js';
 
 export interface LocationType {
   _id?: string;
@@ -49,7 +49,7 @@ const LocationInputSchema = z.object({
   state: z.string().max(2).optional(),
   street: z.string().max(32).optional(),
   zip: z.string().max(16).optional()
-}).passthrough();
+}).loose();
 
 export const validateLocationInput = (location: unknown): LocationType => {
   try {
