@@ -13,13 +13,13 @@ const userActions = createAction('user', flux) as unknown as userActions;
 /**
  * Example 1: Basic error handling with try/catch
  */
-const handleSignUpWithTryCatch = async (userData: any) => {
+const handleAddWithTryCatch = async (userData: any) => {
   try {
-    const user = await userActions.signUp(userData);
-    console.log('Signup successful:', user);
+    const user = await userActions.addUser(userData);
+    console.log('Add successful:', user);
     return {success: true, user};
   } catch (error) {
-    console.error('Signup failed:', error.message);
+    console.error('Add failed:', error.message);
     return {success: false, error: error.message};
   }
 };

@@ -247,44 +247,32 @@ export {
   useUserActions,
   useWebsocketActions
 } from './utils/useMetropolis.js';
-
-// Export new consolidated action factory (replaces all individual createXxxActions)
 export {
   createAction,
   createActions,
-  createAllActions, type ActionOptions, type ActionReturnType, type ActionType, type ActionTypes
+  createAllActions
 } from './utils/actionFactory.js';
-
-// Export new consolidated utilities
 export {
   createValidatorFactory,
-  createValidatorManager,
-  type BaseAdapterOptions
+  createValidatorManager
 } from './utils/validatorFactory.js';
-
-export {
-  createBaseActions,
-  type BaseActionOptions
-} from './utils/baseActionFactory.js';
-
-// Export adapters
+export {createBaseActions} from './utils/baseActionFactory.js';
 export * from './adapters/index.js';
-
-// Export stores
 export * from './stores/index.js';
-
-// Export utilities (excluding api to avoid conflicts)
 export * from './utils/app.js';
 export * from './utils/dateUtils.js';
 export * from './utils/file.js';
 export * from './utils/location.js';
-
-// Export constants
 export * from './constants/MetropolisConstants.js';
-
-// Export GraphQL (excluding session to avoid SessionType conflict)
 export * from './graphql/message.js';
 export * from './graphql/notification.js';
-
 export {useTranslation} from 'react-i18next';
 
+export type {BaseAdapterOptions} from './utils/validatorFactory.js';
+export type {
+  ActionOptions,
+  ActionReturnType,
+  ActionType,
+  ActionTypes
+} from './utils/actionFactory.js';
+export type {BaseActionOptions} from './utils/baseActionFactory.js';

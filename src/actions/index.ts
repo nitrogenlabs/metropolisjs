@@ -1,5 +1,6 @@
 export * from './contentActions/contentActions.js';
 export * from './eventActions/eventActions.js';
+export * from './groupActions/groupActions.js';
 export * from './imageActions/imageActions.js';
 export * from './locationActions/locationActions.js';
 export * from './messageActions/messageActions.js';

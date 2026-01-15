@@ -1,11 +1,11 @@
-import { useFlux } from '@nlabs/arkhamjs-utils-react';
-import { useContext, useMemo } from 'react';
+import {useFlux} from '@nlabs/arkhamjs-utils-react';
+import {useContext, useMemo} from 'react';
 
-import { createAllActions, createActions, type ActionType, type ActionOptions } from '../utils/actionFactory.js';
-import type { FluxFramework } from '@nlabs/arkhamjs';
-import type { MetropolisEnvironmentConfiguration } from '../config/index.js';
-import type { MetropolisAdapters } from './MetropolisProvider.js';
-import { MetropolisContext } from './MetropolisProvider.js';
+import type {FluxFramework} from '@nlabs/arkhamjs';
+import type {MetropolisEnvironmentConfiguration} from '../config/index.js';
+import {createActions, createAllActions, type ActionOptions, type ActionType} from '../utils/actionFactory.js';
+import type {MetropolisAdapters} from './MetropolisProvider.js';
+import {MetropolisContext} from './MetropolisProvider.js';
 
 /**
  * Builds action options from adapters in a type-safe way.
@@ -67,6 +67,9 @@ const mapActionsToReturnKeys = (actions: Record<string, any>): Record<string, an
   }
   if (actions.event) {
     mapped.eventActions = actions.event;
+  }
+  if (actions.group) {
+    mapped.groupActions = actions.group;
   }
   if (actions.image) {
     mapped.imageActions = actions.image;

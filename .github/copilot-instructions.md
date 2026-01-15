@@ -26,9 +26,9 @@ const userActions = new UserActions(flux);
 #### 2. GraphQL Mutation Structure
 All GraphQL mutations are wrapped in domain fields:
 ```graphql
-mutation UsersSignIn($password: String!, $username: String!) {
+mutation UsersSignIn($user: UserInput!, $expires: Int) {
   users {
-    signIn(password: $password, username: $username) {
+    signIn(user: $user, expires: $expires) {
       token
       expires
     }
@@ -74,6 +74,14 @@ const userSchema = z.object({
 - Strict mode disabled (`"strict": false`)
 - ESNext modules with bundler resolution
 - Declaration files emitted to `lib/` directory
+
+## Coding Conventions
+
+### Comments
+- Do not write comments in code except for TODOs, copyrights, and lint disables
+- Variables and code should be self-explanatory with clear, descriptive names
+- Use meaningful variable names that explain their purpose
+- Structure code to be readable without additional comments
 
 ## Integration Points
 

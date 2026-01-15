@@ -33,17 +33,18 @@ const createMockFlux = () => {
 
 const mockFlux = createMockFlux();
 
+import * as api from '../../utils/api';
+
 describe('userActions', () => {
   let userActions;
 
   beforeEach(() => {
-    userActions = createUserActions(mockFlux);
+    userActions = createUserActions(mockFlux as any);
   });
 
   it('should create userActions with all required methods', () => {
     expect(userActions.add).toBeDefined();
     expect(userActions.confirmCode).toBeDefined();
-    expect(userActions.confirmSignUp).toBeDefined();
     expect(userActions.forgotPassword).toBeDefined();
     expect(userActions.isLoggedIn).toBeDefined();
     expect(userActions.itemById).toBeDefined();
@@ -57,7 +58,6 @@ describe('userActions', () => {
     expect(userActions.session).toBeDefined();
     expect(userActions.signIn).toBeDefined();
     expect(userActions.signOut).toBeDefined();
-    expect(userActions.signUp).toBeDefined();
     expect(userActions.updateProfile).toBeDefined();
     expect(userActions.updateProfileAdapter).toBeDefined();
     expect(userActions.updateProfileAdapterOptions).toBeDefined();
@@ -69,7 +69,6 @@ describe('userActions', () => {
   it('should have correct method types', () => {
     expect(typeof userActions.add).toBe('function');
     expect(typeof userActions.confirmCode).toBe('function');
-    expect(typeof userActions.confirmSignUp).toBe('function');
     expect(typeof userActions.forgotPassword).toBe('function');
     expect(typeof userActions.isLoggedIn).toBe('function');
     expect(typeof userActions.itemById).toBe('function');
@@ -83,7 +82,6 @@ describe('userActions', () => {
     expect(typeof userActions.session).toBe('function');
     expect(typeof userActions.signIn).toBe('function');
     expect(typeof userActions.signOut).toBe('function');
-    expect(typeof userActions.signUp).toBe('function');
     expect(typeof userActions.updateProfile).toBe('function');
     expect(typeof userActions.updateProfileAdapter).toBe('function');
     expect(typeof userActions.updateProfileAdapterOptions).toBe('function');
@@ -132,9 +130,9 @@ describe('userActions', () => {
     }
   });
 
-  it('should validate confirmSignUp method returns expected structure', async () => {
+  it('should validate confirmAdd method returns expected structure', async () => {
     try {
-      const result = await userActions.confirmSignUp('123456', 'email');
+      const result = await userActions.confirmAdd('123456', 'email');
 
       expect(result).toBeDefined();
       expect(typeof result).toBe('object');
@@ -288,6 +286,22 @@ describe('userActions', () => {
     }
   });
 
+  it('should return session object from API on successful signIn', async () => {
+    const mockSession = {
+      expires: 1768361710193,
+      issued: 1768361650193,
+      token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
+      userId: '3a42371a1631ed62d01da12441ba7547',
+      username: 'test@nitrogenx.co'
+    };
+
+    jest.spyOn(api, 'publicMutation').mockResolvedValue(mockSession as any);
+
+    const result = await userActions.signIn({username: 'test@nitrogenx.co', password: 'password'} as any);
+
+    expect(result).toEqual(mockSession);
+  });
+
   it('should validate signOut method returns expected structure', async () => {
     try {
       const result = await userActions.signOut();
@@ -300,9 +314,9 @@ describe('userActions', () => {
     }
   });
 
-  it('should validate signUp method returns expected structure', async () => {
+  it('should validate addUser method returns expected structure', async () => {
     try {
-      const result = await userActions.signUp({email: 'test@example.com', username: 'testuser'});
+      const result = await userActions.addUser({email: 'test@example.com', username: 'testuser'});
 
       expect(result).toBeDefined();
       expect(typeof result).toBe('object');
@@ -422,12 +436,12 @@ describe('userActions', () => {
     }
   });
 
-  it('should handle confirmSignUp with various types', async () => {
+  it('should handle confirmAdd with various types', async () => {
     const testTypes = ['email', 'phone'];
 
     for(const type of testTypes) {
       try {
-        await userActions.confirmSignUp('123456', type);
+        await userActions.confirmAdd('123456', type);
       } catch(error) {
         expect(error).toBeDefined();
       }
@@ -609,12 +623,12 @@ describe('userActions', () => {
     }
   });
 
-  it('should handle signUp with userProps', async () => {
+  it('should handle addUser with userProps', async () => {
     const userData = {username: 'testuser'};
     const userProps = ['email', 'firstName'];
 
     try {
-      await userActions.signUp(userData, userProps);
+      await userActions.addUser(userData, userProps);
     } catch(error) {
       expect(error).toBeDefined();
     }

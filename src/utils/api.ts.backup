@@ -1,13 +1,13 @@
-import {ApiError, graphqlQuery, post} from '@nlabs/rip-hunter';
-import {camelCase, isEmpty, upperFirst} from '@nlabs/utils';
-import {DateTime} from 'luxon';
+import { ApiError, graphqlQuery, post } from '@nlabs/rip-hunter';
+import { camelCase, isEmpty, upperFirst } from '@nlabs/utils';
+import { DateTime } from 'luxon';
 
-import {APP_CONSTANTS} from '../stores/appStore.js';
-import {USER_CONSTANTS} from '../stores/userStore.js';
-import {getConfigFromFlux} from './configUtils.js';
+import { getConfigFromFlux } from './configUtils.js';
+import { APP_CONSTANTS } from '../stores/appStore.js';
+import { USER_CONSTANTS } from '../stores/userStore.js';
 
-import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
-import type {HunterOptionsType, HunterQueryType} from '@nlabs/rip-hunter';
+import type { FluxAction, FluxFramework } from '@nlabs/arkhamjs';
+import type { HunterOptionsType, HunterQueryType } from '@nlabs/rip-hunter';
 
 export interface ApiOptions {
   readonly onSuccess?: (data: any) => Promise<FluxAction>;
@@ -136,43 +136,20 @@ export const createQuery = (
   const queryVariables = {...variables || {}};
   const variableKeys = Object.keys(queryVariables);
   const queryName = name.replace(/ /g, '');
-
-  // For mutations, use flat structure without dataType wrapper
-  // For queries, wrap in dataType namespace
-  let query: string;
-
-  if(type === 'mutation') {
-    const mutationName = upperFirst(camelCase(dataType)) + upperFirst(camelCase(queryName));
-    query = `${type} ${mutationName}${
-      variableKeys.length
-        ? `(${variableKeys.map((key) => `$${key}: ${queryVariables[key].type}`).join(', ')})`
-        : ''
-    } {
-      ${dataType} {
-        ${camelCase(queryName)}${
-          variableKeys.length
-            ? `(${variableKeys.map((key) => `${key}: $${key}`).join(', ')})`
-            : ''
-        }
-        ${returnProperties?.length ? `{${returnProperties.join(', ')}}` : ''}
+  const query = `${type} ${upperFirst(camelCase(`${dataType}_${queryName}`))}${
+    variableKeys.length
+      ? `(${variableKeys.map((key) => `$${key}: ${queryVariables[key].type}`).join(', ')})`
+      : ''
+  } {
+    ${dataType} {
+      ${camelCase(queryName)}${
+        variableKeys.length
+          ? `(${variableKeys.map((key) => `${key}: $${key}`).join(', ')})`
+          : ''
       }
-    }`;
-  } else {
-    query = `${type} ${queryName}${
-      variableKeys.length
-        ? `(${variableKeys.map((key) => `$${key}: ${queryVariables[key].type}`).join(', ')})`
-        : ''
-    } {
-      ${dataType} {
-        ${camelCase(queryName)}${
-          variableKeys.length
-            ? `(${variableKeys.map((key) => `${key}: $${key}`).join(', ')})`
-            : ''
-        }
-        ${returnProperties?.length ? `{${returnProperties.join(', ')}}` : ''}
-      }
-    }`;
-  }
+      ${returnProperties?.length ? `{${returnProperties.join(', ')}}` : ''}
+    }
+  }`;
 
   const updatedVariables: Record<string, unknown> = variableKeys.reduce((queryData, key) => {
     queryData[key] = queryVariables[key].value;

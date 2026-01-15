@@ -2,19 +2,19 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import { DateTime } from 'luxon';
+import {DateTime} from 'luxon';
 
-import { validateProfileInput, type ProfileType } from '../../adapters/profileAdapter/profileAdapter.js';
-import { validateUserInput } from '../../adapters/userAdapter/userAdapter.js';
-import { PROFILE_CONSTANTS } from '../../stores/index.js';
-import { USER_CONSTANTS } from '../../stores/userStore.js';
-import { appMutation, publicMutation, refreshSession } from '../../utils/api.js';
-import { createBaseActions } from '../../utils/baseActionFactory.js';
+import {validateProfileInput, type ProfileType} from '../../adapters/profileAdapter/profileAdapter.js';
+import {validateUserInput} from '../../adapters/userAdapter/userAdapter.js';
+import {PROFILE_CONSTANTS} from '../../stores/index.js';
+import {USER_CONSTANTS} from '../../stores/userStore.js';
+import {appMutation, publicMutation, refreshSession} from '../../utils/api.js';
+import {createBaseActions} from '../../utils/baseActionFactory.js';
 
-import type { FluxAction, FluxFramework } from '@nlabs/arkhamjs';
-import type { User } from '../../adapters/userAdapter/userAdapter.js';
-import type { ApiResultsType, ReaktorDbCollection, SessionType } from '../../utils/api.js';
-import type { BaseAdapterOptions } from '../../utils/validatorFactory.js';
+import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
+import type {User} from '../../adapters/userAdapter/userAdapter.js';
+import type {ApiResultsType, ReaktorDbCollection, SessionType} from '../../utils/api.js';
+import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'users';
 
@@ -95,7 +95,7 @@ export interface userActions {
   remove: (userId: string) => Promise<User>;
   resetPassword: (username: string, password: string, code: string, type: 'email' | 'phone') => Promise<boolean>;
   session: (userProps?: string[]) => Promise<User>;
-  signIn: (username: string, password: string, expires?: number) => Promise<SessionType>;
+  signIn: (user: Partial<User>, expires?: number) => Promise<SessionType>;
   signOut: () => Promise<boolean>;
   signUp: (userInput: Partial<User>, userProps?: string[]) => Promise<User>;
   updatePassword: (password: string, newPassword: string) => Promise<boolean>;
@@ -121,10 +121,20 @@ export const createUserActions = (
     adapterOptions: options?.profileAdapterOptions
   });
   const add = async (userInput: Partial<User>, userProps: string[] = []): Promise<User> => {
+    const {username, email, password} = userInput;
     const queryVariables = {
       user: {
-        type: 'UserInput',
-        value: userBase.validator(userInput)
+        type: 'UserInput!',
+        value: {
+          username,
+          email,
+          name: username,
+          password
+        }
+      },
+      expires: {
+        type: 'Int',
+        value: 15
       }
     };
 
@@ -165,10 +175,20 @@ export const createUserActions = (
   };
 
   const signUp = async (userInput: Partial<User>, userProps: string[] = []): Promise<User> => {
+    const {username, email, password} = userInput;
     const queryVariables = {
       user: {
         type: 'UserInput!',
-        value: userBase.validator(userInput)
+        value: {
+          username,
+          email,
+          name: username,
+          password
+        }
+      },
+      expires: {
+        type: 'Int',
+        value: 15
       }
     };
 
@@ -202,10 +222,20 @@ export const createUserActions = (
   };
 
   const updateUser = async (userInput: Partial<User>, userProps: string[] = []): Promise<User> => {
+    const {username, email, password} = userInput;
     const queryVariables = {
       user: {
-        type: 'UserUpdateInput!',
-        value: userBase.validator(userInput)
+        type: 'UserInput!',
+        value: {
+          username,
+          email,
+          name: username,
+          password
+        }
+      },
+      expires: {
+        type: 'Int',
+        value: 15
       }
     };
 
@@ -250,8 +280,8 @@ export const createUserActions = (
   const updateProfile = async (profileInput: Partial<ProfileType>): Promise<ProfileType> => {
     const queryVariables = {
       profile: {
-        type: 'ProfileUpdateInput!',
-        value: profileBase.validator(profileInput)
+        type: 'ProfileInput!',
+        value: profileInput
       }
     };
 
@@ -310,7 +340,7 @@ export const createUserActions = (
     const queryVariables = {
       user: {
         type: 'UserInput!',
-        value: userBase.validator(userInput)
+        value: {}
       }
     };
 
@@ -394,25 +424,38 @@ export const createUserActions = (
     return (result?.refreshSession || {}) as SessionType;
   };
 
-  const signIn = async (username: string, password: string, expires: number = 15): Promise<SessionType> => {
+  const signIn = async (user: Partial<User>, expires: number = 15): Promise<SessionType> => {
+    const {email, phone, username, password} = user;
     const queryVariables = {
       expires: {
         type: 'Int',
         value: expires
-      },
-      password: {
-        type: 'String!',
-        value: password
-      },
-      username: {
-        type: 'String!',
-        value: username
       }
     };
+
+    if(username) {
+      (queryVariables as any).user = {
+        type: 'UserInput!',
+        value: { password, username }
+      };
+    } else if(user.email) {
+      (queryVariables as any).user = {
+        type: 'UserInput!',
+        value: { email, password }
+      };
+    } else if(user.phone) {
+      (queryVariables as any).user = {
+        type: 'UserInput!',
+        value: { password, phone }
+      };
+    } else {
+      throw new Error('Username, email, or phone number is required to sign in');
+    }
 
     const onSuccess = (data: ApiResultsType = {}): Promise<FluxAction> => {
       const users = (data as any)?.users;
       const sessionData = users?.signIn || {};
+
       return flux.dispatch({
         session: sessionData,
         type: USER_CONSTANTS.SIGN_IN_SUCCESS
@@ -420,16 +463,15 @@ export const createUserActions = (
     };
 
     try {
-      await publicMutation<UserApiResultsType>(
+      const sessionData = await publicMutation<SessionType & UserApiResultsType>(
         flux,
         'signIn',
         DATA_TYPE,
         queryVariables,
         ['expires', 'issued', 'token', 'userId', 'username'],
         {onSuccess}
-      );
+      ) as unknown as SessionType;
 
-      const sessionData = flux.getState('user.session') || {};
       return sessionData as SessionType;
     } catch(error) {
       flux.dispatch({error, type: USER_CONSTANTS.SIGN_IN_ERROR});

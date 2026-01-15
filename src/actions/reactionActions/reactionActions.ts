@@ -2,15 +2,15 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import { Flux } from '@nlabs/arkhamjs';
+import {Flux} from '@nlabs/arkhamjs';
 
-import { validateReactionInput } from '../../adapters/reactionAdapter/reactionAdapter.js';
-import { REACTION_CONSTANTS } from '../../stores/reactionStore.js';
-import { appMutation, appQuery } from '../../utils/api.js';
+import {validateReactionInput} from '../../adapters/reactionAdapter/reactionAdapter.js';
+import {REACTION_CONSTANTS} from '../../stores/reactionStore.js';
+import {appMutation, appQuery} from '../../utils/api.js';
 
-import type { FluxFramework } from '@nlabs/arkhamjs';
-import type { ReactionType } from '../../adapters/reactionAdapter/reactionAdapter.js';
-import type { ReaktorDbCollection } from '../../utils/api.js';
+import type {FluxFramework} from '@nlabs/arkhamjs';
+import type {ReactionType} from '../../adapters/reactionAdapter/reactionAdapter.js';
+import type {ReaktorDbCollection} from '../../utils/api.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'reactions';
 
