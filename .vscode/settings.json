@@ -53,7 +53,7 @@
     "."
   ],
   "eslint.options": {
-    "overrideConfigFile": "node_modules/@nlabs/lex/eslint.config.js"
+    "overrideConfigFile": "node_modules/@nlabs/lex/eslint.config.mjs"
   },
   "eslint.format.enable": true,
   "eslint.lintTask.enable": true,

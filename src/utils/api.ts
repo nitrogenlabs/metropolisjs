@@ -2,15 +2,15 @@ import {ApiError, graphqlQuery, post} from '@nlabs/rip-hunter';
 import {camelCase, isEmpty, upperFirst} from '@nlabs/utils';
 import {DateTime} from 'luxon';
 
+import {getConfigFromFlux} from './configUtils.js';
 import {APP_CONSTANTS} from '../stores/appStore.js';
 import {USER_CONSTANTS} from '../stores/userStore.js';
-import {getConfigFromFlux} from './configUtils.js';
 
 import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {HunterOptionsType, HunterQueryType} from '@nlabs/rip-hunter';
 
 export interface ApiOptions {
-  readonly onSuccess?: (data: any) => Promise<FluxAction>;
+  readonly onSuccess?: (data: any)=> Promise<FluxAction>;
   readonly variables?: Record<string, unknown>;
 }
 
@@ -48,7 +48,7 @@ export interface ApiResultsType {
 
 export interface RetryType {
   readonly query: HunterQueryType | HunterQueryType[];
-  readonly responseMethod: (results: ApiResultsType) => void;
+  readonly responseMethod: (results: ApiResultsType)=> void;
 }
 
 export interface SessionType {
@@ -104,10 +104,11 @@ export const getGraphql = async (
       }
     }
   }
+
   return graphqlQuery(url, query, {token: token || ''})
     .then(async (results) => {
       await flux.dispatch({type: APP_CONSTANTS.API_NETWORK_SUCCESS});
-      // console.log('GraphqlApi::results', results);
+
       return results;
     })
     .then((data) => (onSuccess ? onSuccess(data) : data))
@@ -136,9 +137,6 @@ export const createQuery = (
   const queryVariables = {...variables || {}};
   const variableKeys = Object.keys(queryVariables);
   const queryName = name.replace(/ /g, '');
-
-  // For mutations, use flat structure without dataType wrapper
-  // For queries, wrap in dataType namespace
   let query: string;
 
   if(type === 'mutation') {
@@ -224,7 +222,7 @@ export const publicQuery = <T>(
   queryVariables: ApiQueryVariables,
   returnProperties: string[],
   options: ApiOptions = {}
-  ): Promise<T> => {
+): Promise<T> => {
   const query = createQuery(name, dataType, queryVariables, returnProperties);
   const config = getConfigFromFlux(flux);
   const publicUrl: string = config.app?.api?.public || '';

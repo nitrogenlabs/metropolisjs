@@ -15,13 +15,14 @@ import {
 import {parseTag} from '../tagAdapter/tagAdapter.js';
 
 export interface Group {
+  [key: string]: any;
   _id?: string;
   _key?: string;
   _rev?: string;
   _oldRev?: string;
   _from?: string;
   _to?: string;
-  created?: number;
+  added?: number;
   description?: string;
   groupId?: string;
   id?: string;
@@ -33,7 +34,6 @@ export interface Group {
   type?: string;
   updated?: number;
   userCount?: number;
-  [key: string]: any;
 }
 
 export class GroupValidationError extends Error {
@@ -44,7 +44,13 @@ export class GroupValidationError extends Error {
 }
 
 const GroupInputSchema = z.object({
-  created: z.number().optional(),
+  _from: z.string().optional(),
+  _id: z.string().optional(),
+  _key: z.string().optional(),
+  _oldRev: z.string().optional(),
+  _rev: z.string().optional(),
+  _to: z.string().optional(),
+  added: z.number().optional(),
   description: z.string().optional(),
   groupId: z.string().optional(),
   imageId: z.string().optional(),
@@ -54,13 +60,7 @@ const GroupInputSchema = z.object({
   tags: z.array(z.any()).optional(),
   type: z.string().optional(),
   updated: z.number().optional(),
-  userCount: z.number().optional(),
-  _id: z.string().optional(),
-  _key: z.string().optional(),
-  _rev: z.string().optional(),
-  _oldRev: z.string().optional(),
-  _from: z.string().optional(),
-  _to: z.string().optional()
+  userCount: z.number().optional()
 }).loose();
 
 export const validateGroupInput = (group: unknown): Group => {
@@ -81,17 +81,17 @@ export const parseGroup = (item: any): Group => {
 
   return {
     ...base,
-    created: parseReaktorDate(item.created),
+    added: parseReaktorDate(item.added),
     description: parseString(item.description),
     groupId: parseReaktorItemId(item.groupId),
     id: parseReaktorItemId(item.id),
     imageId: parseId(item.imageId),
+    modified: parseReaktorDate(item.modified),
     name: parseReaktorName(item.name),
     ownerId: parseId(item.ownerId),
     privacy: parseString(item.privacy),
     tags: Array.isArray(item.tags) ? item.tags.map(parseTag) : [],
     type: parseReaktorType(item.type),
-    updated: parseReaktorDate(item.updated),
     userCount: parseNum(item.userCount)
   };
 };

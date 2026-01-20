@@ -29,11 +29,12 @@ export const defaultValues: GroupState = {
   viewed: {}
 };
 
-export const groupStore = (type: string, data: {group?: Group, list?: Group[]}, state = defaultValues): GroupState => {
+export const groupStore = (type: string, data: {group?: Group; list?: Group[]}, state = defaultValues): GroupState => {
   switch(type) {
     case GROUP_CONSTANTS.GET_ITEM_SUCCESS: {
       const {viewed} = state;
       const {group} = data;
+
       if(group && group.groupId) {
         const groupWithCache: Group = {...group, cached: Date.now()};
         viewed[group.groupId] = groupWithCache;
@@ -45,7 +46,7 @@ export const groupStore = (type: string, data: {group?: Group, list?: Group[]}, 
       const {lists} = state;
       const {list} = data;
       if(Array.isArray(list)) {
-        lists['all'] = list;
+        lists.all = list;
         return {...state, lists};
       }
       return state;

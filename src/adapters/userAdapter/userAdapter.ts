@@ -1,14 +1,16 @@
-import { parseArangoId, parseChar, parseEmail, parseId, parseNum, parseString, parseVarChar } from '@nlabs/utils';
-import { z } from 'zod';
+import {parseArangoId, parseChar, parseEmail, parseId, parseNum, parseString, parseVarChar} from '@nlabs/utils';
+import {z} from 'zod';
 
-import { parseDocument, removeEmptyKeys } from '../arangoAdapter/arangoAdapter.js';
-import { parseReaktorDate, parseReaktorItemId, parseReaktorName, parseReaktorType } from '../reaktorAdapter/reaktorAdapter.js';
-import { parseTag } from '../tagAdapter/tagAdapter.js';
+import {parseDocument, removeEmptyKeys} from '../arangoAdapter/arangoAdapter.js';
+import {parseReaktorDate, parseReaktorItemId, parseReaktorName, parseReaktorType} from '../reaktorAdapter/reaktorAdapter.js';
+import {parseTag} from '../tagAdapter/tagAdapter.js';
 
 export interface User {
+  [key: string]: any;
   _id?: string;
   _key?: string;
   active?: boolean;
+  added?: number;
   bankId?: string;
   city?: string;
   country?: string;
@@ -36,6 +38,7 @@ export interface User {
   tags?: any[];
   timezone?: string;
   type?: string;
+  updated?: number;
   userAccess?: number;
   userId?: string;
   username?: string;
@@ -46,7 +49,6 @@ export interface User {
   verifiedPhoneExpires?: number;
   verifiedSmsCode?: number;
   zip?: string;
-  [key: string]: any;
 }
 
 export class UserValidationError extends Error {
@@ -60,6 +62,7 @@ const UserInputSchema = z.object({
   _id: z.string().optional(),
   _key: z.string().optional(),
   active: z.boolean().optional(),
+  added: z.number().optional(),
   bankId: z.string().max(160).optional(),
   city: z.string().max(160).optional(),
   country: z.string().length(2).optional(),
@@ -87,6 +90,7 @@ const UserInputSchema = z.object({
   tags: z.array(z.any()).optional(),
   timezone: z.string().max(160).optional(),
   type: z.string().max(160).optional(),
+  updated: z.number().optional(),
   userAccess: z.number().optional(),
   userId: z.string().optional(),
   username: z.string().max(160).optional(),
@@ -295,6 +299,6 @@ export const clearUserCache = (): void => {
 
 export const getUserCacheSize = (): number => userCache.size;
 
-export { userCache };
+export {userCache};
 
 export const parseUserLegacy = (user: User): User => parseUser(user);

@@ -2,9 +2,9 @@
  * Copyright (c) 2023-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import { parseId } from '@nlabs/utils';
+import {parseId} from '@nlabs/utils';
 
-import type { ProfileType } from '../adapters/profileAdapter/profileAdapter.js';
+import type {ProfileType} from '../adapters/profileAdapter/profileAdapter.js';
 
 export const PROFILE_CONSTANTS = {
   ADD_ITEM_ERROR: 'PROFILE_ADD_ITEM_ERROR',
@@ -49,13 +49,13 @@ export const profileStore = (state = initialProfileState, action = {}, _next = {
         const listMap = {...state.listMap};
         const index = list.findIndex((item) => parseId(item.profileId ?? '') === profileId);
 
-                  if(index >= 0) {
-            list[index] = {...list[index], ...profile};
-          } else {
-            list.push(profile);
-          }
+        if(index >= 0) {
+          list[index] = {...list[index], ...profile};
+        } else {
+          list.push(profile);
+        }
 
-          listMap[profileId] = profile;
+        listMap[profileId] = profile;
 
         return {...state, error: undefined, list, listMap};
       }
@@ -73,11 +73,11 @@ export const profileStore = (state = initialProfileState, action = {}, _next = {
       return state;
 
     case PROFILE_CONSTANTS.GET_LIST_SUCCESS:
-              if(profiles?.length) {
-          const list = [...state.list];
-          const listMap = {...state.listMap};
+      if(profiles?.length) {
+        const list = [...state.list];
+        const listMap = {...state.listMap};
 
-          profiles.forEach((profile) => {
+        profiles.forEach((profile) => {
           const profileId = parseId(profile.profileId ?? '');
           const index = list.findIndex((item) => parseId(item.profileId ?? '') === profileId);
 

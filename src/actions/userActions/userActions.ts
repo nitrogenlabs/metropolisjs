@@ -11,10 +11,10 @@ import {USER_CONSTANTS} from '../../stores/userStore.js';
 import {appMutation, publicMutation, refreshSession} from '../../utils/api.js';
 import {createBaseActions} from '../../utils/baseActionFactory.js';
 
-import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {User} from '../../adapters/userAdapter/userAdapter.js';
 import type {ApiResultsType, ReaktorDbCollection, SessionType} from '../../utils/api.js';
 import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
+import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 
 const DATA_TYPE: ReaktorDbCollection = 'users';
 
@@ -22,8 +22,8 @@ export type UserAdapterOptions = BaseAdapterOptions;
 export type UserProfileAdapterOptions = BaseAdapterOptions;
 
 export interface UserActionsOptions {
-  readonly userAdapter?: (input: unknown, options?: UserAdapterOptions) => any;
-  readonly profileAdapter?: (input: unknown, options?: UserProfileAdapterOptions) => any;
+  readonly userAdapter?: (input: unknown, options?: UserAdapterOptions)=> any;
+  readonly profileAdapter?: (input: unknown, options?: UserProfileAdapterOptions)=> any;
   readonly userAdapterOptions?: UserAdapterOptions;
   readonly profileAdapterOptions?: UserProfileAdapterOptions;
 }
@@ -69,42 +69,42 @@ const defaultUserValidator = (input: unknown, options?: UserAdapterOptions) => {
 const defaultProfileValidator = (input: unknown, options?: UserProfileAdapterOptions) => validateProfileInput(input);
 
 export interface userActions {
-  add: (userInput: Partial<User>, userProps?: string[]) => Promise<User>;
-  confirmCode: (code: number, {type, value}: {type: 'email' | 'phone', value: string}) => Promise<boolean>;
-  confirmSignUp: (code: string, type: 'email' | 'phone') => Promise<boolean>;
-  listByConnection: (userId: string, from?: number, to?: number, userProps?: string[]) => Promise<User[]>;
-  itemById: (userId: string, userProps?: string[]) => Promise<User>;
-  listByLatest: (username?: string, from?: number, to?: number, userProps?: string[]) => Promise<User[]>;
+  add: (userInput: Partial<User>, userProps?: string[])=> Promise<User>;
+  confirmCode: (code: number, {type, value}: {type: 'email' | 'phone'; value: string})=> Promise<boolean>;
+  confirmSignUp: (code: string, type: 'email' | 'phone')=> Promise<boolean>;
+  listByConnection: (userId: string, from?: number, to?: number, userProps?: string[])=> Promise<User[]>;
+  itemById: (userId: string, userProps?: string[])=> Promise<User>;
+  listByLatest: (username?: string, from?: number, to?: number, userProps?: string[])=> Promise<User[]>;
   listByReactions: (
     username: string,
     reactionNames: string[],
     from?: number,
     to?: number,
     profileProps?: string[]
-  ) => Promise<User[]>;
+  )=> Promise<User[]>;
   listByTags: (
     username: string,
     tagNames: string[],
     from?: number,
     to?: number,
     profileProps?: string[]
-  ) => Promise<User[]>;
-  forgotPassword: (username: string) => Promise<boolean>;
-  isLoggedIn: () => boolean;
-  refreshSession: (token?: string, expires?: number) => Promise<SessionType>;
-  remove: (userId: string) => Promise<User>;
-  resetPassword: (username: string, password: string, code: string, type: 'email' | 'phone') => Promise<boolean>;
-  session: (userProps?: string[]) => Promise<User>;
-  signIn: (user: Partial<User>, expires?: number) => Promise<SessionType>;
-  signOut: () => Promise<boolean>;
-  signUp: (userInput: Partial<User>, userProps?: string[]) => Promise<User>;
-  updatePassword: (password: string, newPassword: string) => Promise<boolean>;
-  updateUser: (userInput: Partial<User>, userProps?: string[]) => Promise<User>;
-  updateProfile: (profileInput: Partial<ProfileType>) => Promise<ProfileType>;
-  updateUserAdapter: (adapter: (input: unknown, options?: UserAdapterOptions) => any) => void;
-  updateProfileAdapter: (adapter: (input: unknown, options?: UserProfileAdapterOptions) => any) => void;
-  updateUserAdapterOptions: (options: UserAdapterOptions) => void;
-  updateProfileAdapterOptions: (options: UserProfileAdapterOptions) => void;
+  )=> Promise<User[]>;
+  forgotPassword: (username: string)=> Promise<boolean>;
+  isLoggedIn: ()=> boolean;
+  refreshSession: (token?: string, expires?: number)=> Promise<SessionType>;
+  remove: (userId: string)=> Promise<User>;
+  resetPassword: (username: string, password: string, code: string, type: 'email' | 'phone')=> Promise<boolean>;
+  session: (userProps?: string[])=> Promise<User>;
+  signIn: (user: Partial<User>, expires?: number)=> Promise<SessionType>;
+  signOut: ()=> Promise<boolean>;
+  signUp: (userInput: Partial<User>, userProps?: string[])=> Promise<User>;
+  updatePassword: (password: string, newPassword: string)=> Promise<boolean>;
+  updateUser: (userInput: Partial<User>, userProps?: string[])=> Promise<User>;
+  updateProfile: (profileInput: Partial<ProfileType>)=> Promise<ProfileType>;
+  updateUserAdapter: (adapter: (input: unknown, options?: UserAdapterOptions)=> any)=> void;
+  updateProfileAdapter: (adapter: (input: unknown, options?: UserProfileAdapterOptions)=> any)=> void;
+  updateUserAdapterOptions: (options: UserAdapterOptions)=> void;
+  updateProfileAdapterOptions: (options: UserProfileAdapterOptions)=> void;
 }
 
 export const createUserActions = (
@@ -126,15 +126,11 @@ export const createUserActions = (
       user: {
         type: 'UserInput!',
         value: {
-          username,
           email,
           name: username,
-          password
+          password,
+          username
         }
-      },
-      expires: {
-        type: 'Int',
-        value: 15
       }
     };
 
@@ -177,18 +173,18 @@ export const createUserActions = (
   const signUp = async (userInput: Partial<User>, userProps: string[] = []): Promise<User> => {
     const {username, email, password} = userInput;
     const queryVariables = {
-      user: {
-        type: 'UserInput!',
-        value: {
-          username,
-          email,
-          name: username,
-          password
-        }
-      },
       expires: {
         type: 'Int',
         value: 15
+      },
+      user: {
+        type: 'UserInput!',
+        value: {
+          email,
+          name: username,
+          password,
+          username
+        }
       }
     };
 
@@ -196,7 +192,7 @@ export const createUserActions = (
       const {users: {signUp: user = {}}} = data;
       return flux.dispatch({
         type: USER_CONSTANTS.SIGN_UP_SUCCESS,
-        user: user
+        user
       });
     };
 
@@ -224,18 +220,18 @@ export const createUserActions = (
   const updateUser = async (userInput: Partial<User>, userProps: string[] = []): Promise<User> => {
     const {username, email, password} = userInput;
     const queryVariables = {
-      user: {
-        type: 'UserInput!',
-        value: {
-          username,
-          email,
-          name: username,
-          password
-        }
-      },
       expires: {
         type: 'Int',
         value: 15
+      },
+      user: {
+        type: 'UserInput!',
+        value: {
+          email,
+          name: username,
+          password,
+          username
+        }
       }
     };
 
@@ -294,7 +290,7 @@ export const createUserActions = (
   };
 
 
-  const confirmCode = async (code: number, {type, value}: {type: 'email' | 'phone', value: string}): Promise<boolean> => {
+  const confirmCode = async (code: number, {type, value}: {type: 'email' | 'phone'; value: string}): Promise<boolean> => {
     const queryVariables = {
       code: {
         type: 'Int!',
@@ -306,13 +302,12 @@ export const createUserActions = (
       },
       value: {
         type: 'String!',
-        value: value
+        value
       }
     };
 
-    const onSuccess = (data: boolean = false) => {
-      return flux.dispatch({type: USER_CONSTANTS.CONFIRM_SIGN_UP_SUCCESS, confirmed: data});
-    };
+    const onSuccess = (data: boolean = false) =>
+      flux.dispatch({confirmed: data, type: USER_CONSTANTS.CONFIRM_SIGN_UP_SUCCESS});
 
     return appMutation<UserApiResultsType>(flux, 'confirmCode', DATA_TYPE, queryVariables, [], {onSuccess}).then((data) => {
       const confirmed = data?.users?.confirmCode;
@@ -436,17 +431,17 @@ export const createUserActions = (
     if(username) {
       (queryVariables as any).user = {
         type: 'UserInput!',
-        value: { password, username }
+        value: {password, username}
       };
     } else if(user.email) {
       (queryVariables as any).user = {
         type: 'UserInput!',
-        value: { email, password }
+        value: {email, password}
       };
     } else if(user.phone) {
       (queryVariables as any).user = {
         type: 'UserInput!',
-        value: { password, phone }
+        value: {password, phone}
       };
     } else {
       throw new Error('Username, email, or phone number is required to sign in');

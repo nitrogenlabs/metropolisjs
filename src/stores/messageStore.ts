@@ -2,7 +2,7 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import type { MessageType } from '../adapters/messageAdapter/messageAdapter.js';
+import type {MessageType} from '../adapters/messageAdapter/messageAdapter.js';
 
 export const MESSAGE_CONSTANTS = {
   ADD_ITEM_ERROR: 'MESSAGE_ADD_ITEM_ERROR',
