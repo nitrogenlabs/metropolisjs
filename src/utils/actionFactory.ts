@@ -8,6 +8,7 @@ import {createGroupActions} from '../actions/groupActions/groupActions.js';
 import {createImageActions} from '../actions/imageActions/imageActions.js';
 import {createLocationActions} from '../actions/locationActions/locationActions.js';
 import {createMessageActions} from '../actions/messageActions/messageActions.js';
+import {createPermissionActions} from '../actions/permissionActions/permissionActions.js';
 import {createPostActions} from '../actions/postActions/postActions.js';
 import {createProfileActions} from '../actions/profileActions/profileActions.js';
 import {createReactionActions} from '../actions/reactionActions/reactionActions.js';
@@ -24,6 +25,7 @@ import type {GroupActionsOptions} from '../actions/groupActions/groupActions.js'
 import type {ImageActionsOptions} from '../actions/imageActions/imageActions.js';
 import type {LocationActionsOptions} from '../actions/locationActions/locationActions.js';
 import type {MessageActionsOptions} from '../actions/messageActions/messageActions.js';
+import type {PermissionActionsOptions} from '../actions/permissionActions/permissionActions.js';
 import type {PostActionsOptions} from '../actions/postActions/postActions.js';
 import type {ProfileActionsOptions} from '../actions/profileActions/profileActions.js';
 import type {ReactionActionsOptions} from '../actions/reactionActions/reactionActions.js';
@@ -39,6 +41,7 @@ export type ActionType =
   | 'image'
   | 'location'
   | 'message'
+  | 'permission'
   | 'post'
   | 'profile'
   | 'reaction'
@@ -55,6 +58,7 @@ export type ActionOptions =
   | ImageActionsOptions
   | LocationActionsOptions
   | MessageActionsOptions
+  | PermissionActionsOptions
   | PostActionsOptions
   | ProfileActionsOptions
   | ReactionActionsOptions
@@ -87,6 +91,9 @@ export const createAction = <T extends ActionType>(
 
     case 'message':
       return createMessageActions(flux, options as MessageActionsOptions);
+
+    case 'permission':
+      return createPermissionActions(flux, options as PermissionActionsOptions);
 
     case 'post':
       return createPostActions(flux, options as PostActionsOptions);
@@ -142,6 +149,7 @@ export const createAllActions = (
     'image',
     'location',
     'message',
+    'permission',
     'post',
     'profile',
     'reaction',

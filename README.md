@@ -34,6 +34,7 @@ Clean, intuitive APIs that make complex operations feel simple. Focus on buildin
 MetropolisJS powers applications that need:
 
 - **🔐 User Authentication & Authorization**
+- **🛡️ Role-Based Access Control (RBAC)** with 5-level permission system
 - **💬 Real-Time Messaging Systems**
 - **🔔 Live Notifications**
 - **📱 Social Media Features** (posts, reactions, tags)
@@ -442,6 +443,7 @@ MetropolisJS provides comprehensive actions for all your needs. Access them usin
 
 - `useUserActions()` - Authentication, profiles, user management
 - `useMessageActions()` - Real-time messaging and conversations
+- `usePermissionActions()` - Permission and role management (RBAC)
 - `usePostActions()` - Social media posts and content
 - `useReactionActions()` - Likes, reactions, and interactions
 - `useTagActions()` - Content categorization and discovery
@@ -459,12 +461,13 @@ MetropolisJS provides comprehensive actions for all your needs. Access them usin
 // Recommended: Use specialized hooks (only creates what you need)
 const userActions = useUserActions();
 const postActions = usePostActions();
+const permissionActions = usePermissionActions();
 
 // Alternative: Selective creation
-const {userActions, postActions} = useMetropolis(['user', 'post']);
+const {userActions, postActions, permissionActions} = useMetropolis(['user', 'post', 'permission']);
 
 // Alternative: All actions (creates all action types)
-const {userActions, postActions, messageActions} = useMetropolis();
+const {userActions, postActions, messageActions, permissionActions} = useMetropolis();
 ```
 
 ## 🏭 Factory Pattern Guide
@@ -751,6 +754,7 @@ The following APIs have been removed:
 Customize data transformation with powerful adapters. Pass adapters to the `Metropolis` component:
 
 - **User**: User profiles and authentication data
+- **Permission**: Permission and role data with RBAC support
 - **Message**: Chat and messaging data
 - **Post**: Social media content
 - **Event**: Event and scheduling data
@@ -853,6 +857,309 @@ const MyComponent = () => {
 - **Input validation** and sanitization
 - **CSRF protection** built-in
 - **Session management** with configurable timeouts
+- **5-Level RBAC permission system** for granular access control
+
+## 🛡️ Permission System (RBAC)
+
+MetropolisJS includes a comprehensive 5-level Role-Based Access Control (RBAC) system that integrates seamlessly with the Reaktor backend. This system provides granular control over user permissions and access levels throughout your application.
+
+### Permission Levels
+
+The system defines five hierarchical permission levels:
+
+```typescript
+enum PermissionLevel {
+  GUEST = 0,        // Unauthenticated users
+  USER = 1,         // Authenticated users
+  MODERATOR = 2,    // Content moderators
+  ADMIN = 3,        // Application administrators
+  SUPER_ADMIN = 4   // System administrators
+}
+```
+
+| Level | Name | Value | Description |
+|-------|------|-------|-------------|
+| 0 | Guest | `PermissionLevel.GUEST` | Unauthenticated users with limited read access |
+| 1 | User | `PermissionLevel.USER` | Authenticated users who can create and edit their own content |
+| 2 | Moderator | `PermissionLevel.MODERATOR` | Can moderate content and manage users |
+| 3 | Admin | `PermissionLevel.ADMIN` | Full access to application features |
+| 4 | Super Admin | `PermissionLevel.SUPER_ADMIN` | Complete system access, can manage admins |
+
+### Using the Permission System
+
+#### 1. Permission Hook
+
+The `usePermissions()` hook provides comprehensive permission checking capabilities:
+
+```tsx
+import { usePermissions, PermissionLevel } from '@nlabs/metropolisjs';
+
+const MyComponent = () => {
+  const { 
+    userLevel,      // Current user's permission level
+    isGuest,        // Boolean checks
+    isUser,
+    isModerator,
+    isAdmin,
+    isSuperAdmin,
+    hasPermission,  // Function to check specific level
+    checkResource   // Function to check resource-specific permissions
+  } = usePermissions();
+
+  return (
+    <div>
+      <p>Your level: {userLevel}</p>
+      {isAdmin && <button>Admin Panel</button>}
+      {hasPermission(PermissionLevel.MODERATOR) && (
+        <button>Moderate Content</button>
+      )}
+    </div>
+  );
+};
+```
+
+#### 2. Permission Guard Component
+
+Conditionally render components based on permission requirements:
+
+```tsx
+import { PermissionGuard, PermissionLevel } from '@nlabs/metropolisjs';
+
+const ProtectedContent = () => {
+  return (
+    <>
+      <PermissionGuard 
+        requiredLevel={PermissionLevel.USER}
+        fallback={<p>Please log in to view this content</p>}
+      >
+        <p>This content is visible to authenticated users</p>
+      </PermissionGuard>
+
+      <PermissionGuard 
+        requiredLevel={PermissionLevel.ADMIN}
+        fallback={null} // Hides content completely
+      >
+        <button>Admin Settings</button>
+      </PermissionGuard>
+
+      <PermissionGuard 
+        requiredLevel={PermissionLevel.MODERATOR}
+        resource="posts" // Resource-specific permission
+        fallback={<p>Moderator access required</p>}
+      >
+        <button>Moderate Posts</button>
+      </PermissionGuard>
+    </>
+  );
+};
+```
+
+#### 3. Managing Permissions with Actions
+
+Use `usePermissionActions()` to manage permissions programmatically:
+
+```tsx
+import { usePermissionActions, PermissionLevel } from '@nlabs/metropolisjs';
+
+const PermissionManager = () => {
+  const permissionActions = usePermissionActions();
+
+  const grantModeratorRole = async (userId: string) => {
+    try {
+      const permission = await permissionActions.add({
+        userId,
+        name: 'Moderator Role',
+        level: PermissionLevel.MODERATOR,
+        resource: 'posts',
+        description: 'Can moderate posts and comments'
+      });
+      console.log('Permission granted:', permission);
+    } catch (error) {
+      console.error('Failed to grant permission:', error);
+    }
+  };
+
+  const checkUserAccess = async (userId: string) => {
+    const hasAccess = await permissionActions.check(
+      userId,
+      'posts',
+      PermissionLevel.MODERATOR
+    );
+    return hasAccess;
+  };
+
+  const loadUserPermissions = async (userId: string) => {
+    const permissions = await permissionActions.listByUser(userId);
+    return permissions;
+  };
+
+  return (
+    <div>
+      <button onClick={() => grantModeratorRole('user123')}>
+        Grant Moderator Permission
+      </button>
+    </div>
+  );
+};
+```
+
+#### 4. Resource-Specific Permissions
+
+The permission system supports resource-specific access control:
+
+```tsx
+import { usePermissions, PermissionLevel } from '@nlabs/metropolisjs';
+
+const ResourceProtectedComponent = () => {
+  const { checkResource } = usePermissions();
+
+  const canEditPosts = checkResource('posts', PermissionLevel.MODERATOR);
+  const canDeleteUsers = checkResource('users', PermissionLevel.ADMIN);
+  const canViewReports = checkResource('reports', PermissionLevel.MODERATOR);
+
+  return (
+    <div>
+      {canEditPosts && <button>Edit Post</button>}
+      {canDeleteUsers && <button>Delete User</button>}
+      {canViewReports && <button>View Reports</button>}
+    </div>
+  );
+};
+```
+
+### Backward Compatibility
+
+The permission system is fully backward compatible with the existing `userAccess` field in the User model. The `userAccess` number (0-4) directly maps to the `PermissionLevel` enum values, ensuring seamless integration with existing code.
+
+### Available Permission Actions
+
+The `usePermissionActions()` hook provides the following methods:
+
+- **`add(permissionData)`** - Grant a new permission
+- **`check(userId, resource, requiredLevel)`** - Check if a user has access
+- **`itemById(permissionId)`** - Retrieve a specific permission
+- **`list(from?, to?)`** - List all permissions with pagination
+- **`listByUser(userId)`** - Get all permissions for a specific user
+- **`remove(permissionId)`** - Revoke a permission
+- **`update(permission)`** - Update an existing permission
+
+### Integration with Reaktor Backend
+
+The permission system integrates with the Reaktor backend through GraphQL mutations and queries:
+
+```graphql
+# Grant permission
+mutation {
+  permissions {
+    add(permission: {
+      userId: "user123"
+      level: 2
+      resource: "posts"
+      name: "Moderator"
+    }) {
+      permissionId
+      level
+      resource
+    }
+  }
+}
+
+# Check permission
+query {
+  permissions {
+    check(
+      userId: "user123"
+      resource: "posts"
+      requiredLevel: 2
+    )
+  }
+}
+
+# List user permissions
+query {
+  permissions {
+    listByUser(userId: "user123") {
+      permissionId
+      name
+      level
+      resource
+      description
+    }
+  }
+}
+```
+
+### Best Practices
+
+1. **Use Permission Guards for UI**: Wrap sensitive UI elements with `<PermissionGuard>` components
+2. **Check Permissions in Actions**: Always verify permissions before executing sensitive operations
+3. **Resource-Specific Permissions**: Use resource-based permissions for fine-grained control
+4. **Leverage Boolean Helpers**: Use `isAdmin`, `isModerator`, etc. for cleaner code
+5. **Test Permission Logic**: Write tests for permission checks to ensure security
+6. **Document Required Levels**: Clearly document what permission level each feature requires
+
+### Example: Complete Permission Workflow
+
+```tsx
+import { 
+  Metropolis, 
+  usePermissions, 
+  usePermissionActions,
+  PermissionGuard,
+  PermissionLevel 
+} from '@nlabs/metropolisjs';
+
+const App = () => {
+  return (
+    <Metropolis config={{/* your config */}}>
+      <Dashboard />
+    </Metropolis>
+  );
+};
+
+const Dashboard = () => {
+  const { isAdmin, isModerator, userLevel } = usePermissions();
+  const permissionActions = usePermissionActions();
+
+  return (
+    <div>
+      <h1>Dashboard - Level: {userLevel}</h1>
+      
+      {/* Everyone sees this */}
+      <section>
+        <h2>Public Content</h2>
+      </section>
+
+      {/* Only authenticated users */}
+      <PermissionGuard requiredLevel={PermissionLevel.USER}>
+        <section>
+          <h2>User Content</h2>
+          <button>Create Post</button>
+        </section>
+      </PermissionGuard>
+
+      {/* Only moderators and above */}
+      {isModerator && (
+        <section>
+          <h2>Moderation Tools</h2>
+          <button>Review Content</button>
+        </section>
+      )}
+
+      {/* Only admins */}
+      {isAdmin && (
+        <section>
+          <h2>Admin Panel</h2>
+          <button>Manage Users</button>
+          <button>System Settings</button>
+        </section>
+      )}
+    </div>
+  );
+};
+```
+
+For more detailed examples, see [`examples/permission-system-usage.tsx`](./examples/permission-system-usage.tsx).
 
 ## 📦 Installation & Setup
 

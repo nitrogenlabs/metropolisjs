@@ -44,6 +44,14 @@ export {
 export { MetropolisContext, MetropolisProvider } from './MetropolisProvider.js';
 export { useMetropolis } from './useMetropolis.js';
 export { useTranslations } from './useTranslations.js';
+export {
+  PermissionGuard,
+  PermissionLevel,
+  usePermissions,
+  type Permission,
+  type PermissionGuardProps,
+  type UsePermissionsReturn
+} from './permissionUtils.js';
 
 // Export utility functions
 export * from './app.js';

@@ -9,6 +9,7 @@ import { parseEvent } from '../adapters/eventAdapter/eventAdapter.js';
 import { parseImage } from '../adapters/imageAdapter/imageAdapter.js';
 import { parseLocation } from '../adapters/locationAdapter/locationAdapter.js';
 import { parseMessage } from '../adapters/messageAdapter/messageAdapter.js';
+import { parsePermission } from '../adapters/permissionAdapter/permissionAdapter.js';
 import { parsePost } from '../adapters/postAdapter/postAdapter.js';
 import { parseProfile } from '../adapters/profileAdapter/profileAdapter.js';
 import { parseReaction } from '../adapters/reactionAdapter/reactionAdapter.js';
@@ -27,6 +28,7 @@ export interface MetropolisAdapters {
   readonly Image?: typeof parseImage;
   readonly Location?: typeof parseLocation;
   readonly Message?: typeof parseMessage;
+  readonly Permission?: typeof parsePermission;
   readonly Post?: typeof parsePost;
   readonly Profile?: typeof parseProfile;
   readonly Reaction?: typeof parseReaction;
