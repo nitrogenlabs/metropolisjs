@@ -2,7 +2,7 @@
  * Copyright (c) 2026-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import type {Group} from '../adapters/groupAdapter/groupAdapter.js';
+import type {GroupType} from '../types/groups.types.js';
 
 export const GROUP_CONSTANTS = {
   ADD_ITEM_ERROR: 'GROUP_ADD_ITEM_ERROR',
@@ -20,8 +20,8 @@ export const GROUP_CONSTANTS = {
 export type GroupConstantsType = typeof GROUP_CONSTANTS[keyof typeof GROUP_CONSTANTS];
 
 interface GroupState {
-  lists: Record<string, Group[]>;
-  viewed: Record<string, Group>;
+  lists: Record<string, GroupType[]>;
+  viewed: Record<string, GroupType>;
 }
 
 export const defaultValues: GroupState = {
@@ -29,14 +29,14 @@ export const defaultValues: GroupState = {
   viewed: {}
 };
 
-export const groupStore = (type: string, data: {group?: Group; list?: Group[]}, state = defaultValues): GroupState => {
+export const groupStore = (type: string, data: {group?: GroupType; list?: GroupType[]}, state = defaultValues): GroupState => {
   switch(type) {
     case GROUP_CONSTANTS.GET_ITEM_SUCCESS: {
       const {viewed} = state;
       const {group} = data;
 
       if(group && group.groupId) {
-        const groupWithCache: Group = {...group, cached: Date.now()};
+        const groupWithCache: GroupType = {...group, cached: Date.now()};
         viewed[group.groupId] = groupWithCache;
         return {...state, viewed};
       }

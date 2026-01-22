@@ -1,48 +1,47 @@
 /**
- * Copyright (c) 2026-Present, Nitrogen Labs, Inc.
+ * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {parseId, parseNum} from '@nlabs/utils';
+import { parseId, parseNum } from '@nlabs/utils';
 
-import {validateGroupInput} from '../../adapters/groupAdapter/groupAdapter.js';
-import {GROUP_CONSTANTS} from '../../stores/groupStore.js';
-import {appMutation, appQuery} from '../../utils/api.js';
-import {createBaseActions} from '../../utils/baseActionFactory.js';
+import { validateGroupInput } from '../../adapters/groupAdapter/groupAdapter.js';
+import { GROUP_CONSTANTS } from '../../stores/groupStore.js';
+import { appMutation, appQuery } from '../../utils/api.js';
+import { createBaseActions } from '../../utils/baseActionFactory.js';
 
-import type {Group} from '../../adapters/groupAdapter/groupAdapter.js';
-import type {ReaktorDbCollection} from '../../utils/api.js';
-import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
-import type {FluxFramework} from '@nlabs/arkhamjs';
+import type { FluxFramework } from '@nlabs/arkhamjs';
+import type { GroupType } from '../../types/groups.types.js';
+import type { ReaktorDbCollection } from '../../utils/api.js';
+import type { BaseAdapterOptions } from '../../utils/validatorFactory.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'groups';
 
-export type GroupAdapterOptions = BaseAdapterOptions;
+export interface GroupAdapterOptions extends BaseAdapterOptions {
+}
 
 export interface GroupActionsOptions {
-  groupAdapter?: (input: unknown, options?: GroupAdapterOptions)=> any;
+  groupAdapter?: (input: unknown, options?: GroupAdapterOptions) => any;
   groupAdapterOptions?: GroupAdapterOptions;
 }
 
 export type GroupApiResultsType = {
   groups: {
-    add?: Group;
-    getById?: Group;
-    getListByApp?: Group[];
-    getListByUser?: Group[];
-    update?: Group;
-    delete?: Group;
+    addGroup: GroupType;
+    getGroup: GroupType;
+    getGroupsByLatest: GroupType[];
+    deleteGroup: GroupType;
+    updateGroup: GroupType;
   };
 };
 
 export interface GroupActions {
-  add: (groupData: Partial<Group>, groupProps?: string[])=> Promise<Group>;
-  getById: (groupId: string, groupProps?: string[])=> Promise<Group>;
-  getListByApp: (from?: number, to?: number, groupProps?: string[])=> Promise<Group[]>;
-  getListByUser: (userId: string, from?: number, to?: number, groupProps?: string[])=> Promise<Group[]>;
-  update: (group: Partial<Group>, groupProps?: string[])=> Promise<Group>;
-  delete: (groupId: string, groupProps?: string[])=> Promise<Group>;
-  updateGroupAdapter: (adapter: (input: unknown, options?: GroupAdapterOptions)=> any)=> void;
-  updateGroupAdapterOptions: (options: GroupAdapterOptions)=> void;
+  add: (groupData: Partial<GroupType>, groupProps?: string[]) => Promise<GroupType>;
+  itemById: (groupId: string, groupProps?: string[]) => Promise<GroupType>;
+  listByLatest: (from?: number, to?: number, groupProps?: string[]) => Promise<GroupType[]>;
+  delete: (groupId: string, groupProps?: string[]) => Promise<GroupType>;
+  update: (group: Partial<GroupType>, groupProps?: string[]) => Promise<GroupType>;
+  updateGroupAdapter: (adapter: (input: unknown, options?: GroupAdapterOptions) => any) => void;
+  updateGroupAdapterOptions: (options: GroupAdapterOptions) => void;
 }
 
 const defaultGroupValidator = (input: unknown, options?: GroupAdapterOptions) => validateGroupInput(input);
@@ -56,7 +55,7 @@ export const createGroupActions = (
     adapterOptions: options?.groupAdapterOptions
   });
 
-  const add = async (groupData: Partial<Group>, groupProps: string[] = []): Promise<Group> => {
+  const add = async (groupData: Partial<GroupType>, groupProps: string[] = []): Promise<GroupType> => {
     try {
       const queryVariables = {
         group: {
@@ -66,25 +65,18 @@ export const createGroupActions = (
       };
 
       const onSuccess = (data: GroupApiResultsType) => {
-        const {groups: {add: group = {}}} = data;
-        return flux.dispatch({group, type: GROUP_CONSTANTS.ADD_ITEM_SUCCESS});
+        const {groups: {addGroup = {}}} = data;
+        return flux.dispatch({group: addGroup, type: GROUP_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
-      return await appMutation<Group>(
-        flux,
-        'addGroup',
-        DATA_TYPE,
-        queryVariables,
-        ['groupId', ...groupProps],
-        {onSuccess}
-      );
+      return await appMutation<GroupType>(flux, 'addGroup', DATA_TYPE, queryVariables, ['groupId', ...groupProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: GROUP_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
     }
   };
 
-  const getById = async (groupId: string, groupProps: string[] = []): Promise<Group> => {
+  const itemById = async (groupId: string, groupProps: string[] = []): Promise<GroupType> => {
     try {
       const queryVariables = {
         groupId: {
@@ -94,27 +86,27 @@ export const createGroupActions = (
       };
 
       const onSuccess = (data: GroupApiResultsType) => {
-        const {groups: {getById: group = {}}} = data;
+        const {groups: {getGroup: group = {}}} = data;
         return flux.dispatch({group, type: GROUP_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
-      return await appQuery<Group>(
+      return await appQuery<GroupType>(
         flux,
-        'getById',
+        'group',
         DATA_TYPE,
         queryVariables,
         [
-          'added',
           'description',
           'groupId',
-          'imageId',
+          'imageUrl',
+          'isPrivate',
+          'memberCount',
           'name',
           'ownerId',
-          'privacy',
+          'settings',
           'tags {name, tagId}',
+          'thumbUrl',
           'type',
-          'updated',
-          'userCount',
           ...groupProps
         ],
         {onSuccess}
@@ -125,11 +117,11 @@ export const createGroupActions = (
     }
   };
 
-  const getListByApp = async (
+  const listByLatest = async (
     from: number = 0,
     to: number = 0,
     groupProps: string[] = []
-  ): Promise<Group[]> => {
+  ): Promise<GroupType[]> => {
     try {
       const queryVariables = {
         from: {
@@ -143,30 +135,30 @@ export const createGroupActions = (
       };
 
       const onSuccess = (data: GroupApiResultsType) => {
-        const {groups: {getListByApp = []}} = data;
+        const {groups: {getGroupsByLatest: groupsByLatest = []}} = data;
         return flux.dispatch({
-          list: getListByApp,
+          list: groupsByLatest,
           type: GROUP_CONSTANTS.GET_LIST_SUCCESS
         });
       };
 
-      return await appQuery<Group[]>(
+      return await appQuery<GroupType[]>(
         flux,
-        'getListByApp',
+        'groupsByLatest',
         DATA_TYPE,
         queryVariables,
         [
-          'added',
           'description',
           'groupId',
-          'imageId',
+          'imageUrl',
+          'isPrivate',
+          'memberCount',
           'name',
           'ownerId',
-          'privacy',
+          'settings',
           'tags {name, tagId}',
+          'thumbUrl',
           'type',
-          'updated',
-          'userCount',
           ...groupProps
         ],
         {onSuccess}
@@ -177,91 +169,7 @@ export const createGroupActions = (
     }
   };
 
-  const getListByUser = async (
-    userId: string,
-    from: number = 0,
-    to: number = 0,
-    groupProps: string[] = []
-  ): Promise<Group[]> => {
-    try {
-      const queryVariables = {
-        from: {
-          type: 'Int',
-          value: parseNum(from)
-        },
-        to: {
-          type: 'Int',
-          value: parseNum(to)
-        },
-        userId: {
-          type: 'ID!',
-          value: parseId(userId)
-        }
-      };
-
-      const onSuccess = (data: GroupApiResultsType) => {
-        const {groups: {getListByUser = []}} = data;
-        return flux.dispatch({
-          list: getListByUser,
-          type: GROUP_CONSTANTS.GET_LIST_SUCCESS
-        });
-      };
-
-      return await appQuery<Group[]>(
-        flux,
-        'getListByUser',
-        DATA_TYPE,
-        queryVariables,
-        [
-          'added',
-          'description',
-          'groupId',
-          'imageId',
-          'name',
-          'ownerId',
-          'privacy',
-          'tags {name, tagId}',
-          'type',
-          'updated',
-          'userCount',
-          ...groupProps
-        ],
-        {onSuccess}
-      );
-    } catch(error) {
-      flux.dispatch({error, type: GROUP_CONSTANTS.GET_LIST_ERROR});
-      throw error;
-    }
-  };
-
-  const update = async (groupData: Partial<Group>, groupProps: string[] = []): Promise<Group> => {
-    try {
-      const queryVariables = {
-        group: {
-          type: 'GroupInput!',
-          value: groupBase.validator(groupData)
-        }
-      };
-
-      const onSuccess = (data: GroupApiResultsType) => {
-        const {groups: {update: group = {}}} = data;
-        return flux.dispatch({group, type: GROUP_CONSTANTS.UPDATE_ITEM_SUCCESS});
-      };
-
-      return await appMutation<Group>(
-        flux,
-        'updateGroup',
-        DATA_TYPE,
-        queryVariables,
-        ['groupId', ...groupProps], {onSuccess}
-      );
-    } catch(error) {
-      flux.dispatch({error, type: GROUP_CONSTANTS.UPDATE_ITEM_ERROR});
-      throw error;
-    }
-  };
-
-  const deleteGroup = async (groupId: string, groupProps: string[] = []): Promise<Group> => {
+  const deleteGroup = async (groupId: string, groupProps: string[] = []): Promise<GroupType> => {
     try {
       const queryVariables = {
         groupId: {
@@ -271,30 +179,43 @@ export const createGroupActions = (
       };
 
       const onSuccess = (data: GroupApiResultsType) => {
-        const {groups: {delete: group = {}}} = data;
-        return flux.dispatch({group, type: GROUP_CONSTANTS.REMOVE_ITEM_SUCCESS});
+        const {groups: {deleteGroup = {}}} = data;
+        return flux.dispatch({group: deleteGroup, type: GROUP_CONSTANTS.REMOVE_ITEM_SUCCESS});
       };
 
-      return await appMutation<Group>(
-        flux,
-        'deleteGroup',
-        DATA_TYPE,
-        queryVariables,
-        ['groupId', ...groupProps],
-        {onSuccess}
-      );
+      return await appMutation<GroupType>(flux, 'deleteGroup', DATA_TYPE, queryVariables, ['groupId', ...groupProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: GROUP_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
     }
   };
 
+  const update = async (group: Partial<GroupType>, groupProps: string[] = []): Promise<GroupType> => {
+    try {
+      const queryVariables = {
+        group: {
+          type: 'GroupUpdateInput!',
+          value: groupBase.validator(group)
+        }
+      };
+
+      const onSuccess = (data: GroupApiResultsType) => {
+        const {groups: {updateGroup = {}}} = data;
+        return flux.dispatch({group: updateGroup, type: GROUP_CONSTANTS.UPDATE_ITEM_SUCCESS});
+      };
+
+      return await appMutation<GroupType>(flux, 'updateGroup', DATA_TYPE, queryVariables, ['groupId', ...groupProps], {onSuccess});
+    } catch(error) {
+      flux.dispatch({error, type: GROUP_CONSTANTS.UPDATE_ITEM_ERROR});
+      throw error;
+    }
+  };
+
   return {
     add,
+    itemById,
+    listByLatest,
     delete: deleteGroup,
-    getById,
-    getListByApp,
-    getListByUser,
     update,
     updateGroupAdapter: groupBase.updateAdapter,
     updateGroupAdapterOptions: groupBase.updateOptions

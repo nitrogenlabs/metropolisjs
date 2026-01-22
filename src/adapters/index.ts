@@ -26,7 +26,7 @@ export {parseUser} from './userAdapter/userAdapter.js';
 
 export type {ContentInputType, ContentType} from './contentAdapter/contentAdapter.js';
 export type {EventType} from './eventAdapter/eventAdapter.js';
-export type {Group} from './groupAdapter/groupAdapter.js';
+export type {GroupType} from '../types/groups.types.js';
 export type {ImageType} from './imageAdapter/imageAdapter.js';
 export type {LocationType} from './locationAdapter/locationAdapter.js';
 export type {MessageType} from './messageAdapter/messageAdapter.js';
