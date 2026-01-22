@@ -5,6 +5,18 @@ export {parseGroup} from './groupAdapter/groupAdapter.js';
 export {parseImage} from './imageAdapter/imageAdapter.js';
 export {parseLocation} from './locationAdapter/locationAdapter.js';
 export {parseMessage} from './messageAdapter/messageAdapter.js';
+export {
+  getPermissionLevelName,
+  hasPermission,
+  isAdmin,
+  isGuest,
+  isModerator,
+  isSuperAdmin,
+  isUser,
+  parsePermission,
+  PermissionLevel,
+  PermissionLevelNames
+} from './permissionAdapter/permissionAdapter.js';
 export {parsePost} from './postAdapter/postAdapter.js';
 export {parseProfile} from './profileAdapter/profileAdapter.js';
 export {parseReaction} from './reactionAdapter/reactionAdapter.js';
@@ -18,6 +30,7 @@ export type {Group} from './groupAdapter/groupAdapter.js';
 export type {ImageType} from './imageAdapter/imageAdapter.js';
 export type {LocationType} from './locationAdapter/locationAdapter.js';
 export type {MessageType} from './messageAdapter/messageAdapter.js';
+export type {Permission} from './permissionAdapter/permissionAdapter.js';
 export type {PostType} from './postAdapter/postAdapter.js';
 export type {ProfileType} from './profileAdapter/profileAdapter.js';
 export type {ReactionType} from './reactionAdapter/reactionAdapter.js';

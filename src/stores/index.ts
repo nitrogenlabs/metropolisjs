@@ -9,6 +9,7 @@ export {GROUP_CONSTANTS, groups} from './groupStore.js';
 export {IMAGE_CONSTANTS, images} from './imageStore.js';
 export {LOCATION_CONSTANTS, locations} from './locationStore.js';
 export {MESSAGE_CONSTANTS, messages} from './messageStore.js';
+export {PERMISSION_CONSTANTS, permissions} from './permissionStore.js';
 export {POST_CONSTANTS, posts} from './postStore.js';
 export {PROFILE_CONSTANTS, profiles} from './profileStore.js';
 export {REACTION_CONSTANTS, reactions} from './reactionStore.js';

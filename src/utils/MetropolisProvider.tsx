@@ -27,6 +27,7 @@ export interface MetropolisAdapters {
   readonly Image?: typeof parseImage;
   readonly Location?: typeof parseLocation;
   readonly Message?: typeof parseMessage;
+  readonly Permission?: typeof parsePermission;
   readonly Post?: typeof parsePost;
   readonly Profile?: typeof parseProfile;
   readonly Reaction?: typeof parseReaction;

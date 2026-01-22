@@ -34,6 +34,9 @@ const buildActionOptions = (
   if (adapters.Message) {
     options.message = {messageAdapter: adapters.Message};
   }
+  if (adapters.Permission) {
+    options.permission = {permissionAdapter: adapters.Permission};
+  }
   if (adapters.Post) {
     options.post = {postAdapter: adapters.Post};
   }
@@ -79,6 +82,9 @@ const mapActionsToReturnKeys = (actions: Record<string, any>): Record<string, an
   }
   if (actions.message) {
     mapped.messageActions = actions.message;
+  }
+  if (actions.permission) {
+    mapped.permissionActions = actions.permission;
   }
   if (actions.post) {
     mapped.postActions = actions.post;
@@ -223,6 +229,11 @@ export const useLocationActions = () => {
 export const useMessageActions = () => {
   const {messageActions} = useMetropolis(['message']);
   return messageActions;
+};
+
+export const usePermissionActions = () => {
+  const {permissionActions} = useMetropolis(['permission']);
+  return permissionActions;
 };
 
 export const usePostActions = () => {
