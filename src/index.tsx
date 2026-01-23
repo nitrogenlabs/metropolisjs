@@ -236,6 +236,7 @@ export default Metropolis;
 export {
   useContentActions,
   useEventActions,
+  useGroupActions,
   useImageActions,
   useLocationActions,
   useMessageActions, useMetropolis,

@@ -216,6 +216,11 @@ export const useEventActions = () => {
   return eventActions;
 };
 
+export const useGroupActions = () => {
+  const {groupActions} = useMetropolis(['group']);
+  return groupActions;
+};
+
 export const useImageActions = () => {
   const {imageActions} = useMetropolis(['image']);
   return imageActions;
