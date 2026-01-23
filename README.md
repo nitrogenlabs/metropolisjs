@@ -11,39 +11,38 @@
 
 MetropolisJS is the bridge that connects your frontend dreams to backend reality. Built on the powerful combination of **Reaktor** (backend services) and **ArkhamJS** (frontend data store), MetropolisJS provides a seamless, real-time integration layer that handles everything from user authentication to real-time messaging and notifications.
 
-## 🚀 Why MetropolisJS?
+## Why MetropolisJS?
 
-### ✨ **Seamless Integration**
+### **Seamless Integration**
 
 Connect your React frontend to Reaktor-powered backend services with zero configuration headaches. MetropolisJS handles all the complex data flow, state management, and real-time communication.
 
-### 🔄 **Real-Time Everything**
+### **Real-Time Everything**
 
 Built-in WebSocket and Server-Sent Events (SSE) support for instant messaging, live notifications, and real-time data synchronization. Your users will never miss a beat.
 
-### 🛡️ **Type-Safe & Reliable**
+### **Type-Safe & Reliable**
 
 Full TypeScript support with comprehensive type definitions. Catch errors at compile time, not runtime.
 
-### 🎯 **Developer Experience First**
+### **Developer Experience First**
 
 Clean, intuitive APIs that make complex operations feel simple. Focus on building features, not boilerplate.
 
-## 🎯 What Can You Build?
-
+## What Can You Build?
 MetropolisJS powers applications that need:
 
-- **🔐 User Authentication & Authorization**
-- **🛡️ Role-Based Access Control (RBAC)** with 5-level permission system
-- **💬 Real-Time Messaging Systems**
-- **🔔 Live Notifications**
-- **📱 Social Media Features** (posts, reactions, tags)
-- **📍 Location-Based Services**
-- **🖼️ Media Management** (images, files)
-- **📅 Event Management**
-- **👥 User Connections & Relationships**
+- **User Authentication & Authorization**
+- **Role-Based Access Control (RBAC)** with 5-level permission system
+- **Real-Time Messaging Systems**
+- **Live Notifications**
+- **Social Media Features** (posts, reactions, tags)
+- **Location-Based Services**
+- **Media Management** (images, files)
+- **Event Management**
+- **User Connections & Relationships**
 
-## 🛠️ Quick Start
+## Quick Start
 
 ### Installation
 
@@ -101,7 +100,7 @@ const {userActions, postActions} = useMetropolis(['user', 'post']);
 const {userActions, postActions, messageActions} = useMetropolis();
 ```
 
-## ⚙️ Configuration
+## Configuration
 
 The `Metropolis` component accepts three main props: `config`, `adapters`, and `translations`. Here's how to configure each:
 
@@ -309,6 +308,7 @@ const App = () => {
 ### Environment Detection
 
 MetropolisJS automatically detects the environment based on:
+
 1. The `environment` property in your config
 2. `process.env.stage` (if set)
 3. `process.env.NODE_ENV` (fallback)
@@ -390,7 +390,7 @@ const ChatComponent = () => {
 };
 ```
 
-## 🏗️ Architecture
+## Architecture
 
 MetropolisJS is built on a powerful three-layer architecture with modern React patterns:
 
@@ -415,7 +415,7 @@ MetropolisJS is built on a powerful three-layer architecture with modern React p
 └─────────────────┘
 ```
 
-### 🔧 Core Components
+### Core Components
 
 - **Actions**: Handle all API interactions and business logic (factory pattern)
 - **Adapters**: Transform data between frontend and backend formats
@@ -424,7 +424,7 @@ MetropolisJS is built on a powerful three-layer architecture with modern React p
 - **Configuration**: Context-based configuration (React best practices)
 - **Hooks**: Specialized hooks for accessing actions and configuration
 
-### 🎯 Modern Architecture Features
+### Modern Architecture Features
 
 MetropolisJS follows React best practices:
 
@@ -435,7 +435,7 @@ MetropolisJS follows React best practices:
 - **Specialized Hooks**: Individual hooks for each action type
 - **Flux State Integration**: Configuration stored in flux state for non-React code access
 
-## 📚 Available Actions
+## Available Actions
 
 MetropolisJS provides comprehensive actions for all your needs. Access them using specialized hooks or the main `useMetropolis()` hook:
 
@@ -455,7 +455,7 @@ MetropolisJS provides comprehensive actions for all your needs. Access them usin
 - `useProfileActions()` - Profile management
 - `useTranslationActions()` - Translation management
 
-### Using Actions
+### Using Collection Actions
 
 ```tsx
 // Recommended: Use specialized hooks (only creates what you need)
@@ -470,7 +470,7 @@ const {userActions, postActions, permissionActions} = useMetropolis(['user', 'po
 const {userActions, postActions, messageActions, permissionActions} = useMetropolis();
 ```
 
-## 🏭 Factory Pattern Guide
+## Factory Pattern Guide
 
 MetropolisJS has been refactored to use a **factory function pattern** for actions instead of class-based approaches. This provides better functional programming practices, improved testability, and enhanced flexibility through dependency injection.
 
@@ -749,7 +749,7 @@ The following APIs have been removed:
 - Options are merged efficiently without deep cloning
 - Better tree-shaking opportunities with specialized hooks
 
-## 🔌 Adapters
+## Adapters
 
 Customize data transformation with powerful adapters. Pass adapters to the `Metropolis` component:
 
@@ -766,7 +766,7 @@ Customize data transformation with powerful adapters. Pass adapters to the `Metr
 - **Profile**: Profile management
 - **Translation**: Translation data
 
-## ⚡ Real-Time Features
+## Real-Time Features
 
 ### WebSocket Integration
 
@@ -790,9 +790,9 @@ const MyComponent = () => {
 
 Built-in SSE support for lightweight real-time updates without the overhead of WebSocket connections.
 
-## 🎨 Customization
+## Customization
 
-### Custom Adapters
+### Custom Data Adapters
 
 You can customize data transformation by providing custom adapters. Adapters are functions that transform and validate data:
 
@@ -840,7 +840,7 @@ const MyComponent = () => {
 
 **Note:** `useMetropolisConfig()` must be used within a component wrapped by `<Metropolis>`.
 
-## 🚀 Performance Features
+## Performance Features
 
 - **Selective Action Creation** - Only create actions you need with specialized hooks
 - **Debounced API calls** - Prevent excessive requests
@@ -850,7 +850,7 @@ const MyComponent = () => {
 - **Lazy loading** - Support for large datasets
 - **Tree-shaking friendly** - Better bundle optimization
 
-## 🔒 Security
+## Security
 
 - **Automatic token refresh** for seamless sessions
 - **Secure WebSocket connections** with authentication
@@ -859,7 +859,7 @@ const MyComponent = () => {
 - **Session management** with configurable timeouts
 - **5-Level RBAC permission system** for granular access control
 
-## 🛡️ Permission System (RBAC)
+## Permission System (RBAC)
 
 MetropolisJS includes a comprehensive 5-level Role-Based Access Control (RBAC) system that integrates seamlessly with the Reaktor backend. This system provides granular control over user permissions and access levels throughout your application.
 
@@ -895,7 +895,7 @@ The `usePermissions()` hook provides comprehensive permission checking capabilit
 import { usePermissions, PermissionLevel } from '@nlabs/metropolisjs';
 
 const MyComponent = () => {
-  const { 
+  const {
     userLevel,      // Current user's permission level
     isGuest,        // Boolean checks
     isUser,
@@ -928,21 +928,21 @@ import { PermissionGuard, PermissionLevel } from '@nlabs/metropolisjs';
 const ProtectedContent = () => {
   return (
     <>
-      <PermissionGuard 
+      <PermissionGuard
         requiredLevel={PermissionLevel.USER}
         fallback={<p>Please log in to view this content</p>}
       >
         <p>This content is visible to authenticated users</p>
       </PermissionGuard>
 
-      <PermissionGuard 
+      <PermissionGuard
         requiredLevel={PermissionLevel.ADMIN}
         fallback={null} // Hides content completely
       >
         <button>Admin Settings</button>
       </PermissionGuard>
 
-      <PermissionGuard 
+      <PermissionGuard
         requiredLevel={PermissionLevel.MODERATOR}
         resource="posts" // Resource-specific permission
         fallback={<p>Moderator access required</p>}
@@ -1101,12 +1101,12 @@ query {
 ### Example: Complete Permission Workflow
 
 ```tsx
-import { 
-  Metropolis, 
-  usePermissions, 
+import {
+  Metropolis,
+  usePermissions,
   usePermissionActions,
   PermissionGuard,
-  PermissionLevel 
+  PermissionLevel
 } from '@nlabs/metropolisjs';
 
 const App = () => {
@@ -1124,7 +1124,7 @@ const Dashboard = () => {
   return (
     <div>
       <h1>Dashboard - Level: {userLevel}</h1>
-      
+
       {/* Everyone sees this */}
       <section>
         <h2>Public Content</h2>
@@ -1182,13 +1182,14 @@ npm install --save-dev @types/react @types/node
 ### Environment Setup
 
 MetropolisJS automatically detects the environment from:
+
 - `process.env.stage` (if set)
 - `process.env.NODE_ENV` (fallback)
 - Defaults to `'local'` if none are set
 
 Configure your environment-specific settings in the `config` prop of the `Metropolis` component.
 
-## 🤝 Contributing
+## Contributing
 
 We love contributions! Here's how you can help:
 
@@ -1198,24 +1199,24 @@ We love contributions! Here's how you can help:
 4. **Push** to the branch (`git push origin feature/amazing-feature`)
 5. **Open** a Pull Request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 📖 Additional Documentation
+## Additional Documentation
 
 - **[Factory Pattern Guide](./factoryPatternGuide.md)** - Detailed guide on using the factory pattern
 - **[Architecture Analysis](./ARCHITECTURE_ANALYSIS.md)** - Deep dive into the architecture
 - **[Changelog](./CHANGELOG.md)** - Complete list of changes and improvements
 
-## 🆘 Support
+## Support
 
 - **Documentation**: See above for detailed guides
 - **Issues**: [GitHub Issues](https://github.com/nitrogenlabs/metropolisjs/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/nitrogenlabs/metropolisjs/discussions)
 - **Email**: <giraldo@nitrogenlabs.com>
 
-## 🏢 About Nitrogen Labs
+## About Nitrogen Labs
 
 MetropolisJS is proudly developed by [Nitrogen Labs](http://nitrogenlabs.com), a team passionate about building powerful, developer-friendly tools that make web development faster, more reliable, and more enjoyable.
 
@@ -1223,7 +1224,7 @@ MetropolisJS is proudly developed by [Nitrogen Labs](http://nitrogenlabs.com), a
 
 **Ready to build the future?** Start with MetropolisJS today and experience the power of seamless frontend-backend integration! 🚀
 
-## 📚 CRUD Operations
+## CRUD Operations
 
 MetropolisJS now provides comprehensive CRUD (Create, Read, Update, Delete) operations for all Reaktor collections:
 
@@ -1297,10 +1298,10 @@ const connectionActions = createConnectionActions(flux);
 
 // Add user to group
 await connectionActions.addConnection(
-  'users', 
-  userId, 
-  'groups', 
-  groupId, 
+  'users',
+  userId,
+  'groups',
+  groupId,
   CONNECTION_TYPES.MEMBER
 );
 
@@ -1339,4 +1340,3 @@ For comprehensive guides and examples, see:
 - [CRUD Examples](./examples/crud-usage.tsx) - Practical code examples
 - [Connection Examples](./examples/connections-usage.tsx) - Relationship management examples
 - [Extensibility Examples](./examples/extensibility-usage.tsx) - Custom field examples
-
