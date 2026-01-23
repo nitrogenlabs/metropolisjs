@@ -398,7 +398,7 @@ export const EventTicketingAdapterExample = () => {
           ...formData,
           metadata: {
             ...formData.metadata,
-            venue: {...formData.metadata?.venue, name: e.target.value, address: '', capacity: 0}
+            venue: {...formData.metadata?.venue, name: e.target.value}
           }
         })}
       />
@@ -411,7 +411,7 @@ export const EventTicketingAdapterExample = () => {
           ...formData,
           metadata: {
             ...formData.metadata,
-            venue: {...formData.metadata?.venue, address: e.target.value, name: '', capacity: 0}
+            venue: {...formData.metadata?.venue, address: e.target.value}
           }
         })}
       />
@@ -424,7 +424,7 @@ export const EventTicketingAdapterExample = () => {
           ...formData,
           metadata: {
             ...formData.metadata,
-            venue: {...formData.metadata?.venue, capacity: parseInt(e.target.value), name: '', address: ''}
+            venue: {...formData.metadata?.venue, capacity: parseInt(e.target.value)}
           }
         })}
       />
@@ -438,7 +438,7 @@ export const EventTicketingAdapterExample = () => {
           ...formData,
           metadata: {
             ...formData.metadata,
-            ticketing: {...formData.metadata?.ticketing, price: parseFloat(e.target.value), currency: 'USD', available: 0}
+            ticketing: {...formData.metadata?.ticketing, price: parseFloat(e.target.value)}
           }
         })}
         step="0.01"
@@ -450,7 +450,7 @@ export const EventTicketingAdapterExample = () => {
           ...formData,
           metadata: {
             ...formData.metadata,
-            ticketing: {...formData.metadata?.ticketing, currency: e.target.value, price: 0, available: 0}
+            ticketing: {...formData.metadata?.ticketing, currency: e.target.value}
           }
         })}
       >
@@ -468,7 +468,7 @@ export const EventTicketingAdapterExample = () => {
           ...formData,
           metadata: {
             ...formData.metadata,
-            ticketing: {...formData.metadata?.ticketing, available: parseInt(e.target.value), price: 0, currency: 'USD'}
+            ticketing: {...formData.metadata?.ticketing, available: parseInt(e.target.value)}
           }
         })}
       />
@@ -640,7 +640,7 @@ export const GroupSettingsAdapterExample = () => {
             ...formData,
             metadata: {
               ...formData.metadata,
-              settings: {...formData.metadata?.settings, requiresApproval: e.target.checked, allowInvites: true, isVerified: false}
+              settings: {...formData.metadata?.settings, requiresApproval: e.target.checked}
             }
           })}
         />
@@ -655,7 +655,7 @@ export const GroupSettingsAdapterExample = () => {
             ...formData,
             metadata: {
               ...formData.metadata,
-              settings: {...formData.metadata?.settings, allowInvites: e.target.checked, requiresApproval: false, isVerified: false}
+              settings: {...formData.metadata?.settings, allowInvites: e.target.checked}
             }
           })}
         />
@@ -670,7 +670,7 @@ export const GroupSettingsAdapterExample = () => {
             ...formData,
             metadata: {
               ...formData.metadata,
-              settings: {...formData.metadata?.settings, isVerified: e.target.checked, requiresApproval: false, allowInvites: true}
+              settings: {...formData.metadata?.settings, isVerified: e.target.checked}
             }
           })}
           disabled={formData.privacy !== 'public'}
