@@ -1222,3 +1222,121 @@ MetropolisJS is proudly developed by [Nitrogen Labs](http://nitrogenlabs.com), a
 ---
 
 **Ready to build the future?** Start with MetropolisJS today and experience the power of seamless frontend-backend integration! 🚀
+
+## 📚 CRUD Operations
+
+MetropolisJS now provides comprehensive CRUD (Create, Read, Update, Delete) operations for all Reaktor collections:
+
+### Supported Collections
+
+- **users** - User accounts and profiles
+- **posts** - User posts and content
+- **groups** - Group entities and communities
+- **messages** - Direct messages
+- **conversations** - Conversation threads
+- **files** - File attachments
+- **images** - Image media
+- **videos** - Video media
+- **apps** - Application entities
+- **profiles** - Extended user profile details
+- **tags** - Tag entities for categorization
+
+### Basic CRUD Example
+
+```tsx
+import {useFlux} from '@nlabs/arkhamjs-utils-react';
+import {createPostActions, createGroupActions} from '@nlabs/metropolisjs';
+
+const MyComponent = () => {
+  const flux = useFlux();
+  const postActions = createPostActions(flux);
+  const groupActions = createGroupActions(flux);
+
+  // Create
+  const createPost = async () => {
+    const post = await postActions.add({
+      content: "Hello World",
+      userId: "user123",
+      name: "My First Post"
+    });
+  };
+
+  // Read
+  const getPost = async (postId: string) => {
+    const post = await postActions.itemById(postId);
+  };
+
+  // Update
+  const updatePost = async (postId: string) => {
+    await postActions.update({
+      postId,
+      content: "Updated content"
+    });
+  };
+
+  // Delete
+  const deletePost = async (postId: string) => {
+    await postActions.delete(postId);
+  };
+
+  // List with pagination
+  const listPosts = async () => {
+    const posts = await postActions.listByLatest(0, 10);
+  };
+};
+```
+
+### Relationship Management
+
+Connect and manage relationships between collections:
+
+```tsx
+import {createConnectionActions, CONNECTION_TYPES} from '@nlabs/metropolisjs';
+
+const connectionActions = createConnectionActions(flux);
+
+// Add user to group
+await connectionActions.addConnection(
+  'users', 
+  userId, 
+  'groups', 
+  groupId, 
+  CONNECTION_TYPES.MEMBER
+);
+
+// Get all connections
+const connections = await connectionActions.getConnections('users', userId);
+
+// Remove connection
+await connectionActions.removeConnection('users', userId, 'groups', groupId);
+```
+
+### Extensible Fields
+
+All CRUD operations support custom fields:
+
+```tsx
+const post = await postActions.add({
+  content: "Hello",
+  userId: "user123",
+  // Custom fields
+  customField1: "value",
+  customField2: 42,
+  metadata: {
+    source: "mobile",
+    version: "1.0"
+  }
+});
+```
+
+### Documentation
+
+For comprehensive guides and examples, see:
+
+- [CRUD Integration Guide](./docs/CRUD_INTEGRATION.md) - Complete guide to CRUD operations
+- [Collections Reference](./docs/COLLECTIONS.md) - Detailed information about each collection
+- [Connections Guide](./docs/CONNECTIONS.md) - Managing relationships between collections
+- [CRUD Examples](./examples/crud-usage.tsx) - Practical code examples
+- [Connection Examples](./examples/connections-usage.tsx) - Relationship management examples
+- [Extensibility Examples](./examples/extensibility-usage.tsx) - Custom field examples
+
