@@ -31,7 +31,8 @@ export type ReaktorDbCollection =
   'subscriptions' |
   'tags' |
   'translations' |
-  'users';
+  'users' |
+  'videos';
 
 export interface ApiQueryVariableType {
   readonly type: string;

@@ -1,4 +1,7 @@
+export * from './appActions/appActions.js';
+export * from './connectionActions/connectionActions.js';
 export * from './contentActions/contentActions.js';
+export * from './conversationActions/conversationActions.js';
 export * from './eventActions/eventActions.js';
 export * from './groupActions/groupActions.js';
 export * from './imageActions/imageActions.js';
@@ -12,5 +15,6 @@ export * from './sseActions/sseActions.js';
 export * from './tagActions/tagActions.js';
 export * from './translationActions/translationActions.js';
 export * from './userActions/userActions.js';
+export * from './videoActions/videoActions.js';
 export * from './websocketActions/websocketActions.js';
 
