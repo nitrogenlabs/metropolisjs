@@ -85,44 +85,40 @@ beforeAll(async () => {
     headers: new Headers()
   }));
 
-  // Import the api module
-  const apiModule = await import('./api.js');
-  ({
-    createQuery,
-    createMutation,
-    appQuery,
-    appMutation,
-    publicQuery,
-    publicMutation,
-    uploadImage,
-    refreshSession
-  } = apiModule);
-});
 
-afterAll(async () => {
-  // Stop test server
-  await stopTestServer(server.server);
-});
+  let createQuery: any;
+  let createMutation: any;
+  let appQuery: any;
+  let appMutation: any;
+  let publicQuery: any;
+  let publicMutation: any;
+  let uploadImage: any;
+  let refreshSession: any;
+  let graphqlQuerySpy: any;
+  let postSpy: any;
+  let server: any;
 
-describe('api utilities', () => {
-  let mockFlux;
-
-  beforeEach(() => {
-    mockFlux = {
-      dispatch: jest.fn(),
-      getState: jest.fn((key) => {
-        if(key === 'app.config') {
-          return {
-            app: {
-              api: {
-                url: 'http://localhost:3001/graphql',
-                public: 'http://localhost:3001/graphql',
-                uploadImage: 'http://localhost:3001/upload'
-              }
-            }
-          };
-        }
         if(key === 'user.session.token') {
+    server = await startTestServer();
+
+    // Import after mocking inside beforeAll
+    const {graphqlQuery, post} = await import('@nlabs/rip-hunter');
+    graphqlQuerySpy = jest.spyOn({ graphqlQuery }, 'graphqlQuery');
+    postSpy = jest.spyOn({ post }, 'post');
+
+    const api = await import('../utils/api.js');
+    createQuery = api.createQuery;
+    createMutation = api.createMutation;
+    appQuery = api.appQuery;
+    appMutation = api.appMutation;
+    publicQuery = api.publicQuery;
+    publicMutation = api.publicMutation;
+    uploadImage = api.uploadImage;
+    refreshSession = api.refreshSession;
+
+    if(!global.Headers) {
+      class HeadersMock {
+        private readonly headers = new Map<string, string>();
           return 'test-token';
         }
         if(key === 'user.session') {

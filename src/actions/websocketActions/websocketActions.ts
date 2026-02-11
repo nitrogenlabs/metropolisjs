@@ -4,10 +4,10 @@
  */
 import Sockette from 'sockette';
 
-import { getConfigFromFlux } from '../../utils/configUtils.js';
-import { WEBSOCKET_CONSTANTS } from '../../stores/websocketStore.js';
+import {WEBSOCKET_CONSTANTS} from '../../stores/websocketStore.js';
+import {getConfigFromFlux} from '../../utils/configUtils.js';
 
-import type { FluxFramework } from '@nlabs/arkhamjs';
+import type {FluxFramework} from '@nlabs/arkhamjs';
 
 interface WebSocketMessage {
   type: string;

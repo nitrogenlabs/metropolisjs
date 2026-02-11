@@ -22,8 +22,8 @@ export type UserAdapterOptions = BaseAdapterOptions;
 export type UserProfileAdapterOptions = BaseAdapterOptions;
 
 export interface UserActionsOptions {
-  readonly userAdapter?: (input: unknown, options?: UserAdapterOptions)=> any;
-  readonly profileAdapter?: (input: unknown, options?: UserProfileAdapterOptions)=> any;
+  readonly userAdapter?: (input: unknown, options?: UserAdapterOptions) => any;
+  readonly profileAdapter?: (input: unknown, options?: UserProfileAdapterOptions) => any;
   readonly userAdapterOptions?: UserAdapterOptions;
   readonly profileAdapterOptions?: UserProfileAdapterOptions;
 }
@@ -69,42 +69,42 @@ const defaultUserValidator = (input: unknown, options?: UserAdapterOptions) => {
 const defaultProfileValidator = (input: unknown, options?: UserProfileAdapterOptions) => validateProfileInput(input);
 
 export interface userActions {
-  add: (userInput: Partial<User>, userProps?: string[])=> Promise<User>;
-  confirmCode: (code: number, {type, value}: {type: 'email' | 'phone'; value: string})=> Promise<boolean>;
-  confirmSignUp: (code: string, type: 'email' | 'phone')=> Promise<boolean>;
-  listByConnection: (userId: string, from?: number, to?: number, userProps?: string[])=> Promise<User[]>;
-  itemById: (userId: string, userProps?: string[])=> Promise<User>;
-  listByLatest: (username?: string, from?: number, to?: number, userProps?: string[])=> Promise<User[]>;
+  add: (userInput: Partial<User>, userProps?: string[]) => Promise<User>;
+  confirmCode: (code: number, {type, value}: {type: 'email' | 'phone'; value: string}) => Promise<boolean>;
+  confirmSignUp: (code: string, type: 'email' | 'phone') => Promise<boolean>;
+  listByConnection: (userId: string, from?: number, to?: number, userProps?: string[]) => Promise<User[]>;
+  itemById: (userId: string, userProps?: string[]) => Promise<User>;
+  listByLatest: (username?: string, from?: number, to?: number, userProps?: string[]) => Promise<User[]>;
   listByReactions: (
     username: string,
     reactionNames: string[],
     from?: number,
     to?: number,
     profileProps?: string[]
-  )=> Promise<User[]>;
+  ) => Promise<User[]>;
   listByTags: (
     username: string,
     tagNames: string[],
     from?: number,
     to?: number,
     profileProps?: string[]
-  )=> Promise<User[]>;
-  forgotPassword: (username: string)=> Promise<boolean>;
-  isLoggedIn: ()=> boolean;
-  refreshSession: (token?: string, expires?: number)=> Promise<SessionType>;
-  remove: (userId: string)=> Promise<User>;
-  resetPassword: (username: string, password: string, code: string, type: 'email' | 'phone')=> Promise<boolean>;
-  session: (userProps?: string[])=> Promise<User>;
-  signIn: (user: Partial<User>, expires?: number)=> Promise<SessionType>;
-  signOut: ()=> Promise<boolean>;
-  signUp: (userInput: Partial<User>, userProps?: string[])=> Promise<User>;
-  updatePassword: (password: string, newPassword: string)=> Promise<boolean>;
-  updateUser: (userInput: Partial<User>, userProps?: string[])=> Promise<User>;
-  updateProfile: (profileInput: Partial<ProfileType>)=> Promise<ProfileType>;
-  updateUserAdapter: (adapter: (input: unknown, options?: UserAdapterOptions)=> any)=> void;
-  updateProfileAdapter: (adapter: (input: unknown, options?: UserProfileAdapterOptions)=> any)=> void;
-  updateUserAdapterOptions: (options: UserAdapterOptions)=> void;
-  updateProfileAdapterOptions: (options: UserProfileAdapterOptions)=> void;
+  ) => Promise<User[]>;
+  forgotPassword: (username: string) => Promise<boolean>;
+  isLoggedIn: () => boolean;
+  refreshSession: (token?: string, expires?: number) => Promise<SessionType>;
+  remove: (userId: string) => Promise<User>;
+  resetPassword: (username: string, password: string, code: string, type: 'email' | 'phone') => Promise<boolean>;
+  session: (userProps?: string[]) => Promise<User>;
+  signIn: (user: Partial<User>, expires?: number) => Promise<SessionType>;
+  signOut: () => Promise<boolean>;
+  signUp: (userInput: Partial<User>, userProps?: string[]) => Promise<User>;
+  updatePassword: (password: string, newPassword: string) => Promise<boolean>;
+  updateUser: (userInput: Partial<User>, userProps?: string[]) => Promise<User>;
+  updateProfile: (profileInput: Partial<ProfileType>) => Promise<ProfileType>;
+  updateUserAdapter: (adapter: (input: unknown, options?: UserAdapterOptions) => any) => void;
+  updateProfileAdapter: (adapter: (input: unknown, options?: UserProfileAdapterOptions) => any) => void;
+  updateUserAdapterOptions: (options: UserAdapterOptions) => void;
+  updateProfileAdapterOptions: (options: UserProfileAdapterOptions) => void;
 }
 
 export const createUserActions = (
@@ -421,36 +421,58 @@ export const createUserActions = (
 
   const signIn = async (user: Partial<User>, expires: number = 15): Promise<SessionType> => {
     const {email, phone, username, password} = user;
-    const queryVariables = {
+    let queryVariables: any = {
       expires: {
         type: 'Int',
         value: expires
       }
     };
 
-    if(username) {
-      (queryVariables as any).user = {
-        type: 'UserInput!',
-        value: {password, username}
+    if(username && password) {
+      queryVariables = {
+        ...queryVariables,
+        password: {
+          type: 'String!',
+          value: password
+        },
+        username: {
+          type: 'String!',
+          value: username
+        }
       };
-    } else if(user.email) {
-      (queryVariables as any).user = {
-        type: 'UserInput!',
-        value: {email, password}
+    } else if(email && password) {
+      queryVariables = {
+        ...queryVariables,
+        email: {
+          type: 'String!',
+          value: email
+        },
+        password: {
+          type: 'String!',
+          value: password
+        }
       };
-    } else if(user.phone) {
-      (queryVariables as any).user = {
-        type: 'UserInput!',
-        value: {password, phone}
+    } else if(phone && password) {
+      queryVariables = {
+        ...queryVariables,
+        password: {
+          type: 'String!',
+          value: password
+        },
+        phone: {
+          type: 'String!',
+          value: phone
+        }
       };
     } else {
-      throw new Error('Username, email, or phone number is required to sign in');
+      throw new Error('Username, email, or phone number and password are required to sign in');
     }
+
 
     const onSuccess = (data: ApiResultsType = {}): Promise<FluxAction> => {
       const users = (data as any)?.users;
       const sessionData = users?.signIn || {};
-
+      // Dispatch for state update
       return flux.dispatch({
         session: sessionData,
         type: USER_CONSTANTS.SIGN_IN_SUCCESS
@@ -458,6 +480,7 @@ export const createUserActions = (
     };
 
     try {
+      // The onSuccess handler now returns the session object directly
       const sessionData = await publicMutation<SessionType & UserApiResultsType>(
         flux,
         'signIn',
@@ -465,8 +488,7 @@ export const createUserActions = (
         queryVariables,
         ['expires', 'issued', 'token', 'userId', 'username'],
         {onSuccess}
-      ) as unknown as SessionType;
-
+      );
       return sessionData as SessionType;
     } catch(error) {
       flux.dispatch({error, type: USER_CONSTANTS.SIGN_IN_ERROR});

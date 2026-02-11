@@ -9,9 +9,9 @@ import {PERMISSION_CONSTANTS} from '../../stores/permissionStore.js';
 import {appMutation, appQuery} from '../../utils/api.js';
 import {createBaseActions} from '../../utils/baseActionFactory.js';
 
-import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {ReaktorDbCollection} from '../../utils/api.js';
 import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
+import type {FluxFramework} from '@nlabs/arkhamjs';
 
 const DATA_TYPE: ReaktorDbCollection = 'permissions';
 
@@ -85,7 +85,7 @@ export const createPermissionActions = (
         ['permissionId', 'name', 'level', 'resource', 'userId', ...permissionProps],
         {onSuccess}
       );
-    } catch (error) {
+    } catch(error) {
       flux.dispatch({error, type: PERMISSION_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
     }
@@ -116,7 +116,7 @@ export const createPermissionActions = (
       };
 
       return await appQuery<boolean>(flux, 'check', DATA_TYPE, queryVariables, [], {onSuccess});
-    } catch (error) {
+    } catch(error) {
       flux.dispatch({error, type: PERMISSION_CONSTANTS.CHECK_PERMISSION_ERROR});
       throw error;
     }
@@ -158,7 +158,7 @@ export const createPermissionActions = (
         ],
         {onSuccess}
       );
-    } catch (error) {
+    } catch(error) {
       flux.dispatch({error, type: PERMISSION_CONSTANTS.GET_ITEM_ERROR});
       throw error;
     }
@@ -209,7 +209,7 @@ export const createPermissionActions = (
         ],
         {onSuccess}
       );
-    } catch (error) {
+    } catch(error) {
       flux.dispatch({error, type: PERMISSION_CONSTANTS.GET_LIST_ERROR});
       throw error;
     }
@@ -253,7 +253,7 @@ export const createPermissionActions = (
         ],
         {onSuccess}
       );
-    } catch (error) {
+    } catch(error) {
       flux.dispatch({error, type: PERMISSION_CONSTANTS.GET_LIST_ERROR});
       throw error;
     }
@@ -278,7 +278,7 @@ export const createPermissionActions = (
       return await appMutation<Permission>(flux, 'remove', DATA_TYPE, queryVariables, ['permissionId'], {
         onSuccess
       });
-    } catch (error) {
+    } catch(error) {
       flux.dispatch({error, type: PERMISSION_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
     }
@@ -311,7 +311,7 @@ export const createPermissionActions = (
         ['permissionId', 'name', 'level', 'resource', 'description', ...permissionProps],
         {onSuccess}
       );
-    } catch (error) {
+    } catch(error) {
       flux.dispatch({error, type: PERMISSION_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;
     }
@@ -326,6 +326,6 @@ export const createPermissionActions = (
     remove,
     update,
     updatePermissionAdapter: permissionBase.updateAdapter,
-    updatePermissionAdapterOptions: permissionBase.updateAdapterOptions
+    updatePermissionAdapterOptions: permissionBase.updateAdapterOptions || permissionBase.updateOptions
   };
 };

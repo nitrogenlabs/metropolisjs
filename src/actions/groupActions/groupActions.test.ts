@@ -4,8 +4,8 @@
  */
 import {Flux} from '@nlabs/arkhamjs';
 
-import {groups} from '../../stores/groupStore.js';
 import {createGroupActions} from './groupActions.js';
+import {groups} from '../../stores/groupStore.js';
 
 describe('createGroupActions', () => {
   let flux: any;
@@ -23,8 +23,8 @@ describe('createGroupActions', () => {
     it('should create groupActions with all methods', () => {
       expect(groupActions).toBeDefined();
       expect(typeof groupActions.add).toBe('function');
-      expect(typeof groupActions.get).toBe('function');
-      expect(typeof groupActions.getList).toBe('function');
+      expect(typeof groupActions.itemById).toBe('function');
+      expect(typeof groupActions.listByLatest).toBe('function');
       expect(typeof groupActions.update).toBe('function');
       expect(typeof groupActions.delete).toBe('function');
       expect(typeof groupActions.updateGroupAdapter).toBe('function');
@@ -36,12 +36,14 @@ describe('createGroupActions', () => {
     it('should allow updating group adapter', () => {
       const customAdapter = (input: unknown) => input;
       groupActions.updateGroupAdapter(customAdapter);
+
       expect(groupActions.updateGroupAdapter).toBeDefined();
     });
 
     it('should allow updating group adapter options', () => {
       const options = {strict: true};
       groupActions.updateGroupAdapterOptions(options);
+
       expect(groupActions.updateGroupAdapterOptions).toBeDefined();
     });
   });

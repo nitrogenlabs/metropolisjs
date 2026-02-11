@@ -19,7 +19,7 @@ const createMockFlux = () => {
   return {
     dispatch: () => {},
     getState: (key) => {
-      if (key) {
+      if(key) {
         return mockState[key];
       }
       return mockState;
@@ -33,12 +33,12 @@ const createMockFlux = () => {
 
 const mockFlux = createMockFlux();
 
-import * as api from '../../utils/api';
 
 describe('userActions', () => {
   let userActions;
 
   beforeEach(() => {
+    jest.resetModules();
     userActions = createUserActions(mockFlux as any);
   });
 
@@ -295,9 +295,15 @@ describe('userActions', () => {
       username: 'test@nitrogenx.co'
     };
 
-    jest.spyOn(api, 'publicMutation').mockResolvedValue(mockSession as any);
+    jest.mock('../../utils/api', () => ({
+      ...jest.requireActual('../../utils/api'),
+      publicMutation: jest.fn().mockResolvedValue(mockSession)
+    }));
 
-    const result = await userActions.signIn({username: 'test@nitrogenx.co', password: 'password'} as any);
+    // Re-import userActions after mocking
+    const {createUserActions: createUserActionsMocked} = await import('./userActions');
+    const userActionsMocked = createUserActionsMocked(mockFlux as any);
+    const result = await userActionsMocked.signIn({username: 'test@nitrogenx.co', password: 'password'} as any);
 
     expect(result).toEqual(mockSession);
   });

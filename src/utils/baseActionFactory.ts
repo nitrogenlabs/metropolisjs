@@ -2,10 +2,10 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import { createValidatorManager } from './validatorFactory.js';
+import {createValidatorManager} from './validatorFactory.js';
 
-import type { FluxFramework } from '@nlabs/arkhamjs';
-import type { BaseAdapterOptions } from './validatorFactory.js';
+import type {BaseAdapterOptions} from './validatorFactory.js';
+import type {FluxFramework} from '@nlabs/arkhamjs';
 
 export interface BaseActionOptions<T extends BaseAdapterOptions = BaseAdapterOptions> {
   adapter?: (input: unknown, options?: T) => any;
@@ -104,6 +104,7 @@ export const createBaseActions = <T extends BaseAdapterOptions>(
     flux,
     updateAdapter,
     updateOptions,
+    updateAdapterOptions: updateOptions,
     validator
   };
 };

@@ -57,7 +57,7 @@
   },
   "eslint.format.enable": true,
   "eslint.lintTask.enable": true,
-  "eslint.experimental.useFlatConfig": true,
+  "eslint.useFlatConfig": true,
   "explorer.confirmDragAndDrop": false,
   "explorer.decorations.badges": false,
   "files.autoSave": "onFocusChange",
