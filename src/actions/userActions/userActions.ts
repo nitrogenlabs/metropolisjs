@@ -2,14 +2,18 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {DateTime} from 'luxon';
-
 import {validateProfileInput, type ProfileType} from '../../adapters/profileAdapter/profileAdapter.js';
 import {validateUserInput} from '../../adapters/userAdapter/userAdapter.js';
 import {PROFILE_CONSTANTS} from '../../stores/index.js';
 import {USER_CONSTANTS} from '../../stores/userStore.js';
 import {appMutation, publicMutation, refreshSession} from '../../utils/api.js';
 import {createBaseActions} from '../../utils/baseActionFactory.js';
+import {
+  clearPersistedSession,
+  isLoggedIn as isLoggedInWithStorage,
+  normalizeSession,
+  persistSession
+} from '../../utils/session.js';
 
 import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {User} from '../../adapters/userAdapter/userAdapter.js';
@@ -401,18 +405,7 @@ export const createUserActions = (
     []
   ;
 
-  const isLoggedIn = (): boolean => {
-    const expires: number = flux.getState('user.session.expires') as number;
-
-    if(!expires) {
-      return false;
-    }
-
-    const expireDate = DateTime.fromMillis(expires);
-    const expiredDiff: number = Math.round(expireDate.diff(DateTime.local(), 'minutes').toObject().minutes);
-
-    return expiredDiff > 0;
-  };
+  const isLoggedIn = (): boolean => isLoggedInWithStorage(flux);
 
   const refreshSessionAction = async (token?: string, expires: number = 15): Promise<SessionType> => {
     const result = await refreshSession(flux, token, expires);
@@ -456,8 +449,9 @@ export const createUserActions = (
 
     const onSuccess = (data: ApiResultsType = {}): Promise<FluxAction> => {
       const users = (data as any)?.users;
-      const sessionData = users?.signIn || {};
-      // Dispatch for state update
+      const sessionData = normalizeSession(users?.signIn || {});
+      persistSession(flux, sessionData);
+
       return flux.dispatch({
         session: sessionData,
         type: USER_CONSTANTS.SIGN_IN_SUCCESS
@@ -465,7 +459,6 @@ export const createUserActions = (
     };
 
     try {
-      // The onSuccess handler now returns the session object directly
       const sessionData = await publicMutation<SessionType & UserApiResultsType>(
         flux,
         'signIn',
@@ -474,16 +467,19 @@ export const createUserActions = (
         ['expires', 'issued', 'token', 'userId', 'username'],
         {onSuccess}
       );
-      return sessionData as SessionType;
+      return normalizeSession(sessionData as unknown as Record<string, unknown>) as SessionType;
     } catch(error) {
       flux.dispatch({error, type: USER_CONSTANTS.SIGN_IN_ERROR});
       throw error;
     }
   };
 
-  const signOut = async (): Promise<boolean> =>
-    true
-  ;
+  const signOut = async (): Promise<boolean> => {
+    clearPersistedSession(flux);
+    flux.setState('user.session', {});
+    await flux.dispatch({session: {}, type: USER_CONSTANTS.SIGN_OUT_SUCCESS});
+    return true;
+  };
 
   const confirmSignUp = async (code: string, type: 'email' | 'phone'): Promise<boolean> =>
     true

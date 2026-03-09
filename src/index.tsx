@@ -24,9 +24,9 @@ import {
 import {refreshSession} from './utils/api.js';
 import {initI18n} from './utils/i18n.js';
 import {MetropolisContext} from './utils/MetropolisProvider.js';
+import {hydrateSessionFromStorage} from './utils/session.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
-
 import type {MetropolisConfiguration, MetropolisEnvironmentConfiguration} from './config/index.js';
 import type {MetropolisAdapters} from './utils/MetropolisProvider.js';
 
@@ -49,8 +49,8 @@ export const onInit = (flux: FluxFramework) => {
       users,
       websocket
     ]);
+    hydrateSessionFromStorage(flux);
     const token = flux.getState('user.session.token');
-    console.log({token});
 
     if(token) {
       refreshSession(flux, token as string);
@@ -98,14 +98,10 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
   const flux = useFlux();
 
   // Resolve environment-specific configuration
-  const resolvedConfig = useMemo<MetropolisEnvironmentConfiguration>(() => {
-    return resolveEnvironmentConfig(config);
-  }, [config]);
+  const resolvedConfig = useMemo<MetropolisEnvironmentConfiguration>(() => resolveEnvironmentConfig(config), [config]);
 
   // Merge adapters from config with prop adapters (prop takes precedence)
-  const mergedAdapters = useMemo(() => {
-    return {...resolvedConfig.adapters, ...adapters};
-  }, [resolvedConfig.adapters, adapters]);
+  const mergedAdapters = useMemo(() => ({...resolvedConfig.adapters, ...adapters}), [resolvedConfig.adapters, adapters]);
 
   const websockets = createWebsocketActions(flux);
   // const [messages, setMessages] = useState<MessageType[]>([]);
@@ -204,12 +200,10 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
   }, [flux, resolvedConfig]);
 
   // Compute isAuth function from config or default
-  const isAuth = useMemo(() => {
-    return resolvedConfig.isAuth || (() => {
-      const sessionState = flux.getState('user.session', {});
-      return !!sessionState.userActive;
-    });
-  }, [resolvedConfig.isAuth, flux]);
+  const isAuth = useMemo(() => resolvedConfig.isAuth || (() => {
+    const sessionState = flux.getState('user.session', {});
+    return !!sessionState.userActive;
+  }), [resolvedConfig.isAuth, flux]);
 
   return (
     <MetropolisContext.Provider
@@ -233,6 +227,22 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
 
 export default Metropolis;
 
+export {useTranslation} from 'react-i18next';
+export * from './adapters/index.js';
+export * from './constants/MetropolisConstants.js';
+export * from './graphql/message.js';
+export * from './graphql/notification.js';
+export * from './stores/index.js';
+export {
+  createAction,
+  createActions,
+  createAllActions
+} from './utils/actionFactory.js';
+export * from './utils/app.js';
+export {createBaseActions} from './utils/baseActionFactory.js';
+export * from './utils/dateUtils.js';
+export * from './utils/file.js';
+export * from './utils/location.js';
 export {
   useContentActions,
   useEventActions,
@@ -250,27 +260,10 @@ export {
   useWebsocketActions
 } from './utils/useMetropolis.js';
 export {
-  createAction,
-  createActions,
-  createAllActions
-} from './utils/actionFactory.js';
-export {
   createValidatorFactory,
   createValidatorManager
 } from './utils/validatorFactory.js';
-export {createBaseActions} from './utils/baseActionFactory.js';
-export * from './adapters/index.js';
-export * from './stores/index.js';
-export * from './utils/app.js';
-export * from './utils/dateUtils.js';
-export * from './utils/file.js';
-export * from './utils/location.js';
-export * from './constants/MetropolisConstants.js';
-export * from './graphql/message.js';
-export * from './graphql/notification.js';
-export {useTranslation} from 'react-i18next';
 
-export type {BaseAdapterOptions} from './utils/validatorFactory.js';
 export type {
   ActionOptions,
   ActionReturnType,
@@ -278,10 +271,12 @@ export type {
   ActionTypes
 } from './utils/actionFactory.js';
 export type {BaseActionOptions} from './utils/baseActionFactory.js';
+export type {BaseAdapterOptions} from './utils/validatorFactory.js';
 
-export * from './constants/Collections.js';
-export * from './types/index.js';
+export * from './actions/appActions/appActions.js';
 export * from './actions/connectionActions/connectionActions.js';
 export * from './actions/conversationActions/conversationActions.js';
 export * from './actions/videoActions/videoActions.js';
-export * from './actions/appActions/appActions.js';
+export * from './constants/Collections.js';
+export * from './types/index.js';
+

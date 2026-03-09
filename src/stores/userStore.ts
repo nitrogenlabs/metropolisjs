@@ -184,6 +184,9 @@ export const userStore = (type: string, data: UserData, state = defaultValues): 
       }
       return state;
     }
+    case USER_CONSTANTS.SIGN_OUT_SUCCESS: {
+      return {...defaultValues};
+    }
     case USER_CONSTANTS.SIGN_UP_SUCCESS: {
       const {user} = data;
       if(user && user.userId) {
