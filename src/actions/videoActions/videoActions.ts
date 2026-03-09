@@ -4,18 +4,18 @@
  */
 import {parseId, parseNum} from '@nlabs/utils';
 
-import {validateVideoInput, type VideoType} from '../../adapters/videoAdapter/videoAdapter.js';
+import {validateVideoInput} from '../../adapters/videoAdapter/videoAdapter.js';
 import {VIDEO_CONSTANTS} from '../../stores/videoStore.js';
 import {appMutation, appQuery, type ReaktorDbCollection} from '../../utils/api.js';
 import {createBaseActions} from '../../utils/baseActionFactory.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
+import type {VideoType} from '../../types/videos.types.js';
 import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'videos';
 
-export interface VideoAdapterOptions extends BaseAdapterOptions {
-}
+export type VideoAdapterOptions = BaseAdapterOptions;
 
 export interface VideoActionsOptions {
   videoAdapter?: (input: unknown, options?: VideoAdapterOptions) => any;
@@ -68,7 +68,7 @@ export const createVideoActions = (
 
       const onSuccess = (data: VideoApiResultsType) => {
         const {videos: {add: video = {}}} = data;
-        return flux.dispatch({video, type: VIDEO_CONSTANTS.ADD_ITEM_SUCCESS});
+        return flux.dispatch({type: VIDEO_CONSTANTS.ADD_ITEM_SUCCESS, video});
       };
 
       return await appMutation<VideoType>(
@@ -96,7 +96,7 @@ export const createVideoActions = (
 
       const onSuccess = (data: VideoApiResultsType) => {
         const {videos: {itemById: video = {}}} = data;
-        return flux.dispatch({video, type: VIDEO_CONSTANTS.GET_ITEM_SUCCESS});
+        return flux.dispatch({type: VIDEO_CONSTANTS.GET_ITEM_SUCCESS, video});
       };
 
       return await appQuery<VideoType>(
@@ -194,7 +194,7 @@ export const createVideoActions = (
 
       const onSuccess = (data: VideoApiResultsType) => {
         const {videos: {remove: video = {}}} = data;
-        return flux.dispatch({video, type: VIDEO_CONSTANTS.REMOVE_ITEM_SUCCESS});
+        return flux.dispatch({type: VIDEO_CONSTANTS.REMOVE_ITEM_SUCCESS, video});
       };
 
       return await appMutation<VideoType>(
@@ -225,7 +225,7 @@ export const createVideoActions = (
 
       const onSuccess = (data: VideoApiResultsType) => {
         const {videos: {update: video = {}}} = data;
-        return flux.dispatch({video, type: VIDEO_CONSTANTS.UPDATE_ITEM_SUCCESS});
+        return flux.dispatch({type: VIDEO_CONSTANTS.UPDATE_ITEM_SUCCESS, video});
       };
 
       return await appMutation<VideoType>(

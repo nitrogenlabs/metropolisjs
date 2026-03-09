@@ -26,7 +26,7 @@ const AppInputSchema = z.object({
   imageUrl: z.string().optional(),
   isActive: z.boolean().optional(),
   name: z.string().optional(),
-  settings: z.record(z.any()).optional(),
+  settings: z.record(z.string(), z.any()).optional(),
   type: z.string().optional(),
   url: z.string().optional(),
   userId: z.string().optional()

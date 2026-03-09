@@ -29,7 +29,7 @@ export {parseVideo} from './videoAdapter/videoAdapter.js';
 
 export type {AppType} from '../types/apps.types.js';
 export type {ContentInputType, ContentType} from './contentAdapter/contentAdapter.js';
-export type {ConversationType} from './conversationAdapter/conversationAdapter.js';
+export type {ConversationType as ConversationAdapterType} from './conversationAdapter/conversationAdapter.js';
 export type {EventType} from './eventAdapter/eventAdapter.js';
 export type {GroupType} from '../types/groups.types.js';
 export type {ImageType} from './imageAdapter/imageAdapter.js';
@@ -38,9 +38,8 @@ export type {MessageType} from './messageAdapter/messageAdapter.js';
 export type {Permission} from './permissionAdapter/permissionAdapter.js';
 export type {PostType} from './postAdapter/postAdapter.js';
 export type {ProfileType} from './profileAdapter/profileAdapter.js';
-export type {ReactionType} from './reactionAdapter/reactionAdapter.js';
+export type {ReactionType as ReactionAdapterType} from './reactionAdapter/reactionAdapter.js';
 export type {TagType} from './tagAdapter/tagAdapter.js';
 export type {TranslationType, TranslationInputType} from './translationAdapter/translationAdapter.js';
 export type {User} from './userAdapter/userAdapter.js';
 export type {VideoType} from '../types/videos.types.js';
-

@@ -11,10 +11,10 @@ import {USER_CONSTANTS} from '../../stores/userStore.js';
 import {appMutation, publicMutation, refreshSession} from '../../utils/api.js';
 import {createBaseActions} from '../../utils/baseActionFactory.js';
 
+import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {User} from '../../adapters/userAdapter/userAdapter.js';
 import type {ApiResultsType, ReaktorDbCollection, SessionType} from '../../utils/api.js';
 import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
-import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 
 const DATA_TYPE: ReaktorDbCollection = 'users';
 
@@ -421,52 +421,37 @@ export const createUserActions = (
 
   const signIn = async (user: Partial<User>, expires: number = 15): Promise<SessionType> => {
     const {email, phone, username, password} = user;
-    let queryVariables: any = {
-      expires: {
-        type: 'Int',
-        value: expires
-      }
-    };
+    let userInput: Record<string, unknown> | undefined;
 
     if(username && password) {
-      queryVariables = {
-        ...queryVariables,
-        password: {
-          type: 'String!',
-          value: password
-        },
-        username: {
-          type: 'String!',
-          value: username
-        }
+      userInput = {
+        password,
+        username
       };
     } else if(email && password) {
-      queryVariables = {
-        ...queryVariables,
-        email: {
-          type: 'String!',
-          value: email
-        },
-        password: {
-          type: 'String!',
-          value: password
-        }
+      userInput = {
+        email,
+        password
       };
     } else if(phone && password) {
-      queryVariables = {
-        ...queryVariables,
-        password: {
-          type: 'String!',
-          value: password
-        },
-        phone: {
-          type: 'String!',
-          value: phone
-        }
+      userInput = {
+        password,
+        phone
       };
     } else {
       throw new Error('Username, email, or phone number and password are required to sign in');
     }
+
+    const queryVariables: any = {
+      expires: {
+        type: 'Int',
+        value: expires
+      },
+      user: {
+        type: 'UserInput!',
+        value: userInput
+      }
+    };
 
 
     const onSuccess = (data: ApiResultsType = {}): Promise<FluxAction> => {

@@ -2,20 +2,21 @@ import {ApiError, graphqlQuery, post} from '@nlabs/rip-hunter';
 import {camelCase, isEmpty, upperFirst} from '@nlabs/utils';
 import {DateTime} from 'luxon';
 
-import {getConfigFromFlux} from './configUtils.js';
 import {APP_CONSTANTS} from '../stores/appStore.js';
 import {USER_CONSTANTS} from '../stores/userStore.js';
+import {getConfigFromFlux} from './configUtils.js';
 
 import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {HunterOptionsType, HunterQueryType} from '@nlabs/rip-hunter';
 
 export interface ApiOptions {
-  readonly onSuccess?: (data: any)=> Promise<FluxAction>;
+  readonly onSuccess?: (data: any) => Promise<FluxAction>;
   readonly variables?: Record<string, unknown>;
 }
 
 export type ReaktorDbCollection =
   'apps' |
+  'connections' |
   'contents' |
   'conversations' |
   'files' |
@@ -25,6 +26,7 @@ export type ReaktorDbCollection =
   'messages' |
   'notifications' |
   'payments' |
+  'permissions' |
   'posts' |
   'profiles' |
   'reactions' |
@@ -49,7 +51,7 @@ export interface ApiResultsType {
 
 export interface RetryType {
   readonly query: HunterQueryType | HunterQueryType[];
-  readonly responseMethod: (results: ApiResultsType)=> void;
+  readonly responseMethod: (results: ApiResultsType) => void;
 }
 
 export interface SessionType {

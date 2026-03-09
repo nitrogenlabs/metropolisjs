@@ -7,7 +7,7 @@ import {capitalize, orderBy, pullAllBy, uniqBy} from '@nlabs/utils';
 import {REACTION_CONSTANTS} from './reactionStore.js';
 import {TAG_CONSTANTS} from './tagStore.js';
 
-import type {ReactionType, TagType, User} from '../adapters/index.js';
+import type {ReactionAdapterType as ReactionType, TagType, User} from '../adapters/index.js';
 import type {PersonaType} from '../adapters/personaAdapter/personaAdapter.js';
 
 export const USER_CONSTANTS = {

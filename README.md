@@ -1335,6 +1335,7 @@ const post = await postActions.add({
 For comprehensive guides and examples, see:
 
 - [CRUD Integration Guide](./docs/CRUD_INTEGRATION.md) - Complete guide to CRUD operations
+- [Actions Reference](./docs/ACTIONS.md) - Action families, hooks, creators, and method map
 - [Collections Reference](./docs/COLLECTIONS.md) - Detailed information about each collection
 - [Connections Guide](./docs/CONNECTIONS.md) - Managing relationships between collections
 - [CRUD Examples](./examples/crud-usage.tsx) - Practical code examples
