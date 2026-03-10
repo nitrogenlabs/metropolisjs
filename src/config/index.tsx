@@ -52,6 +52,10 @@ const DEFAULT_CONFIG: MetropolisConfiguration = {
       api: {
         public: 'http://localhost:3000/public',
         url: 'http://localhost:3000/app'
+      },
+      session: {
+        maxMinutes: 15,
+        minMinutes: 5
       }
     },
     environment: 'development',
@@ -62,6 +66,10 @@ const DEFAULT_CONFIG: MetropolisConfiguration = {
       api: {
         public: 'https://dev-api.torch.one/public',
         url: 'https://dev-api.torch.one/app'
+      },
+      session: {
+        maxMinutes: 15,
+        minMinutes: 5
       }
     },
     environment: 'local',
@@ -72,6 +80,10 @@ const DEFAULT_CONFIG: MetropolisConfiguration = {
       api: {
         public: 'https://api.torch.one/public',
         url: 'https://api.torch.one/app'
+      },
+      session: {
+        maxMinutes: 15,
+        minMinutes: 5
       }
     },
     environment: 'production',
@@ -82,6 +94,10 @@ const DEFAULT_CONFIG: MetropolisConfiguration = {
       api: {
         public: 'http://localhost:3000/public',
         url: 'http://localhost:3000/app'
+      },
+      session: {
+        maxMinutes: 15,
+        minMinutes: 5
       }
     },
     environment: 'test',

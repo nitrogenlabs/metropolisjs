@@ -5,6 +5,7 @@ import {DateTime} from 'luxon';
 import {APP_CONSTANTS} from '../stores/appStore.js';
 import {USER_CONSTANTS} from '../stores/userStore.js';
 import {getConfigFromFlux} from './configUtils.js';
+import {hydrateSessionFromStorage} from './session.js';
 
 import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {HunterOptionsType, HunterQueryType} from '@nlabs/rip-hunter';
@@ -62,6 +63,9 @@ export interface SessionType {
   readonly username?: string;
 }
 
+const DEFAULT_REFRESH_WINDOW_MINUTES = 5;
+const DEFAULT_SESSION_MAX_MINUTES = 15;
+
 export const getGraphql = async (
   flux: FluxFramework,
   url: string,
@@ -78,33 +82,45 @@ export const getGraphql = async (
   }
 
   const now: number = Date.now();
-  const {expires = now, issued: _issued = now, token: currentToken}: SessionType = (flux.getState('user.session') || {}) as SessionType;
+  const stateSession: SessionType = (flux.getState('user.session') || {}) as SessionType;
+  const {expires = now, issued = now, token: currentToken}: SessionType = stateSession;
   let token: string | undefined;
 
   if(authenticate) {
+    const hydratedSession: SessionType = currentToken ? stateSession : hydrateSessionFromStorage(flux);
+    const {
+      expires: authExpires = expires,
+      issued: authIssued = issued,
+      token: hydratedToken
+    }: SessionType = hydratedSession || {};
+    token = hydratedToken || currentToken;
+
+    if(!token) {
+      throw new ApiError(['invalid_session'], 'invalid_session');
+    }
+
+    const config = getConfigFromFlux(flux);
     const nowDate: DateTime = DateTime.local();
-    const expiresDate: DateTime = DateTime.fromMillis(expires);
-    const expiredDiff: number = Math.round(expiresDate.diff(nowDate, 'minutes').toObject().minutes);
-    token = currentToken;
+    const expiresDate: DateTime = DateTime.fromMillis(authExpires);
+    const minutesUntilExpiry = Math.round(expiresDate.diff(nowDate, 'minutes').toObject().minutes);
+    const refreshWindowMinutes = Math.max(1, Number(config.app?.session?.minMinutes || DEFAULT_REFRESH_WINDOW_MINUTES));
+    const sessionLifetimeMinutes = Math.round((authExpires - authIssued) / (1000 * 60));
+    const refreshExpiresMinutes = Math.max(
+      1,
+      Number(config.app?.session?.maxMinutes || sessionLifetimeMinutes || DEFAULT_SESSION_MAX_MINUTES)
+    );
 
-    if(expiredDiff > 0) {
-      const config = getConfigFromFlux(flux);
-      const sessionMin: number = config.app?.session?.minMinutes || 0;
-      const issuedDate: DateTime = DateTime.fromMillis(expires);
-      const issuedDiff: number = Math.round(nowDate.diff(issuedDate, 'minutes').toObject().minutes);
+    if(minutesUntilExpiry > 0 && minutesUntilExpiry <= refreshWindowMinutes) {
+      const {
+        session: updatedSession = {}
+      }: ApiResultsType = (await refreshSession(flux, token, refreshExpiresMinutes)) || {};
+      const {token: newToken}: SessionType = (updatedSession || {});
 
-      if(issuedDiff >= sessionMin) {
-        const {
-          session: updatedSession = {}
-        }: ApiResultsType = (await refreshSession(flux, currentToken, sessionMin)) || {};
-        const {token: newToken}: SessionType = (updatedSession || {});
-
-        if(!newToken) {
-          Promise.reject(new ApiError(['invalid_session'], 'invalid_session'));
-        }
-
-        token = newToken;
+      if(!newToken) {
+        throw new ApiError(['invalid_session'], 'invalid_session');
       }
+
+      token = newToken;
     }
   }
 
@@ -264,7 +280,7 @@ export const refreshSession = async (
   token?: string,
   expires: number = 15
 ): Promise<FluxAction | null> => {
-  const refreshToken = isEmpty(token) ? token : flux.getState('user.session.token');
+  const refreshToken = isEmpty(token) ? flux.getState('user.session.token') : token;
 
   if(isEmpty(refreshToken)) {
     return null;
@@ -278,7 +294,7 @@ export const refreshSession = async (
       },
       token: {
         type: 'String!',
-        value: token
+        value: refreshToken
       }
     };
     const onSuccess = (data: ApiResultsType = {}): Promise<FluxAction> => {
