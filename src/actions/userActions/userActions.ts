@@ -135,7 +135,7 @@ export interface UserApiResultsType {
     readonly deactivate?: Partial<User>;
     readonly forgotPassword?: boolean;
     readonly itemById?: Partial<User>;
-    readonly getSession?: Partial<User>;
+    readonly getUserBySession?: Partial<User>;
     readonly itemBySession?: Partial<User>;
     readonly itemByToken?: Partial<User>;
     readonly itemByUsername?: Partial<User>;
@@ -204,7 +204,7 @@ export interface userActions {
   signUp: (userInput: Partial<User>, userProps?: string[]) => Promise<User>;
   updatePassword: (password: string, newPassword: string) => Promise<boolean>;
   updateUser: (userInput: Partial<User>, userProps?: string[]) => Promise<User>;
-  updateProfile: (profileInput: Partial<ProfileType>) => Promise<ProfileType>;
+  updateProfile: (profileInput: Partial<ProfileType>, userProps?: string[]) => Promise<ProfileType>;
   updateUserAdapter: (adapter: (input: unknown, options?: UserAdapterOptions) => any) => void;
   updateProfileAdapter: (adapter: (input: unknown, options?: UserProfileAdapterOptions) => any) => void;
   updateUserAdapterOptions: (options: UserAdapterOptions) => void;
@@ -383,11 +383,12 @@ export const createUserActions = (
     );
   };
 
-  const updateProfile = async (profileInput: Partial<ProfileType>): Promise<ProfileType> => {
+  const updateProfile = async (profileInput: Partial<ProfileType>, userProps: string[] = []): Promise<ProfileType> => {
+    const profile = profileBase.validator(profileInput) as Partial<ProfileType>;
     const queryVariables = {
       profile: {
         type: 'ProfileInput!',
-        value: profileInput
+        value: profile
       }
     };
 
@@ -396,7 +397,27 @@ export const createUserActions = (
       return flux.dispatch({profile, type: PROFILE_CONSTANTS.UPDATE_ITEM_SUCCESS});
     };
 
-    return appMutation(flux, 'updateProfile', DATA_TYPE, queryVariables, [], {onSuccess});
+    const returnProps = sanitizeUserProps([
+      'userId',
+      'username',
+      'added',
+      'modified',
+      'city',
+      'state',
+      'country',
+      'location',
+      'latitude',
+      'longitude',
+      'birthdate',
+      'gender',
+      ...userProps
+    ], ['userId', 'modified']);
+
+    return withInvalidFieldRetry(
+      (safeProps) => appMutation(flux, 'updateProfile', DATA_TYPE, queryVariables, safeProps, {onSuccess}),
+      returnProps,
+      ['userId', 'modified']
+    );
   };
 
 
@@ -445,14 +466,14 @@ export const createUserActions = (
     async (sessionProps) => {
       const data = await appQuery(
         flux,
-        'getSession',
+        'getUserBySession',
         DATA_TYPE,
         {},
         sessionProps
       ) as unknown as {
-        users?: {getSession?: Partial<User>};
+        users?: {getUserBySession?: Partial<User>};
       };
-      const sessionData = data?.users?.getSession || {};
+      const sessionData = data?.users?.getUserBySession || {};
 
       if(!hasSessionIdentity(sessionData)) {
         clearPersistedSession(flux);
@@ -587,6 +608,7 @@ export const createUserActions = (
   const signIn = async (user: Partial<User>, expires: number = 15): Promise<SessionType> => {
     const {email, phone, username, password} = user;
     let userInput: Record<string, unknown> | undefined;
+    let legacyVariables: Record<string, {type: string; value: unknown}> | undefined;
 
     if(username && password) {
       userInput = {
@@ -607,7 +629,7 @@ export const createUserActions = (
       throw new Error('Username, email, or phone number and password are required to sign in');
     }
 
-    const queryVariables: any = {
+    const queryVariablesWithUserInput: any = {
       expires: {
         type: 'Int',
         value: expires
@@ -617,7 +639,6 @@ export const createUserActions = (
         value: userInput
       }
     };
-
 
     const onSuccess = (data: ApiResultsType = {}): Promise<FluxAction> => {
       const users = (data as any)?.users;
@@ -630,7 +651,7 @@ export const createUserActions = (
       });
     };
 
-    try {
+    const performSignIn = async (queryVariables: any): Promise<SessionType> => {
       const sessionData = await publicMutation<SessionType & UserApiResultsType>(
         flux,
         'signIn',
@@ -640,6 +661,10 @@ export const createUserActions = (
         {onSuccess}
       );
       return normalizeSession(sessionData as unknown as Record<string, unknown>) as SessionType;
+    };
+
+    try {
+      return await performSignIn(queryVariablesWithUserInput);
     } catch(error) {
       flux.dispatch({error, type: USER_CONSTANTS.SIGN_IN_ERROR});
       throw error;

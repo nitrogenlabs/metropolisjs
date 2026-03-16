@@ -267,11 +267,20 @@ export const uploadImage = (
   image,
   options: HunterOptionsType = {}
 ): Promise<ApiResultsType> => {
-  const token = flux.getState('user.session.token');
-  const headers = new Headers();
-  headers.set('Authorization', `Bearer ${token}`);
   const config = getConfigFromFlux(flux);
   const uploadImageUrl: string = config.app?.api?.uploadImage || '';
+  const token = flux.getState('user.session.token');
+
+  if(isEmpty(uploadImageUrl)) {
+    return Promise.reject(new ApiError(['invalid_url'], 'upload_endpoint_not_configured'));
+  }
+
+  if(isEmpty(token)) {
+    return Promise.reject(new ApiError(['invalid_session'], 'missing_auth_token'));
+  }
+
+  const headers = new Headers();
+  headers.set('Authorization', `Bearer ${token}`);
   return post(uploadImageUrl, image, {headers, ...options});
 };
 
