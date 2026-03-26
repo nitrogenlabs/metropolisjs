@@ -11,6 +11,25 @@ import type { TagType } from '../../adapters/tagAdapter/tagAdapter.js';
 import type { ReaktorDbCollection } from '../../utils/api.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'tags';
+const DEFAULT_TAG_PROPS = ['added', 'description', 'id', 'modified', 'name', 'tagId'];
+const ALLOWED_TAG_PROPS = new Set(DEFAULT_TAG_PROPS);
+
+const sanitizeTagProps = (tagProps: string[] = []): string[] => {
+  const fields = [...DEFAULT_TAG_PROPS, ...tagProps];
+  const seen = new Set<string>();
+
+  return fields.reduce((result: string[], field: string) => {
+    const nextField = String(field || '').trim();
+
+    if(!nextField || seen.has(nextField) || !ALLOWED_TAG_PROPS.has(nextField)) {
+      return result;
+    }
+
+    seen.add(nextField);
+    result.push(nextField);
+    return result;
+  }, []);
+};
 
 export interface TagAdapterOptions {
   strict?: boolean;
@@ -37,10 +56,10 @@ export type TagApiResultsType = {
 
 export interface TagActions {
   addTag: (tag: Partial<TagType>, tagProps?: string[]) => Promise<TagType>;
-  addTagToProfile: (tagId: string, tagProps?: string[]) => Promise<TagType>;
+  addTagToProfile: (tagId: string, profileId?: string, tagProps?: string[]) => Promise<TagType>;
   deleteTag: (tagId: string, tagProps?: string[]) => Promise<TagType>;
-  deleteTagFromProfile: (tagId: string, tagProps?: string[]) => Promise<TagType>;
-  getTags: (tagProps?: string[]) => Promise<TagType[]>;
+  deleteTagFromProfile: (tagId: string, profileId?: string, tagProps?: string[]) => Promise<TagType>;
+  getTags: (searchQueryOrTagProps?: string | string[], tagProps?: string[]) => Promise<TagType[]>;
   updateTag: (tag: Partial<TagType>, tagProps?: string[]) => Promise<TagType>;
   updateTagAdapter: (adapter: (input: unknown, options?: TagAdapterOptions) => any) => void;
   updateTagAdapterOptions: (options: TagAdapterOptions) => void;
@@ -86,6 +105,7 @@ export const createTagActions = (
 
   const addTag = async (tag: Partial<TagType>, tagProps: string[] = []): Promise<TagType> => {
     try {
+      const requestedTagProps = sanitizeTagProps(tagProps);
       const queryVariables = {
         tag: {
           type: 'TagInput!',
@@ -103,7 +123,7 @@ export const createTagActions = (
         'addTag',
         DATA_TYPE,
         queryVariables,
-        ['category', 'id', 'name', 'tagId', ...tagProps],
+        requestedTagProps,
         {onSuccess}
       );
     } catch(error) {
@@ -112,11 +132,20 @@ export const createTagActions = (
     }
   };
 
-  const addTagToProfile = async (tagId: string, tagProps: string[] = []): Promise<TagType> => {
+  const addTagToProfile = async (
+    tagId: string,
+    profileId = '',
+    tagProps: string[] = []
+  ): Promise<TagType> => {
     try {
+      const requestedTagProps = sanitizeTagProps(tagProps);
       const queryVariables = {
+        profileId: {
+          type: 'String',
+          value: profileId
+        },
         tagId: {
-          type: 'ID!',
+          type: 'String!',
           value: tagId
         }
       };
@@ -131,7 +160,7 @@ export const createTagActions = (
         'addTagToProfile',
         DATA_TYPE,
         queryVariables,
-        ['category', 'id', 'name', 'tagId', ...tagProps],
+        requestedTagProps,
         {onSuccess}
       );
     } catch(error) {
@@ -142,6 +171,7 @@ export const createTagActions = (
 
   const deleteTag = async (tagId: string, tagProps: string[] = []): Promise<TagType> => {
     try {
+      const requestedTagProps = sanitizeTagProps(tagProps);
       const queryVariables = {
         tagId: {
           type: 'ID!',
@@ -159,7 +189,7 @@ export const createTagActions = (
         'deleteTag',
         DATA_TYPE,
         queryVariables,
-        ['category', 'id', 'name', 'tagId', ...tagProps],
+        requestedTagProps,
         {onSuccess}
       );
     } catch(error) {
@@ -168,11 +198,20 @@ export const createTagActions = (
     }
   };
 
-  const deleteTagFromProfile = async (tagId: string, tagProps: string[] = []): Promise<TagType> => {
+  const deleteTagFromProfile = async (
+    tagId: string,
+    profileId = '',
+    tagProps: string[] = []
+  ): Promise<TagType> => {
     try {
+      const requestedTagProps = sanitizeTagProps(tagProps);
       const queryVariables = {
+        profileId: {
+          type: 'String',
+          value: profileId
+        },
         tagId: {
-          type: 'ID!',
+          type: 'String!',
           value: tagId
         }
       };
@@ -190,7 +229,7 @@ export const createTagActions = (
         'deleteTagFromProfile',
         DATA_TYPE,
         queryVariables,
-        ['category', 'id', 'name', 'tagId', ...tagProps],
+        requestedTagProps,
         {onSuccess}
       );
     } catch(error) {
@@ -199,31 +238,30 @@ export const createTagActions = (
     }
   };
 
-  const getTags = async (tagProps: string[] = []): Promise<TagType[]> => {
+  const getTags = async (
+    searchQueryOrTagProps?: string | string[],
+    tagProps: string[] = []
+  ): Promise<TagType[]> => {
     const initialTags: TagType[] = flux.getState('tag.list', []) as TagType[];
     const cacheExpires: number = flux.getState('tag.expires', 0) as number;
     const now: number = Date.now();
+    const searchQuery = typeof searchQueryOrTagProps === 'string' ? searchQueryOrTagProps : undefined;
+    const requestedTagProps = sanitizeTagProps(Array.isArray(searchQueryOrTagProps) ? searchQueryOrTagProps : tagProps);
 
-    if(initialTags.length && now < cacheExpires) {
+    if(initialTags.length && now < cacheExpires && !searchQuery) {
       await flux.dispatch({tags: initialTags, type: TAG_CONSTANTS.GET_LIST_SUCCESS});
       return initialTags;
     }
 
     try {
-      const queryVariables = {
-        from: {
-          type: 'String',
-          value: 0
-        },
-        search: {
-          type: 'Int',
-          value: ''
-        },
-        to: {
-          type: 'Int',
-          value: -1
+      const queryVariables = searchQuery
+        ? {
+          searchQuery: {
+            type: 'String',
+            value: searchQuery
+          }
         }
-      };
+        : {};
 
       const onSuccess = (data: TagApiResultsType) => {
         const {tags: {getTags}} = data;
@@ -235,10 +273,10 @@ export const createTagActions = (
 
       return await appQuery<TagType[]>(
         flux,
-        'tags',
+        'getTags',
         DATA_TYPE,
         queryVariables,
-        ['category', 'id', 'name', 'tagId', ...tagProps],
+        requestedTagProps,
         {onSuccess}
       );
     } catch(error) {
@@ -249,6 +287,7 @@ export const createTagActions = (
 
   const updateTag = async (tag: Partial<TagType>, tagProps: string[] = []): Promise<TagType> => {
     try {
+      const requestedTagProps = sanitizeTagProps(tagProps);
       const queryVariables = {
         tag: {
           type: 'TagInput!',
@@ -266,7 +305,7 @@ export const createTagActions = (
         'updateTag',
         DATA_TYPE,
         queryVariables,
-        ['category', 'id', 'name', 'tagId', ...tagProps],
+        requestedTagProps,
         {onSuccess}
       );
     } catch(error) {
@@ -286,4 +325,3 @@ export const createTagActions = (
     updateTagAdapterOptions
   };
 };
-

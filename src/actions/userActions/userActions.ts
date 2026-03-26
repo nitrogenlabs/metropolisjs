@@ -35,6 +35,18 @@ const INVALID_FIELD_REGEX = /Cannot query field "([^"]+)"/g;
 const hasSessionIdentity = (user?: Partial<User> | null): boolean =>
   !!(user && ((user as any)._id || (user as any).userId || (user as any).username || (user as any).email));
 
+const syncStoredSession = (flux: FluxFramework, sessionPatch: Record<string, unknown> = {}): SessionType => {
+  const currentSession = (flux.getState('user.session', {}) || {}) as Record<string, unknown>;
+  const mergedSession = normalizeSession({...currentSession, ...sessionPatch}) as SessionType;
+
+  if(Object.keys(mergedSession).length > 0) {
+    flux.setState('user.session', mergedSession);
+    persistSession(flux, mergedSession as unknown as Record<string, unknown>);
+  }
+
+  return mergedSession;
+};
+
 const getFieldRoot = (field: string): string => {
   const trimmed = field.trim();
   const match = trimmed.match(/^[A-Za-z_][A-Za-z0-9_]*/);
@@ -139,6 +151,7 @@ export interface UserApiResultsType {
     readonly itemBySession?: Partial<User>;
     readonly itemByToken?: Partial<User>;
     readonly itemByUsername?: Partial<User>;
+    readonly getUserList?: User[];
     readonly list?: User[];
     readonly listByConnection?: User[];
     readonly listByLatest?: User[];
@@ -152,6 +165,7 @@ export interface UserApiResultsType {
     readonly signIn?: Partial<User>;
     readonly signUp?: Partial<User>;
     readonly update?: Partial<User>;
+    readonly updateUser?: Partial<User>;
     readonly updatePassword?: Partial<boolean>;
     readonly updateProfile?: Partial<ProfileType>;
   };
@@ -175,6 +189,7 @@ export interface userActions {
   confirmSignUp: (code: string, type: 'email' | 'phone') => Promise<boolean>;
   currentAuthenticatedUser: () => Promise<User>;
   currentUser: () => Promise<User>;
+  list: (userProps?: string[]) => Promise<User[]>;
   listByConnection: (userId: string, from?: number, to?: number, userProps?: string[]) => Promise<User[]>;
   itemById: (userId: string, userProps?: string[]) => Promise<User>;
   listByLatest: (username?: string, from?: number, to?: number, userProps?: string[]) => Promise<User[]>;
@@ -324,24 +339,50 @@ export const createUserActions = (
   };
 
   const updateUser = async (userInput: Partial<User>, userProps: string[] = []): Promise<User> => {
-    const {username, email, password} = userInput;
+    const {
+      birthdate,
+      dob,
+      email,
+      firstName,
+      gender,
+      lastName,
+      mailingList,
+      password,
+      phone,
+      userId,
+      username
+    } = userInput;
     const queryVariables = {
-      expires: {
-        type: 'Int',
-        value: 15
-      },
       user: {
         type: 'UserInput!',
         value: {
+          birthdate: birthdate ?? dob,
           email,
+          firstName,
+          gender,
+          lastName,
+          mailingList,
           password,
+          phone,
+          userId,
           username
         }
       }
     };
 
     const onSuccess = (data: ApiResultsType = {}) => {
-      const {users: {update: user = {}}} = data as unknown as UserApiResultsType;
+      const {
+        users: {
+          update: legacyUser = {},
+          updateUser: updatedUser = {}
+        }
+      } = data as unknown as UserApiResultsType;
+      const user = hasSessionIdentity(updatedUser) ? updatedUser : legacyUser;
+
+      if((user as any)?.userId && (user as any).userId === flux.getState('user.session.userId')) {
+        syncStoredSession(flux, user as Record<string, unknown>);
+      }
+
       return flux.dispatch({
         type: USER_CONSTANTS.UPDATE_ITEM_SUCCESS,
         user
@@ -350,17 +391,20 @@ export const createUserActions = (
 
     const returnProps = sanitizeUserProps([
       'added',
-      'address',
       'birthdate',
       'city',
       'country',
+      'email',
+      'firstName',
       'gender',
       'imageCount',
       'imageUrl',
+      'lastName',
       'latitude',
       'longitude',
       'mailingList',
       'modified',
+      'phone',
       'state',
       'tags {id, name, tagId}',
       'thumbUrl',
@@ -372,7 +416,7 @@ export const createUserActions = (
 
     return appMutation(
       flux,
-      'update',
+      'updateUser',
       DATA_TYPE,
       queryVariables,
       returnProps,
@@ -479,6 +523,7 @@ export const createUserActions = (
         throw new Error('invalid_session');
       }
 
+      syncStoredSession(flux, sessionData as Record<string, unknown>);
       await flux.dispatch({session: sessionData, type: USER_CONSTANTS.GET_SESSION_SUCCESS});
       return sessionData as User;
     },
@@ -489,18 +534,38 @@ export const createUserActions = (
   const itemById = async (userId: string, userProps: string[] = []): Promise<User> => {
     const queryVariables = {
       userId: {
-        type: 'String!',
+        type: 'ID!',
         value: userId
       }
     };
 
     const onSuccess = (data: ApiResultsType = {}) => {
-      const {users: {itemById = {}}} = data as unknown as UserApiResultsType;
-      return flux.dispatch({type: USER_CONSTANTS.GET_ITEM_SUCCESS, user: itemById});
+      const {users: {getUserById = {}}} = data as unknown as UserApiResultsType & {
+        users?: {getUserById?: Partial<User>};
+      };
+
+      if(userId === flux.getState('user.session.userId')) {
+        syncStoredSession(flux, getUserById as Record<string, unknown>);
+      }
+
+      return flux.dispatch({type: USER_CONSTANTS.GET_ITEM_SUCCESS, user: getUserById});
     };
 
     return withInvalidFieldRetry(
-      (safeUserProps) => appMutation(flux, 'itemById', DATA_TYPE, queryVariables, safeUserProps, {onSuccess}),
+      (safeUserProps) => appQuery(flux, 'getUserById', DATA_TYPE, queryVariables, safeUserProps, {onSuccess}),
+      userProps,
+      DEFAULT_USER_QUERY_FIELDS
+    );
+  };
+
+  const list = async (userProps: string[] = []): Promise<User[]> => {
+    const onSuccess = (data: ApiResultsType = {}) => {
+      const {users: {getUserList: list = []}} = data as unknown as UserApiResultsType;
+      return flux.dispatch({list, type: USER_CONSTANTS.GET_LIST_SUCCESS});
+    };
+
+    return withInvalidFieldRetry(
+      (safeUserProps) => appQuery(flux, 'getUserList', DATA_TYPE, {}, safeUserProps, {onSuccess}),
       userProps,
       DEFAULT_USER_QUERY_FIELDS
     );
@@ -640,7 +705,7 @@ export const createUserActions = (
     const onSuccess = (data: ApiResultsType = {}): Promise<FluxAction> => {
       const users = (data as any)?.users;
       const sessionData = normalizeSession(users?.signIn || {});
-      persistSession(flux, sessionData);
+      syncStoredSession(flux, sessionData);
 
       return flux.dispatch({
         session: sessionData,
@@ -753,6 +818,7 @@ export const createUserActions = (
     confirmSignUp,
     currentAuthenticatedUser,
     currentUser,
+    list,
     forgotPassword,
     isLoggedIn,
     itemById,

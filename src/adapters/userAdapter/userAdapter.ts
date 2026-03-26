@@ -17,12 +17,13 @@ export interface User {
   currency?: string;
   deviceToken?: string;
   dob?: number;
+  birthdate?: number;
   email?: string;
-  first?: string;
+  firstName?: string;
   gender?: string;
   id?: string;
   imageId?: string;
-  last?: string;
+  lastName?: string;
   lastActive?: number;
   locale?: string;
   mailingList?: boolean;
@@ -69,12 +70,13 @@ const UserInputSchema = z.object({
   currency: z.string().length(3).optional(),
   deviceToken: z.string().max(160).optional(),
   dob: z.number().optional(),
+  birthdate: z.number().optional(),
   email: z.email().optional(),
-  first: z.string().max(160).optional(),
+  firstName: z.string().max(160).optional(),
   gender: z.string().length(1).optional(),
   id: z.string().optional(),
   imageId: z.string().optional(),
-  last: z.string().max(160).optional(),
+  lastName: z.string().max(160).optional(),
   lastActive: z.number().optional(),
   locale: z.string().max(5).optional(),
   mailingList: z.boolean().optional(),
@@ -190,12 +192,13 @@ const performUserTransformation = (user: User): User => {
     currency,
     deviceToken,
     dob,
+    birthdate,
     email,
-    first,
+    firstName,
     gender,
     id,
     imageId,
-    last,
+    lastName,
     lastActive,
     locale,
     mailingList,
@@ -222,6 +225,9 @@ const performUserTransformation = (user: User): User => {
     verifiedSmsCode,
     zip
   } = user;
+  const normalizedDob = birthdate ?? dob;
+  const normalizedFirst = firstName;
+  const normalizedLast = lastName;
   const transformed = {
     ...parseDocument(user),
     ...((_id || id || _key || userId) && {id: parseArangoId(_id || id || `users/${_key || userId}`)}),
@@ -232,12 +238,12 @@ const performUserTransformation = (user: User): User => {
     ...(country && {country: validateCountry(country)}),
     ...(currency && {currency: parseChar(currency, 3).toUpperCase()}),
     ...(deviceToken && {deviceToken: parseVarChar(deviceToken, 160)}),
-    ...(dob !== undefined && {dob: parseReaktorDate(dob)}),
+    ...(normalizedDob !== undefined && {birthdate: parseReaktorDate(normalizedDob), dob: parseReaktorDate(normalizedDob)}),
     ...(email && {email: parseEmail(email)}),
-    ...(first && {first: parseVarChar(first, 160)}),
+    ...(normalizedFirst && {firstName: parseVarChar(normalizedFirst, 160)}),
     ...(gender && {gender: validateGender(gender)}),
     ...(imageId && {imageId: parseReaktorItemId(imageId)}),
-    ...(last && {last: parseVarChar(last, 160)}),
+    ...(normalizedLast && {lastName: parseVarChar(normalizedLast, 160)}),
     ...(lastActive !== undefined && {lastActive: parseReaktorDate(lastActive)}),
     ...(locale && {locale: parseString(locale, 5)}),
     ...(mailingList !== undefined && {mailingList: !!mailingList}),

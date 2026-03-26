@@ -5,7 +5,7 @@ import {DateTime} from 'luxon';
 import {APP_CONSTANTS} from '../stores/appStore.js';
 import {USER_CONSTANTS} from '../stores/userStore.js';
 import {getConfigFromFlux} from './configUtils.js';
-import {hydrateSessionFromStorage} from './session.js';
+import {hydrateSessionFromStorage, normalizeSession, persistSession} from './session.js';
 
 import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {HunterOptionsType, HunterQueryType} from '@nlabs/rip-hunter';
@@ -308,7 +308,11 @@ export const refreshSession = async (
     };
     const onSuccess = (data: ApiResultsType = {}): Promise<FluxAction> => {
       const {refreshSession: sessionData = {}} = data;
-      return flux.dispatch({session: sessionData, type: USER_CONSTANTS.UPDATE_SESSION_SUCCESS});
+      const currentSession = (flux.getState('user.session', {}) || {}) as Record<string, unknown>;
+      const mergedSession = normalizeSession({...currentSession, ...sessionData});
+      persistSession(flux, mergedSession);
+      flux.setState('user.session', mergedSession);
+      return flux.dispatch({session: mergedSession, type: USER_CONSTANTS.UPDATE_SESSION_SUCCESS});
     };
 
     return await publicMutation(flux, 'refreshSession', 'users', queryVariables, ['expires', 'issued', 'token'], {

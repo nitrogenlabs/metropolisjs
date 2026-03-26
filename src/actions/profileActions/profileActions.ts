@@ -116,7 +116,7 @@ export const createProfileActions = (
 
       return await appQuery<ProfileType>(
         flux,
-        'profile',
+        'getProfile',
         DATA_TYPE,
         queryVariables,
         [
@@ -158,7 +158,7 @@ export const createProfileActions = (
 
       return await appQuery<ProfileType[]>(
         flux,
-        'profiles',
+        'getProfiles',
         DATA_TYPE,
         queryVariables,
         [
