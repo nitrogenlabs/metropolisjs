@@ -33,8 +33,6 @@ export const USER_CONSTANTS = {
   REMOVE_ITEM_ERROR: 'USER_REMOVE_ITEM_ERROR',
   REMOVE_ITEM_SUCCESS: 'USER_REMOVE_ITEM_SUCCESS',
   REMOVE_RELATION: 'USER_REMOVE_RELATION',
-  RESEND_CODE_ERROR: 'USER_RESEND_CODE_ERROR',
-  RESEND_CODE_SUCCESS: 'USER_RESEND_CODE_SUCCESS',
   RESET_PASSWORD_ERROR: 'USER_RESET_PASSWORD_ERROR',
   RESET_PASSWORD_SUCCESS: 'USER_RESET_PASSWORD_SUCCESS',
   SIGN_IN_ERROR: 'USER_SIGN_IN_ERROR',
@@ -193,20 +191,6 @@ export const userStore = (type: string, data: UserData, state = defaultValues): 
         const {users} = state;
         users[user.userId] = {...user, timestamp: Date.now()};
         return {...state, error: undefined, users};
-      }
-      return state;
-    }
-    case USER_CONSTANTS.RESEND_CODE_ERROR: {
-      const {session} = data;
-      if(session) {
-        return {...state, session: {...state.session, ...session}};
-      }
-      return state;
-    }
-    case USER_CONSTANTS.RESEND_CODE_SUCCESS: {
-      const {session} = data;
-      if(session) {
-        return {...state, session: {...state.session, ...session}};
       }
       return state;
     }

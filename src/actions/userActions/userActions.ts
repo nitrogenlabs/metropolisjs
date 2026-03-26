@@ -676,21 +676,72 @@ export const createUserActions = (
   };
 
   const confirmSignUp = async (code: string, type: 'email' | 'phone'): Promise<boolean> =>
-    true
-  ;
+    true;
 
-  const forgotPassword = async (username: string): Promise<boolean> =>
-    true
-  ;
+  const forgotPassword = async (username: string): Promise<boolean> => {
+    const queryVariables = {
+      user: {
+        type: 'UserInput!',
+        value: {
+          email: username,
+          phone: username,
+          username
+        }
+      }
+    };
+
+    const onSuccess = (data?: UserApiResultsType) => {
+      const success = !!data?.users?.forgotPassword;
+      return flux.dispatch({
+        type: success ? USER_CONSTANTS.FORGOT_PASSWORD_SUCCESS : USER_CONSTANTS.FORGOT_PASSWORD_ERROR
+      });
+    };
+
+    return publicMutation<UserApiResultsType>(flux, 'forgotPassword', DATA_TYPE, queryVariables, [], {onSuccess}).then((data) => {
+      const success = !!data?.users?.forgotPassword;
+      if(!success) {
+        throw new Error('forgot_password_failed');
+      }
+      return true;
+    });
+  };
 
   const resetPassword = async (
     username: string,
     password: string,
     code: string,
     type: 'email' | 'phone'
-  ): Promise<boolean> =>
-    true
-  ;
+  ): Promise<boolean> => {
+    const queryVariables = {
+      code: {
+        type: 'String!',
+        value: code
+      },
+      user: {
+        type: 'UserInput!',
+        value: {
+          ...(type === 'email' ? {email: username} : {phone: username}),
+          password,
+          username
+        }
+      }
+    };
+
+    const onSuccess = (data?: UserApiResultsType) => {
+      const success = !!data?.users?.resetPassword;
+      return flux.dispatch({
+        type: success ? USER_CONSTANTS.RESET_PASSWORD_SUCCESS : USER_CONSTANTS.RESET_PASSWORD_ERROR
+      });
+    };
+
+    return publicMutation<UserApiResultsType>(flux, 'resetPassword', DATA_TYPE, queryVariables, [], {onSuccess}).then((data) => {
+      const success = !!data?.users?.resetPassword;
+      if(!success) {
+        throw new Error('reset_password_failed');
+      }
+      return true;
+    });
+  };
 
   const updatePassword = async (password: string, newPassword: string): Promise<boolean> =>
     true

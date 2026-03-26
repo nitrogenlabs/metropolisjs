@@ -2,10 +2,7 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import { get as httpGet } from '@nlabs/rip-hunter';
-
 import { validateLocationInput } from '../../adapters/locationAdapter/locationAdapter.js';
-import { getConfigFromFlux } from '../../utils/configUtils.js';
 import { LOCATION_CONSTANTS } from '../../stores/locationStore.js';
 import { appMutation } from '../../utils/api.js';
 import { autoCompleteLocation } from '../../utils/location.js';
@@ -248,28 +245,14 @@ export const createLocationActions = (
   });
 
   const getGoogleLocation = async (address: string): Promise<{latitude: number; location: string; longitude: number}> => {
-    // Note: google.maps config is not part of standard MetropolisEnvironmentConfiguration
-    // Uses empty object as default if not provided in config
-    const config = getConfigFromFlux(flux);
-    const googleMaps = (config as any).google?.maps || {};
-    const {key: googleKey = '', url: googleUrl = ''} = googleMaps as {key?: string; url?: string};
-    const formatAddress: string = encodeURI(address);
-    const url: string = `${googleUrl}?address=${formatAddress}&key=${googleKey}`;
+    const locations = await autocompleteLocation(address);
+    const [firstLocation = {} as LocationType] = locations;
 
-    if(url) {
-      return {latitude: 0, location: '', longitude: 0};
-    }
-    return httpGet(url).then((data) => {
-      const {results} = data;
-      const locationData = results && results.length ? results[0] : {};
-      const {
-        formatted_address: location,
-        geometry: {
-          location: {lat: latitude, lng: longitude}
-        }
-      } = locationData;
-      return {latitude, location, longitude};
-    });
+    return {
+      latitude: firstLocation.latitude || 0,
+      location: firstLocation.location || '',
+      longitude: firstLocation.longitude || 0
+    };
   };
 
   const getLocation = async (
@@ -422,4 +405,3 @@ export const createLocationActions = (
     updateLocationAdapterOptions
   };
 };
-

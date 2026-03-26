@@ -43,8 +43,14 @@ export const autoCompleteLocation = pDebounce(async (
 
     const {autoCompleteLocation = []} = await appQuery(flux, 'autoCompleteLocation', DATA_TYPE, queryVariables, [
       'address',
+      'city',
+      'country',
       'latitude',
+      'location',
       'longitude',
+      'state',
+      'street',
+      'zip',
       ...locationProps
     ]) as {autoCompleteLocation: Record<string, unknown>[]};
     return autoCompleteLocation.map((item) => CustomClass(item));
@@ -83,8 +89,14 @@ export const searchLocations = async (
 
     const {autoCompleteLocation = []} = await appQuery(flux, 'autoCompleteLocation', DATA_TYPE, queryVariables, [
       'address',
+      'city',
+      'country',
       'latitude',
+      'location',
       'longitude',
+      'state',
+      'street',
+      'zip',
       ...locationProps
     ]) as {autoCompleteLocation: Record<string, unknown>[]};
     return autoCompleteLocation.map((item) => CustomClass(item));
