@@ -76,24 +76,24 @@
   "dependencies": {
     "@nlabs/rip-hunter": "3.1.0",
     "@nlabs/utils": "^2.8.6",
-    "i18next": "^25.8.13",
+    "i18next": "^25.10.9",
     "luxon": "^3.7.2",
     "p-debounce": "^5.1.0",
-    "react-i18next": "^16.5.4",
+    "react-i18next": "^16.6.6",
     "sockette": "^2.0.6",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@jest/globals": "30.2.0",
+    "@jest/globals": "30.3.0",
     "@nlabs/arkhamjs": "3.31.9",
     "@nlabs/arkhamjs-storage-browser": "^3.30.6",
     "@nlabs/arkhamjs-utils-react": "^3.32.7",
-    "@nlabs/lex": "^1.55.0",
+    "@nlabs/lex": "^1.55.2",
     "@types/jest": "^30.0.0",
-    "@types/node": "^25.3.2",
+    "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "react": "^19.2.4",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.2"
   },
   "peerDependencies": {
     "@nlabs/arkhamjs": "^3.31.1",

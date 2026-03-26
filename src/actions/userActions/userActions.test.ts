@@ -43,7 +43,7 @@ describe('userActions', () => {
   });
 
   it('should create userActions with all required methods', () => {
-    expect(userActions.add).toBeDefined();
+    expect(userActions.addUser).toBeDefined();
     expect(userActions.confirmCode).toBeDefined();
     expect(userActions.forgotPassword).toBeDefined();
     expect(userActions.isLoggedIn).toBeDefined();
@@ -67,7 +67,7 @@ describe('userActions', () => {
   });
 
   it('should have correct method types', () => {
-    expect(typeof userActions.add).toBe('function');
+    expect(typeof userActions.addUser).toBe('function');
     expect(typeof userActions.confirmCode).toBe('function');
     expect(typeof userActions.forgotPassword).toBe('function');
     expect(typeof userActions.isLoggedIn).toBe('function');
@@ -90,11 +90,11 @@ describe('userActions', () => {
     expect(typeof userActions.updateUserAdapterOptions).toBe('function');
   });
 
-  it('should validate add method returns expected structure', async () => {
+  it('should validate addUser method returns expected structure', async () => {
     const userData = {email: 'test@example.com', username: 'testuser'};
 
     try {
-      const result = await userActions.add(userData);
+      const result = await userActions.addUser(userData);
 
       expect(result).toBeDefined();
       expect(typeof result).toBe('object');
@@ -394,7 +394,7 @@ describe('userActions', () => {
     const userData = {username: 'minimaluser'};
 
     try {
-      await userActions.add(userData);
+      await userActions.addUser(userData);
     } catch(error) {
       expect(error).toBeDefined();
     }
@@ -404,7 +404,7 @@ describe('userActions', () => {
     const userData = {email: 'full@example.com', firstName: 'John', lastName: 'Doe', username: 'fulluser'};
 
     try {
-      await userActions.add(userData);
+      await userActions.addUser(userData);
     } catch(error) {
       expect(error).toBeDefined();
     }
@@ -563,7 +563,7 @@ describe('userActions', () => {
     const userProps = ['email', 'firstName'];
 
     try {
-      await userActions.add(userData, userProps);
+      await userActions.addUser(userData, userProps);
     } catch(error) {
       expect(error).toBeDefined();
     }
@@ -655,7 +655,7 @@ describe('userActions', () => {
     const userData = {username: 'testuser'};
 
     try {
-      await userActions.add(userData, []);
+      await userActions.addUser(userData, []);
     } catch(error) {
       expect(error).toBeDefined();
     }

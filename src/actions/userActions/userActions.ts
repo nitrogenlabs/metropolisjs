@@ -130,7 +130,7 @@ export interface UserActionsOptions {
 export interface UserApiResultsType {
   readonly users: {
     readonly activeCount?: number;
-    readonly add?: Partial<User>;
+    readonly addUser?: Partial<User>;
     readonly confirmCode?: boolean;
     readonly deactivate?: Partial<User>;
     readonly forgotPassword?: boolean;
@@ -170,7 +170,7 @@ const defaultUserValidator = (input: unknown, options?: UserAdapterOptions) => {
 const defaultProfileValidator = (input: unknown, options?: UserProfileAdapterOptions) => validateProfileInput(input);
 
 export interface userActions {
-  add: (userInput: Partial<User>, userProps?: string[]) => Promise<User>;
+  addUser: (userInput: Partial<User>, userProps?: string[]) => Promise<User>;
   confirmCode: (code: number, {type, value}: {type: 'email' | 'phone'; value: string}) => Promise<boolean>;
   confirmSignUp: (code: string, type: 'email' | 'phone') => Promise<boolean>;
   currentAuthenticatedUser: () => Promise<User>;
@@ -224,14 +224,13 @@ export const createUserActions = (
     adapter: options?.profileAdapter,
     adapterOptions: options?.profileAdapterOptions
   });
-  const add = async (userInput: Partial<User>, userProps: string[] = []): Promise<User> => {
+  const addUser = async (userInput: Partial<User>, userProps: string[] = []): Promise<User> => {
     const {username, email, password} = userInput;
     const queryVariables = {
       user: {
         type: 'UserInput!',
         value: {
           email,
-          name: username,
           password,
           username
         }
@@ -239,7 +238,7 @@ export const createUserActions = (
     };
 
     const onSuccess = (data: UserApiResultsType): Promise<FluxAction> => {
-      const {users: {add: user = {}}} = data;
+      const {users: {addUser: user = {}}} = data;
       return flux.dispatch({
         type: USER_CONSTANTS.ADD_ITEM_SUCCESS,
         user
@@ -268,7 +267,7 @@ export const createUserActions = (
 
     return publicMutation<UserApiResultsType>(
       flux,
-      'add',
+      'addUser',
       DATA_TYPE,
       queryVariables,
       returnProps,
@@ -287,7 +286,6 @@ export const createUserActions = (
         type: 'UserInput!',
         value: {
           email,
-          name: username,
           password,
           username
         }
@@ -336,7 +334,6 @@ export const createUserActions = (
         type: 'UserInput!',
         value: {
           email,
-          name: username,
           password,
           username
         }
@@ -440,7 +437,7 @@ export const createUserActions = (
     const onSuccess = (data: boolean = false) =>
       flux.dispatch({confirmed: data, type: USER_CONSTANTS.CONFIRM_SIGN_UP_SUCCESS});
 
-    return appMutation<UserApiResultsType>(flux, 'confirmCode', DATA_TYPE, queryVariables, [], {onSuccess}).then((data) => {
+    return publicMutation<UserApiResultsType>(flux, 'confirmCode', DATA_TYPE, queryVariables, [], {onSuccess}).then((data) => {
       const confirmed = data?.users?.confirmCode;
       return !!confirmed;
     });
@@ -700,7 +697,7 @@ export const createUserActions = (
   ;
 
   return {
-    add,
+    addUser,
     confirmCode,
     confirmSignUp,
     currentAuthenticatedUser,
