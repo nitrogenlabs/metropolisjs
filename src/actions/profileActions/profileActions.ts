@@ -14,6 +14,15 @@ import type { ProfileType } from '../../adapters/profileAdapter/profileAdapter.j
 
 // Define the collection name for profiles
 const DATA_TYPE = 'profiles';
+const DEFAULT_PROFILE_PROPS = [
+  'imageId',
+  'imageUrl',
+  'name',
+  'profileId',
+  'tags {name, tagId}',
+  'thumbUrl',
+  'userId'
+];
 
 export interface ProfileAdapterOptions {
   readonly strict?: boolean;
@@ -119,21 +128,7 @@ export const createProfileActions = (
         'getProfile',
         DATA_TYPE,
         queryVariables,
-        [
-          'active',
-          'gender',
-          'hasLike',
-          'hasView',
-          'images(from: 0 to: 10) { id, imageId, imageUrl, thumbUrl }',
-          'imageCount',
-          'likeCount',
-          'name',
-          'profileId',
-          'tags {name, tagId}',
-          'userId',
-          'viewCount',
-          ...profileProps
-        ],
+        [...DEFAULT_PROFILE_PROPS, ...profileProps],
         {onSuccess}
       );
     } catch(error) {
@@ -161,21 +156,7 @@ export const createProfileActions = (
         'getProfiles',
         DATA_TYPE,
         queryVariables,
-        [
-          'active',
-          'gender',
-          'hasLike',
-          'hasView',
-          'images(from: 0 to: 10) { id, imageId, imageUrl, thumbUrl }',
-          'imageCount',
-          'likeCount',
-          'name',
-          'profileId',
-          'tags {name, tagId}',
-          'userId',
-          'viewCount',
-          ...profileProps
-        ],
+        [...DEFAULT_PROFILE_PROPS, ...profileProps],
         {onSuccess}
       );
     } catch(error) {

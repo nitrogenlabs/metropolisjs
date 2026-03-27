@@ -95,11 +95,12 @@ export const userStore = (type: string, data: UserData, state = defaultValues): 
         return state;
       }
 
-      const {users} = state;
+      const users = {...state.users};
       const {name: reactionName = '', value: reactionValue} = reaction;
       const value: boolean = reactionValue === 'true';
 
       if(itemId && users[itemId]) {
+        users[itemId] = {...users[itemId]};
         users[itemId][`has${capitalize(reactionName)}`] = value;
 
         if(reactionName !== 'view') {
@@ -121,7 +122,7 @@ export const userStore = (type: string, data: UserData, state = defaultValues): 
     }
     case TAG_CONSTANTS.ADD_PROFILE_SUCCESS: {
       const {tag} = data;
-      const {session = {}} = state;
+      const session = {...state.session};
       const {tags = []} = session;
       const updatedTags = uniqBy([...tags, tag], (item: TagType) => item.tagId);
       session.tags = orderBy(updatedTags, ['name'], ['asc']);
@@ -129,7 +130,7 @@ export const userStore = (type: string, data: UserData, state = defaultValues): 
     }
     case TAG_CONSTANTS.REMOVE_PROFILE_SUCCESS: {
       const {tag} = data;
-      const {session = {}} = state;
+      const session = {...state.session};
       const {tags = []} = session;
       session.tags = pullAllBy(tags, [tag], 'tagId');
       return {...state, session};
@@ -137,7 +138,7 @@ export const userStore = (type: string, data: UserData, state = defaultValues): 
     case USER_CONSTANTS.ADD_ITEM_SUCCESS: {
       const {user} = data;
       if(user && user.userId) {
-        const {users} = state;
+        const users = {...state.users};
         users[user.userId] = {...user, timestamp: Date.now()};
         return {...state, session: user, users};
       }
@@ -146,7 +147,7 @@ export const userStore = (type: string, data: UserData, state = defaultValues): 
     case USER_CONSTANTS.GET_DETAILS_SUCCESS: {
       const {user} = data;
       if(user && user.userId) {
-        const {users} = state;
+        const users = {...state.users};
         users[user.userId] = {...user, timestamp: Date.now()};
         return {...state, users};
       }
@@ -155,7 +156,7 @@ export const userStore = (type: string, data: UserData, state = defaultValues): 
     case USER_CONSTANTS.GET_LIST_SUCCESS: {
       const {list} = data;
       if(list) {
-        const {users} = state;
+        const users = {...state.users};
 
         list.forEach((user: User) => {
           if(user.userId) {
@@ -188,7 +189,7 @@ export const userStore = (type: string, data: UserData, state = defaultValues): 
     case USER_CONSTANTS.SIGN_UP_SUCCESS: {
       const {user} = data;
       if(user && user.userId) {
-        const {users} = state;
+        const users = {...state.users};
         users[user.userId] = {...user, timestamp: Date.now()};
         return {...state, error: undefined, users};
       }

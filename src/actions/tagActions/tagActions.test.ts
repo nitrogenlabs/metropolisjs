@@ -31,13 +31,13 @@ describe('createTagActions', () => {
     appQueryMock.mockReset();
   });
 
-  it('supports the existing getTags(tagProps) call shape', async () => {
+  it('uses the second argument for requested tag fields', async () => {
     const flux = createMockFlux();
     const tagActions = createTagActions(flux as any);
 
     appQueryMock.mockResolvedValue([]);
 
-    await tagActions.getTags(['description']);
+    await tagActions.getTags('', ['description']);
 
     expect(appQueryMock).toHaveBeenCalledWith(
       flux,
@@ -78,7 +78,7 @@ describe('createTagActions', () => {
 
     appQueryMock.mockResolvedValue([]);
 
-    await tagActions.getTags(['profileCount', 'userId']);
+    await tagActions.getTags('', ['profileCount', 'userId']);
 
     expect(appQueryMock).toHaveBeenCalledWith(
       flux,
@@ -87,6 +87,28 @@ describe('createTagActions', () => {
       {},
       ['added', 'category', 'description', 'id', 'modified', 'name', 'tagId', 'profileCount', 'userId'],
       expect.any(Object)
+    );
+  });
+
+  it('queries tags by item doc id', async () => {
+    const flux = createMockFlux();
+    const tagActions = createTagActions(flux as any);
+
+    appQueryMock.mockResolvedValue([]);
+
+    await tagActions.getTagsByItem('profiles/profile123', ['userId']);
+
+    expect(appQueryMock).toHaveBeenCalledWith(
+      flux,
+      'getTagsByItem',
+      'tags',
+      {
+        itemDocId: {
+          type: 'String!',
+          value: 'profiles/profile123'
+        }
+      },
+      ['added', 'category', 'description', 'id', 'modified', 'name', 'tagId', 'userId']
     );
   });
 
@@ -108,7 +130,7 @@ describe('createTagActions', () => {
           value: 'profiles/profile123'
         },
         tagId: {
-          type: 'String!',
+          type: 'ID!',
           value: 'alpha'
         }
       },
@@ -135,13 +157,59 @@ describe('createTagActions', () => {
           value: 'profiles/profile123'
         },
         tagId: {
-          type: 'String!',
+          type: 'ID!',
           value: 'alpha'
         }
       },
       [],
       expect.any(Object)
     );
+  });
+
+  it('uses an ID tag variable when deleting a tag', async () => {
+    const flux = createMockFlux();
+    const tagActions = createTagActions(flux as any);
+
+    appMutationMock.mockResolvedValue({name: 'Alpha'});
+
+    await tagActions.deleteTag('alpha');
+
+    expect(appMutationMock).toHaveBeenCalledWith(
+      flux,
+      'deleteTag',
+      'tags',
+      {
+        tagId: {
+          type: 'ID!',
+          value: 'alpha'
+        }
+      },
+      ['added', 'category', 'description', 'id', 'modified', 'name'],
+      expect.any(Object)
+    );
+  });
+
+  it('dispatches the original tagId after a delete mutation succeeds', async () => {
+    const flux = createMockFlux();
+    const tagActions = createTagActions(flux as any);
+
+    appMutationMock.mockImplementation(async (_flux, _name, _type, _variables, _fields, options) => options.onSuccess({
+      tags: {
+        deleteTag: {
+          name: 'Alpha'
+        }
+      }
+    }));
+
+    await tagActions.deleteTag('alpha');
+
+    expect(flux.dispatch).toHaveBeenCalledWith({
+      tag: {
+        name: 'Alpha',
+        tagId: 'alpha'
+      },
+      type: 'TAG_REMOVE_ITEM_SUCCESS'
+    });
   });
 
   it('returns cached tags only when no search filter is used', async () => {
@@ -166,6 +234,24 @@ describe('createTagActions', () => {
 
     expect(result).toEqual(cachedTags);
     expect(appQueryMock).not.toHaveBeenCalled();
+  });
+
+  it('treats an empty string search query as fetch-all', async () => {
+    const flux = createMockFlux();
+    const tagActions = createTagActions(flux as any);
+
+    appQueryMock.mockResolvedValue([]);
+
+    await tagActions.getTags('', ['description'], {forceRefresh: true});
+
+    expect(appQueryMock).toHaveBeenCalledWith(
+      flux,
+      'getTags',
+      'tags',
+      {},
+      ['added', 'category', 'description', 'id', 'modified', 'name', 'tagId'],
+      expect.any(Object)
+    );
   });
 
   it('bypasses cache when a search filter is used', async () => {

@@ -27,6 +27,7 @@ export interface User {
   lastActive?: number;
   locale?: string;
   mailingList?: boolean;
+  modified?: number;
   name?: string;
   password?: string;
   phone?: string;
@@ -38,6 +39,7 @@ export interface User {
   stripeCustomerId?: string;
   tags?: any[];
   timezone?: string;
+  thumbUrl?: string;
   type?: string;
   updated?: number;
   userAccess?: number;

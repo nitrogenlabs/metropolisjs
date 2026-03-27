@@ -307,7 +307,10 @@ export const refreshSession = async (
       }
     };
     const onSuccess = (data: ApiResultsType = {}): Promise<FluxAction> => {
-      const {refreshSession: sessionData = {}} = data;
+      const rawSessionData = data.refreshSession;
+      const sessionData = rawSessionData && typeof rawSessionData === 'object'
+        ? rawSessionData as Record<string, unknown>
+        : {};
       const currentSession = (flux.getState('user.session', {}) || {}) as Record<string, unknown>;
       const mergedSession = normalizeSession({...currentSession, ...sessionData});
       persistSession(flux, mergedSession);

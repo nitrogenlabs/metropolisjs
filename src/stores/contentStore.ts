@@ -42,7 +42,7 @@ export const contentStore = (type: string, data: ContentData, state = defaultVal
     case CONTENT_CONSTANTS.ADD_ITEM_SUCCESS: {
       const {content} = data;
       if(content && content.contentId) {
-        const {content: contents} = state;
+        const contents = {...state.content};
         contents[content.contentId] = {...content, timestamp: Date.now()};
         return {...state, content: contents};
       }
@@ -51,7 +51,7 @@ export const contentStore = (type: string, data: ContentData, state = defaultVal
     case CONTENT_CONSTANTS.GET_ITEM_SUCCESS: {
       const {content} = data;
       if(content && content.contentId) {
-        const {content: contents} = state;
+        const contents = {...state.content};
         contents[content.contentId] = {...content, timestamp: Date.now()};
         return {...state, content: contents};
       }
@@ -60,7 +60,7 @@ export const contentStore = (type: string, data: ContentData, state = defaultVal
     case CONTENT_CONSTANTS.GET_LIST_SUCCESS: {
       const {list} = data;
       if(list) {
-        const {content: contents} = state;
+        const contents = {...state.content};
 
         list.forEach((content: ContentType) => {
           if(content.contentId) {
@@ -76,7 +76,7 @@ export const contentStore = (type: string, data: ContentData, state = defaultVal
     case CONTENT_CONSTANTS.REMOVE_ITEM_SUCCESS: {
       const {content} = data;
       if(content && content.contentId) {
-        const {content: contents} = state;
+        const contents = {...state.content};
         delete contents[content.contentId];
         return {...state, content: contents};
       }
@@ -85,7 +85,7 @@ export const contentStore = (type: string, data: ContentData, state = defaultVal
     case CONTENT_CONSTANTS.UPDATE_ITEM_SUCCESS: {
       const {content} = data;
       if(content && content.contentId) {
-        const {content: contents} = state;
+        const contents = {...state.content};
         contents[content.contentId] = {...contents[content.contentId], ...content, timestamp: Date.now()};
         return {...state, content: contents};
       }

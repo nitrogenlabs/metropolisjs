@@ -12,9 +12,10 @@ import type { ReaktorDbCollection } from '../../utils/api.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'tags';
 const DEFAULT_TAG_PROPS = ['added', 'category', 'description', 'id', 'modified', 'name', 'tagId'];
+const DELETE_TAG_PROPS = DEFAULT_TAG_PROPS.filter((field) => field !== 'tagId');
 
-const sanitizeTagProps = (tagProps: string[] = []): string[] => {
-  const fields = [...DEFAULT_TAG_PROPS, ...tagProps];
+const sanitizeTagProps = (tagProps: string[] = [], baseProps: string[] = DEFAULT_TAG_PROPS): string[] => {
+  const fields = [...baseProps, ...tagProps];
   const seen = new Set<string>();
 
   return fields.reduce((result: string[], field: string) => {
@@ -48,6 +49,7 @@ export type TagApiResultsType = {
     addTagToItem: TagType;
     deleteTag: TagType;
     deleteTagFromItem: boolean;
+    getTagsByItem: TagType[];
     getTags: TagType[];
     updateTag: TagType;
   };
@@ -58,7 +60,12 @@ export interface TagActions {
   addTagToItem: (tagId: string, itemDocId?: string, tagProps?: string[]) => Promise<TagType>;
   deleteTag: (tagId: string, tagProps?: string[]) => Promise<TagType>;
   deleteTagFromItem: (tagId: string, itemDocId?: string) => Promise<boolean>;
-  getTags: (searchQueryOrTagProps?: string | string[], tagProps?: string[]) => Promise<TagType[]>;
+  getTagsByItem: (itemDocId: string, tagProps?: string[]) => Promise<TagType[]>;
+  getTags: (
+    searchQuery?: string,
+    tagProps?: string[],
+    options?: {forceRefresh?: boolean}
+  ) => Promise<TagType[]>;
   updateTag: (tag: Partial<TagType>, tagProps?: string[]) => Promise<TagType>;
   updateTagAdapter: (adapter: (input: unknown, options?: TagAdapterOptions) => any) => void;
   updateTagAdapterOptions: (options: TagAdapterOptions) => void;
@@ -144,7 +151,7 @@ export const createTagActions = (
           value: itemDocId
         },
         tagId: {
-          type: 'String!',
+          type: 'ID!',
           value: tagId
         }
       };
@@ -175,7 +182,7 @@ export const createTagActions = (
 
   const deleteTag = async (tagId: string, tagProps: string[] = []): Promise<TagType> => {
     try {
-      const requestedTagProps = sanitizeTagProps(tagProps);
+      const requestedTagProps = sanitizeTagProps(tagProps, DELETE_TAG_PROPS);
       const queryVariables = {
         tagId: {
           type: 'ID!',
@@ -185,7 +192,11 @@ export const createTagActions = (
 
       const onSuccess = (data: TagApiResultsType) => {
         const {tags: {deleteTag: tag = {}}} = data;
-        return flux.dispatch({tag, type: TAG_CONSTANTS.REMOVE_ITEM_SUCCESS});
+        const deletedTag = {
+          ...tag,
+          ...(tagId ? {tagId} : {})
+        };
+        return flux.dispatch({tag: deletedTag, type: TAG_CONSTANTS.REMOVE_ITEM_SUCCESS});
       };
 
       return await appMutation<TagType>(
@@ -213,7 +224,7 @@ export const createTagActions = (
           value: itemDocId
         },
         tagId: {
-          type: 'String!',
+          type: 'ID!',
           value: tagId
         }
       };
@@ -251,16 +262,17 @@ export const createTagActions = (
   };
 
   const getTags = async (
-    searchQueryOrTagProps?: string | string[],
-    tagProps: string[] = []
+    searchQuery = '',
+    tagProps: string[] = [],
+    options: {forceRefresh?: boolean} = {}
   ): Promise<TagType[]> => {
     const initialTags: TagType[] = flux.getState('tag.list', []) as TagType[];
     const cacheExpires: number = flux.getState('tag.expires', 0) as number;
     const now: number = Date.now();
-    const searchQuery = typeof searchQueryOrTagProps === 'string' ? searchQueryOrTagProps : undefined;
-    const requestedTagProps = sanitizeTagProps(Array.isArray(searchQueryOrTagProps) ? searchQueryOrTagProps : tagProps);
+    const requestedTagProps = sanitizeTagProps(tagProps);
+    const forceRefresh = !!options?.forceRefresh;
 
-    if(initialTags.length && now < cacheExpires && !searchQuery) {
+    if(!forceRefresh && initialTags.length && now < cacheExpires && !searchQuery) {
       await flux.dispatch({tags: initialTags, type: TAG_CONSTANTS.GET_LIST_SUCCESS});
       return initialTags;
     }
@@ -293,6 +305,32 @@ export const createTagActions = (
       );
     } catch(error) {
       flux.dispatch({error, type: TAG_CONSTANTS.GET_LIST_SUCCESS});
+      throw error;
+    }
+  };
+
+  const getTagsByItem = async (
+    itemDocId: string,
+    tagProps: string[] = []
+  ): Promise<TagType[]> => {
+    try {
+      const requestedTagProps = sanitizeTagProps(tagProps);
+      const queryVariables = {
+        itemDocId: {
+          type: 'String!',
+          value: itemDocId
+        }
+      };
+
+      return await appQuery<TagType[]>(
+        flux,
+        'getTagsByItem',
+        DATA_TYPE,
+        queryVariables,
+        requestedTagProps
+      );
+    } catch(error) {
+      flux.dispatch({error, type: TAG_CONSTANTS.GET_LIST_ERROR});
       throw error;
     }
   };
@@ -331,6 +369,7 @@ export const createTagActions = (
     addTagToItem,
     deleteTag,
     deleteTagFromItem,
+    getTagsByItem,
     getTags,
     updateTag,
     updateTagAdapter,

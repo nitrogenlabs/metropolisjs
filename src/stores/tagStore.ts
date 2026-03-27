@@ -35,11 +35,45 @@ export const defaultValues: TagState = {
 
 export const tagStore = (type: string, data: {tags?: TagState['list']}, state = defaultValues): TagState => {
   switch(type) {
+    case TAG_CONSTANTS.ADD_ITEM_SUCCESS:
+    case TAG_CONSTANTS.UPDATE_ITEM_SUCCESS: {
+      const {tag} = data as {tag?: TagType};
+      const tagId = String(tag?.tagId || '').trim();
+
+      if(!tagId) {
+        return state;
+      }
+
+      const list = state.list.some((item) => String(item?.tagId || '').trim() === tagId)
+        ? state.list.map((item) => (String(item?.tagId || '').trim() === tagId ? {...item, ...tag} : item))
+        : [...state.list, tag as TagType];
+
+      return {
+        ...state,
+        list: [...list].sort((left, right) => String(left?.name || '').localeCompare(String(right?.name || '')))
+      };
+    }
+
     case TAG_CONSTANTS.GET_LIST_SUCCESS: {
       const {tags = []} = data;
       const expires: number = DateTime.local().plus({hours: 24}).toMillis();
-      return {...state, expires, list: tags};
+      return {...state, expires, list: [...tags]};
     }
+
+    case TAG_CONSTANTS.REMOVE_ITEM_SUCCESS: {
+      const {tag} = data as {tag?: TagType};
+      const tagId = String(tag?.tagId || '').trim();
+
+      if(!tagId) {
+        return state;
+      }
+
+      return {
+        ...state,
+        list: state.list.filter((item) => String(item?.tagId || '').trim() !== tagId)
+      };
+    }
+
     default: {
       return state;
     }

@@ -32,7 +32,7 @@ export const eventStore = (type: string, data: {
   switch(type) {
     case EVENT_CONSTANTS.GET_LIST_SUCCESS: {
       const {list = [], type = 'default'} = data;
-      const {lists = {}} = state;
+      const lists = {...state.lists};
 
       lists[type] = list.map((event) => event);
       return {...state, lists};
