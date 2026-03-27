@@ -6,14 +6,17 @@ import { parseId } from '@nlabs/utils';
 
 import { validateProfileInput } from '../../adapters/profileAdapter/profileAdapter.js';
 import { PROFILE_CONSTANTS } from '../../stores/profileStore.js';
+import { USER_CONSTANTS } from '../../stores/userStore.js';
 import { appMutation, appQuery } from '../../utils/api.js';
 import { createBaseActions } from '../../utils/baseActionFactory.js';
+import { persistSession } from '../../utils/session.js';
 
 import type { FluxFramework } from '@nlabs/arkhamjs';
 import type { ProfileType } from '../../adapters/profileAdapter/profileAdapter.js';
 
 // Define the collection name for profiles
 const DATA_TYPE = 'profiles';
+const PROFILE_TAG_SESSION_FIELDS = ['profileId', 'tags {name, tagId}'];
 const DEFAULT_PROFILE_PROPS = [
   'imageId',
   'imageUrl',
@@ -58,6 +61,66 @@ export interface ProfileActions {
 
 // Default validation function
 const defaultProfileValidator = (input: unknown, options?: ProfileAdapterOptions) => validateProfileInput(input);
+
+export const syncProfileToSession = (flux: FluxFramework, profile: Partial<ProfileType> = {}) => {
+  const currentSession = (flux.getState('user.session', {}) || {}) as Record<string, unknown>;
+  const sessionProfileId = parseId(String(currentSession?.profileId || ''));
+  const fetchedProfileId = parseId(String(profile?.profileId || ''));
+
+  if(!sessionProfileId || !fetchedProfileId || sessionProfileId !== fetchedProfileId) {
+    return;
+  }
+
+  const nextSession = {
+    ...currentSession,
+    ...profile,
+    ...(Array.isArray(profile?.tags) ? {tags: profile.tags} : {})
+  };
+
+  flux.setState('user.session', nextSession);
+  persistSession(flux, nextSession);
+  flux.dispatch({type: USER_CONSTANTS.UPDATE_SESSION_SUCCESS, user: profile as any});
+};
+
+export const syncProfileTagsToSession = async (
+  flux: FluxFramework,
+  profileId: string = ''
+): Promise<Record<string, unknown>> => {
+  const normalizedProfileId = parseId(String(profileId || ''));
+
+  if(!normalizedProfileId) {
+    return (flux.getState('user.session', {}) || {}) as Record<string, unknown>;
+  }
+
+  const queryVariables = {
+    profileId: {
+      type: 'ID!',
+      value: normalizedProfileId
+    }
+  };
+
+  try {
+    const data = await appQuery(
+      flux,
+      'getProfile',
+      DATA_TYPE,
+      queryVariables,
+      PROFILE_TAG_SESSION_FIELDS
+    ) as unknown as {
+      profiles?: {getProfile?: Partial<ProfileType>};
+    };
+    const profile = data?.profiles?.getProfile || {};
+
+    syncProfileToSession(flux, {
+      ...(profile?.profileId ? {profileId: profile.profileId} : {profileId: normalizedProfileId}),
+      ...(Array.isArray(profile?.tags) ? {tags: profile.tags} : {})
+    });
+
+    return (flux.getState('user.session', {}) || {}) as Record<string, unknown>;
+  } catch(error) {
+    return (flux.getState('user.session', {}) || {}) as Record<string, unknown>;
+  }
+};
 
 /**
  * Factory function to create ProfileActions with enhanced adapter injection capabilities.
@@ -120,6 +183,7 @@ export const createProfileActions = (
 
       const onSuccess = (data: ProfileApiResultsType) => {
         const {profiles: {getProfile: profile = {}}} = data;
+        syncProfileToSession(flux, profile);
         return flux.dispatch({profile, type: PROFILE_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
@@ -197,6 +261,7 @@ export const createProfileActions = (
 
       const onSuccess = (data: ProfileApiResultsType) => {
         const {profiles: {updateProfile: profile = {}}} = data;
+        syncProfileToSession(flux, profile);
         return flux.dispatch({profile, type: PROFILE_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 

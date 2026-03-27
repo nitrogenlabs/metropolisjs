@@ -144,6 +144,16 @@ export const createTagActions = (
     tagProps: string[] = []
   ): Promise<TagType> => {
     try {
+      const session = (flux.getState('user.session', {}) || {}) as {profileId?: string; tags?: TagType[]};
+      const sessionProfileDocId = session?.profileId ? `profiles/${session.profileId}` : '';
+      const existingProfileTag = itemDocId === sessionProfileDocId
+        ? (session?.tags || []).find((tag) => String(tag?.tagId || '').trim() === String(tagId || '').trim())
+        : null;
+
+      if(existingProfileTag) {
+        return existingProfileTag;
+      }
+
       const requestedTagProps = sanitizeTagProps(tagProps);
       const queryVariables = {
         itemDocId: {
@@ -151,7 +161,7 @@ export const createTagActions = (
           value: itemDocId
         },
         tagId: {
-          type: 'ID!',
+          type: 'String!',
           value: tagId
         }
       };
@@ -185,7 +195,7 @@ export const createTagActions = (
       const requestedTagProps = sanitizeTagProps(tagProps, DELETE_TAG_PROPS);
       const queryVariables = {
         tagId: {
-          type: 'ID!',
+          type: 'String!',
           value: tagId
         }
       };
@@ -224,7 +234,7 @@ export const createTagActions = (
           value: itemDocId
         },
         tagId: {
-          type: 'ID!',
+          type: 'String!',
           value: tagId
         }
       };

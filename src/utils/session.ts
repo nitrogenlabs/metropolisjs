@@ -3,7 +3,7 @@ import {getConfigFromFlux} from './configUtils.js';
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {SessionType} from './api.js';
 
-const DEFAULT_SESSION_STORAGE_KEY = 'metropolis.user.session';
+const DEFAULT_SESSION_STORAGE_KEY = 'metropolis';
 
 const parseJwtExpiryMs = (token: string): number => {
   try {
@@ -33,7 +33,7 @@ export const getSessionStorageKey = (flux: FluxFramework, key?: string): string 
 
   const config = getConfigFromFlux(flux);
   const appName = String(config?.app?.name || '').trim();
-  return appName ? `${appName}.user.session` : DEFAULT_SESSION_STORAGE_KEY;
+  return appName || DEFAULT_SESSION_STORAGE_KEY;
 };
 
 export const normalizeSession = (session: Record<string, unknown> = {}): Record<string, unknown> => {
@@ -84,7 +84,8 @@ export const readStoredSession = (flux: FluxFramework, key?: string): SessionTyp
       return {};
     }
 
-    return normalizeSession(JSON.parse(raw)) as SessionType;
+    const parsed = JSON.parse(raw) as {session?: Record<string, unknown>};
+    return normalizeSession(parsed?.session || {}) as SessionType;
   } catch(error) {
     return {};
   }
@@ -102,7 +103,7 @@ export const persistSession = (
       const storageKey = getSessionStorageKey(flux, key);
 
       if(Object.keys(normalized).length > 0) {
-        window.sessionStorage.setItem(storageKey, JSON.stringify(normalized));
+        window.sessionStorage.setItem(storageKey, JSON.stringify({session: normalized}));
       } else {
         window.sessionStorage.removeItem(storageKey);
       }

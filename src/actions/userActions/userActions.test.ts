@@ -58,9 +58,6 @@ describe('userActions', () => {
     expect(userActions.session).toBeDefined();
     expect(userActions.signIn).toBeDefined();
     expect(userActions.signOut).toBeDefined();
-    expect(userActions.updateProfile).toBeDefined();
-    expect(userActions.updateProfileAdapter).toBeDefined();
-    expect(userActions.updateProfileAdapterOptions).toBeDefined();
     expect(userActions.updateUser).toBeDefined();
     expect(userActions.updateUserAdapter).toBeDefined();
     expect(userActions.updateUserAdapterOptions).toBeDefined();
@@ -82,9 +79,6 @@ describe('userActions', () => {
     expect(typeof userActions.session).toBe('function');
     expect(typeof userActions.signIn).toBe('function');
     expect(typeof userActions.signOut).toBe('function');
-    expect(typeof userActions.updateProfile).toBe('function');
-    expect(typeof userActions.updateProfileAdapter).toBe('function');
-    expect(typeof userActions.updateProfileAdapterOptions).toBe('function');
     expect(typeof userActions.updateUser).toBe('function');
     expect(typeof userActions.updateUserAdapter).toBe('function');
     expect(typeof userActions.updateUserAdapterOptions).toBe('function');
@@ -332,18 +326,6 @@ describe('userActions', () => {
     }
   });
 
-  it('should validate updateProfile method returns expected structure', async () => {
-    try {
-      const result = await userActions.updateProfile({bio: 'test-bio', name: 'test-name'});
-
-      expect(result).toBeDefined();
-      expect(typeof result).toBe('object');
-    } catch(error) {
-      expect(error).toBeDefined();
-      expect(error.message).toBeDefined();
-    }
-  });
-
   it('should validate updateUserAdapter method behavior', () => {
     const mockAdapter = () => {};
     const originalAdapter = userActions.updateUserAdapter;
@@ -365,29 +347,6 @@ describe('userActions', () => {
     expect(typeof userActions.updateUserAdapterOptions).toBe('function');
 
     userActions.updateUserAdapterOptions = originalOptions;
-  });
-
-  it('should validate updateProfileAdapter method behavior', () => {
-    const mockAdapter = () => {};
-    const originalAdapter = userActions.updateProfileAdapter;
-
-    userActions.updateProfileAdapter(mockAdapter);
-
-    expect(typeof userActions.updateProfileAdapter).toBe('function');
-    expect(mockAdapter).toBeDefined();
-
-    userActions.updateProfileAdapter = originalAdapter;
-  });
-
-  it('should validate updateProfileAdapterOptions method behavior', () => {
-    const testOptions = {strict: true};
-    const originalOptions = userActions.updateProfileAdapterOptions;
-
-    userActions.updateProfileAdapterOptions(testOptions);
-
-    expect(typeof userActions.updateProfileAdapterOptions).toBe('function');
-
-    userActions.updateProfileAdapterOptions = originalOptions;
   });
 
   it('should handle add with minimal input', async () => {

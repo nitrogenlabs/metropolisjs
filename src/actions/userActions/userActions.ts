@@ -2,9 +2,8 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {validateProfileInput, type ProfileType} from '../../adapters/profileAdapter/profileAdapter.js';
 import {validateUserInput} from '../../adapters/userAdapter/userAdapter.js';
-import {PROFILE_CONSTANTS} from '../../stores/index.js';
+import {syncProfileTagsToSession} from '../profileActions/profileActions.js';
 import {USER_CONSTANTS} from '../../stores/userStore.js';
 import {appMutation, appQuery, publicMutation, refreshSession} from '../../utils/api.js';
 import {createBaseActions} from '../../utils/baseActionFactory.js';
@@ -45,6 +44,14 @@ const syncStoredSession = (flux: FluxFramework, sessionPatch: Record<string, unk
   }
 
   return mergedSession;
+};
+
+const getSessionPayload = (payload: unknown): Record<string, unknown> => {
+  if(payload && typeof payload === 'object' && 'session' in (payload as Record<string, unknown>)) {
+    return (((payload as Record<string, unknown>).session) || {}) as Record<string, unknown>;
+  }
+
+  return (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>;
 };
 
 const getFieldRoot = (field: string): string => {
@@ -130,13 +137,10 @@ const withInvalidFieldRetry = async <T>(
 };
 
 export type UserAdapterOptions = BaseAdapterOptions;
-export type UserProfileAdapterOptions = BaseAdapterOptions;
 
 export interface UserActionsOptions {
   readonly userAdapter?: (input: unknown, options?: UserAdapterOptions) => any;
-  readonly profileAdapter?: (input: unknown, options?: UserProfileAdapterOptions) => any;
   readonly userAdapterOptions?: UserAdapterOptions;
-  readonly profileAdapterOptions?: UserProfileAdapterOptions;
 }
 
 export interface UserApiResultsType {
@@ -167,7 +171,6 @@ export interface UserApiResultsType {
     readonly update?: Partial<User>;
     readonly updateUser?: Partial<User>;
     readonly updatePassword?: Partial<boolean>;
-    readonly updateProfile?: Partial<ProfileType>;
   };
 }
 
@@ -180,8 +183,6 @@ const defaultUserValidator = (input: unknown, options?: UserAdapterOptions) => {
 
   return validated;
 };
-
-const defaultProfileValidator = (input: unknown, options?: UserProfileAdapterOptions) => validateProfileInput(input);
 
 export interface userActions {
   addUser: (userInput: Partial<User>, userProps?: string[]) => Promise<User>;
@@ -219,11 +220,8 @@ export interface userActions {
   signUp: (userInput: Partial<User>, userProps?: string[]) => Promise<User>;
   updatePassword: (password: string, newPassword: string) => Promise<boolean>;
   updateUser: (userInput: Partial<User>, userProps?: string[]) => Promise<User>;
-  updateProfile: (profileInput: Partial<ProfileType>, userProps?: string[]) => Promise<ProfileType>;
   updateUserAdapter: (adapter: (input: unknown, options?: UserAdapterOptions) => any) => void;
-  updateProfileAdapter: (adapter: (input: unknown, options?: UserProfileAdapterOptions) => any) => void;
   updateUserAdapterOptions: (options: UserAdapterOptions) => void;
-  updateProfileAdapterOptions: (options: UserProfileAdapterOptions) => void;
 }
 
 export const createUserActions = (
@@ -233,11 +231,6 @@ export const createUserActions = (
   const userBase = createBaseActions(flux, defaultUserValidator, {
     adapter: options?.userAdapter,
     adapterOptions: options?.userAdapterOptions
-  });
-
-  const profileBase = createBaseActions(flux, defaultProfileValidator, {
-    adapter: options?.profileAdapter,
-    adapterOptions: options?.profileAdapterOptions
   });
   const addUser = async (userInput: Partial<User>, userProps: string[] = []): Promise<User> => {
     const {username, email, password} = userInput;
@@ -424,44 +417,6 @@ export const createUserActions = (
     );
   };
 
-  const updateProfile = async (profileInput: Partial<ProfileType>, userProps: string[] = []): Promise<ProfileType> => {
-    const profile = profileBase.validator(profileInput) as Partial<ProfileType>;
-    const queryVariables = {
-      profile: {
-        type: 'ProfileInput!',
-        value: profile
-      }
-    };
-
-    const onSuccess = (data: ApiResultsType = {}) => {
-      const {users: {updateProfile: profile = {}}} = data as unknown as UserApiResultsType;
-      return flux.dispatch({profile, type: PROFILE_CONSTANTS.UPDATE_ITEM_SUCCESS});
-    };
-
-    const returnProps = sanitizeUserProps([
-      'userId',
-      'username',
-      'added',
-      'modified',
-      'city',
-      'state',
-      'country',
-      'location',
-      'latitude',
-      'longitude',
-      'birthdate',
-      'gender',
-      ...userProps
-    ], ['userId', 'modified']);
-
-    return withInvalidFieldRetry(
-      (safeProps) => appMutation(flux, 'updateProfile', DATA_TYPE, queryVariables, safeProps, {onSuccess}),
-      returnProps,
-      ['userId', 'modified']
-    );
-  };
-
-
   const confirmCode = async (code: number, {type, value}: {type: 'email' | 'phone'; value: string}): Promise<boolean> => {
     const queryVariables = {
       code: {
@@ -478,13 +433,12 @@ export const createUserActions = (
       }
     };
 
-    const onSuccess = (data: boolean = false) =>
-      flux.dispatch({confirmed: data, type: USER_CONSTANTS.CONFIRM_SIGN_UP_SUCCESS});
+    const data = await publicMutation<UserApiResultsType>(flux, 'confirmCode', DATA_TYPE, queryVariables, []);
+    const confirmed = !!data?.users?.confirmCode;
 
-    return publicMutation<UserApiResultsType>(flux, 'confirmCode', DATA_TYPE, queryVariables, [], {onSuccess}).then((data) => {
-      const confirmed = data?.users?.confirmCode;
-      return !!confirmed;
-    });
+    await flux.dispatch({confirmed, type: USER_CONSTANTS.CONFIRM_SIGN_UP_SUCCESS});
+
+    return confirmed;
   };
 
   const remove = async (userId: string): Promise<User> => {
@@ -525,6 +479,8 @@ export const createUserActions = (
 
       syncStoredSession(flux, sessionData as Record<string, unknown>);
       await flux.dispatch({session: sessionData, type: USER_CONSTANTS.GET_SESSION_SUCCESS});
+      await syncProfileTagsToSession(flux, String((sessionData as any)?.profileId || ''));
+      syncStoredSession(flux, (flux.getState('user.session', {}) || {}) as Record<string, unknown>);
       return sessionData as User;
     },
     userProps,
@@ -714,7 +670,7 @@ export const createUserActions = (
     };
 
     const performSignIn = async (queryVariables: any): Promise<SessionType> => {
-      const sessionData = await publicMutation<SessionType & UserApiResultsType>(
+      const sessionResult = await publicMutation<SessionType & UserApiResultsType>(
         flux,
         'signIn',
         DATA_TYPE,
@@ -722,7 +678,21 @@ export const createUserActions = (
         ['expires', 'issued', 'token', 'userId', 'username'],
         {onSuccess}
       );
-      return normalizeSession(sessionData as unknown as Record<string, unknown>) as SessionType;
+      const baseSession = syncStoredSession(flux, getSessionPayload(sessionResult));
+
+      try {
+        const hydratedSession = await session(['profileId', 'userAccess']);
+        await syncProfileTagsToSession(flux, String((hydratedSession as any)?.profileId || ''));
+      } catch(error) {
+        syncStoredSession(flux, baseSession as Record<string, unknown>);
+        return baseSession;
+      }
+
+      const finalSession = syncStoredSession(
+        flux,
+        (flux.getState('user.session', baseSession) || baseSession) as Record<string, unknown>
+      );
+      return finalSession;
     };
 
     try {
@@ -833,13 +803,10 @@ export const createUserActions = (
     session,
     signIn,
     signOut,
-    signUp,
-    updatePassword,
-    updateProfile,
-    updateProfileAdapter: profileBase.updateAdapter,
-    updateProfileAdapterOptions: profileBase.updateOptions,
-    updateUser,
-    updateUserAdapter: userBase.updateAdapter,
-    updateUserAdapterOptions: userBase.updateOptions
-  };
+	    signUp,
+	    updatePassword,
+	    updateUser,
+	    updateUserAdapter: userBase.updateAdapter,
+	    updateUserAdapterOptions: userBase.updateOptions
+	  };
 };

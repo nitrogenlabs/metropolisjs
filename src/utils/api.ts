@@ -307,7 +307,7 @@ export const refreshSession = async (
       }
     };
     const onSuccess = (data: ApiResultsType = {}): Promise<FluxAction> => {
-      const rawSessionData = data.refreshSession;
+      const rawSessionData = (data as {users?: {refreshSession?: Record<string, unknown>}})?.users?.refreshSession;
       const sessionData = rawSessionData && typeof rawSessionData === 'object'
         ? rawSessionData as Record<string, unknown>
         : {};
