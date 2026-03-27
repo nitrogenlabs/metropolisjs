@@ -11,8 +11,7 @@ import type { TagType } from '../../adapters/tagAdapter/tagAdapter.js';
 import type { ReaktorDbCollection } from '../../utils/api.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'tags';
-const DEFAULT_TAG_PROPS = ['added', 'description', 'id', 'modified', 'name', 'tagId'];
-const ALLOWED_TAG_PROPS = new Set(DEFAULT_TAG_PROPS);
+const DEFAULT_TAG_PROPS = ['added', 'category', 'description', 'id', 'modified', 'name', 'tagId'];
 
 const sanitizeTagProps = (tagProps: string[] = []): string[] => {
   const fields = [...DEFAULT_TAG_PROPS, ...tagProps];
@@ -21,7 +20,7 @@ const sanitizeTagProps = (tagProps: string[] = []): string[] => {
   return fields.reduce((result: string[], field: string) => {
     const nextField = String(field || '').trim();
 
-    if(!nextField || seen.has(nextField) || !ALLOWED_TAG_PROPS.has(nextField)) {
+    if(!nextField || seen.has(nextField)) {
       return result;
     }
 
@@ -46,9 +45,9 @@ export interface TagActionsOptions {
 export type TagApiResultsType = {
   tags: {
     addTag: TagType;
-    addTagToProfile: TagType;
+    addTagToItem: TagType;
     deleteTag: TagType;
-    deleteTagFromProfile: TagType;
+    deleteTagFromItem: boolean;
     getTags: TagType[];
     updateTag: TagType;
   };
@@ -56,9 +55,9 @@ export type TagApiResultsType = {
 
 export interface TagActions {
   addTag: (tag: Partial<TagType>, tagProps?: string[]) => Promise<TagType>;
-  addTagToProfile: (tagId: string, profileId?: string, tagProps?: string[]) => Promise<TagType>;
+  addTagToItem: (tagId: string, itemDocId?: string, tagProps?: string[]) => Promise<TagType>;
   deleteTag: (tagId: string, tagProps?: string[]) => Promise<TagType>;
-  deleteTagFromProfile: (tagId: string, profileId?: string, tagProps?: string[]) => Promise<TagType>;
+  deleteTagFromItem: (tagId: string, itemDocId?: string) => Promise<boolean>;
   getTags: (searchQueryOrTagProps?: string | string[], tagProps?: string[]) => Promise<TagType[]>;
   updateTag: (tag: Partial<TagType>, tagProps?: string[]) => Promise<TagType>;
   updateTagAdapter: (adapter: (input: unknown, options?: TagAdapterOptions) => any) => void;
@@ -132,17 +131,17 @@ export const createTagActions = (
     }
   };
 
-  const addTagToProfile = async (
+  const addTagToItem = async (
     tagId: string,
-    profileId = '',
+    itemDocId = '',
     tagProps: string[] = []
   ): Promise<TagType> => {
     try {
       const requestedTagProps = sanitizeTagProps(tagProps);
       const queryVariables = {
-        profileId: {
-          type: 'String',
-          value: profileId
+        itemDocId: {
+          type: 'String!',
+          value: itemDocId
         },
         tagId: {
           type: 'String!',
@@ -151,13 +150,18 @@ export const createTagActions = (
       };
 
       const onSuccess = (data: TagApiResultsType) => {
-        const {tags: {addTagToProfile: tag = {}}} = data;
-        return flux.dispatch({tag, type: TAG_CONSTANTS.ADD_PROFILE_SUCCESS});
+        const {tags: {addTagToItem: tag = {}}} = data;
+
+        if(itemDocId.startsWith('profiles/')) {
+          return flux.dispatch({tag, type: TAG_CONSTANTS.ADD_PROFILE_SUCCESS});
+        }
+
+        return flux.dispatch({itemDocId, tag, type: TAG_CONSTANTS.ADD_LINK_SUCCESS});
       };
 
       return await appMutation<TagType>(
         flux,
-        'addTagToProfile',
+        'addTagToItem',
         DATA_TYPE,
         queryVariables,
         requestedTagProps,
@@ -198,17 +202,15 @@ export const createTagActions = (
     }
   };
 
-  const deleteTagFromProfile = async (
+  const deleteTagFromItem = async (
     tagId: string,
-    profileId = '',
-    tagProps: string[] = []
-  ): Promise<TagType> => {
+    itemDocId = ''
+  ): Promise<boolean> => {
     try {
-      const requestedTagProps = sanitizeTagProps(tagProps);
       const queryVariables = {
-        profileId: {
-          type: 'String',
-          value: profileId
+        itemDocId: {
+          type: 'String!',
+          value: itemDocId
         },
         tagId: {
           type: 'String!',
@@ -217,19 +219,29 @@ export const createTagActions = (
       };
 
       const onSuccess = (data: TagApiResultsType) => {
-        const {tags: {deleteTagFromProfile: tag = {}}} = data;
+        const {tags: {deleteTagFromItem: removed = false}} = data;
+
+        if(removed && itemDocId.startsWith('profiles/')) {
+          return flux.dispatch({
+            tag: {tagId},
+            type: TAG_CONSTANTS.REMOVE_PROFILE_SUCCESS
+          });
+        }
+
         return flux.dispatch({
-          tag,
-          type: TAG_CONSTANTS.REMOVE_PROFILE_SUCCESS
+          itemDocId,
+          removed,
+          tag: {tagId},
+          type: TAG_CONSTANTS.REMOVE_LINK_SUCCESS
         });
       };
 
-      return await appMutation<TagType>(
+      return await appMutation<boolean>(
         flux,
-        'deleteTagFromProfile',
+        'deleteTagFromItem',
         DATA_TYPE,
         queryVariables,
-        requestedTagProps,
+        [],
         {onSuccess}
       );
     } catch(error) {
@@ -316,9 +328,9 @@ export const createTagActions = (
 
   return {
     addTag,
-    addTagToProfile,
+    addTagToItem,
     deleteTag,
-    deleteTagFromProfile,
+    deleteTagFromItem,
     getTags,
     updateTag,
     updateTagAdapter,

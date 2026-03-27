@@ -44,7 +44,7 @@ describe('createTagActions', () => {
       'getTags',
       'tags',
       {},
-      ['category', 'id', 'name', 'tagId', 'description'],
+      ['added', 'category', 'description', 'id', 'modified', 'name', 'tagId'],
       expect.any(Object)
     );
   });
@@ -67,7 +67,79 @@ describe('createTagActions', () => {
           value: 'tech'
         }
       },
-      ['category', 'id', 'name', 'tagId', 'description'],
+      ['added', 'category', 'description', 'id', 'modified', 'name', 'tagId'],
+      expect.any(Object)
+    );
+  });
+
+  it('passes through additional requested tag fields', async () => {
+    const flux = createMockFlux();
+    const tagActions = createTagActions(flux as any);
+
+    appQueryMock.mockResolvedValue([]);
+
+    await tagActions.getTags(['profileCount', 'userId']);
+
+    expect(appQueryMock).toHaveBeenCalledWith(
+      flux,
+      'getTags',
+      'tags',
+      {},
+      ['added', 'category', 'description', 'id', 'modified', 'name', 'tagId', 'profileCount', 'userId'],
+      expect.any(Object)
+    );
+  });
+
+  it('uses addTagToItem with a full item doc id', async () => {
+    const flux = createMockFlux();
+    const tagActions = createTagActions(flux as any);
+
+    appMutationMock.mockResolvedValue({tagId: 'alpha', name: 'Alpha'});
+
+    await tagActions.addTagToItem('alpha', 'profiles/profile123', ['userId']);
+
+    expect(appMutationMock).toHaveBeenCalledWith(
+      flux,
+      'addTagToItem',
+      'tags',
+      {
+        itemDocId: {
+          type: 'String!',
+          value: 'profiles/profile123'
+        },
+        tagId: {
+          type: 'String!',
+          value: 'alpha'
+        }
+      },
+      ['added', 'category', 'description', 'id', 'modified', 'name', 'tagId', 'userId'],
+      expect.any(Object)
+    );
+  });
+
+  it('uses deleteTagFromItem with a full item doc id', async () => {
+    const flux = createMockFlux();
+    const tagActions = createTagActions(flux as any);
+
+    appMutationMock.mockResolvedValue(true);
+
+    await tagActions.deleteTagFromItem('alpha', 'profiles/profile123');
+
+    expect(appMutationMock).toHaveBeenCalledWith(
+      flux,
+      'deleteTagFromItem',
+      'tags',
+      {
+        itemDocId: {
+          type: 'String!',
+          value: 'profiles/profile123'
+        },
+        tagId: {
+          type: 'String!',
+          value: 'alpha'
+        }
+      },
+      [],
       expect.any(Object)
     );
   });
