@@ -558,21 +558,21 @@ describe('userActions', () => {
     }
   });
 
-  it('should handle listByReactions with profileProps', async () => {
-    const profileProps = ['bio', 'name'];
+  it('should handle listByReactions with personaProps', async () => {
+    const personaProps = ['bio', 'name'];
 
     try {
-      await userActions.listByReactions('testuser', ['like'], 0, 10, profileProps);
+      await userActions.listByReactions('testuser', ['like'], 0, 10, personaProps);
     } catch(error) {
       expect(error).toBeDefined();
     }
   });
 
-  it('should handle listByTags with profileProps', async () => {
-    const profileProps = ['bio', 'name'];
+  it('should handle listByTags with personaProps', async () => {
+    const personaProps = ['bio', 'name'];
 
     try {
-      await userActions.listByTags('testuser', ['tag1'], 0, 10, profileProps);
+      await userActions.listByTags('testuser', ['tag1'], 0, 10, personaProps);
     } catch(error) {
       expect(error).toBeDefined();
     }

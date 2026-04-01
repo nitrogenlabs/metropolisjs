@@ -11,7 +11,7 @@ import { parseLocation } from '../adapters/locationAdapter/locationAdapter.js';
 import { parseMessage } from '../adapters/messageAdapter/messageAdapter.js';
 import { parsePermission } from '../adapters/permissionAdapter/permissionAdapter.js';
 import { parsePost } from '../adapters/postAdapter/postAdapter.js';
-import { parseProfile } from '../adapters/profileAdapter/profileAdapter.js';
+import { parsePersona } from '../adapters/personaAdapter/personaAdapter.js';
 import { parseReaction } from '../adapters/reactionAdapter/reactionAdapter.js';
 import { parseTag } from '../adapters/tagAdapter/tagAdapter.js';
 import { parseTranslation } from '../adapters/translationAdapter/translationAdapter.js';
@@ -30,7 +30,7 @@ export interface MetropolisAdapters {
   readonly Message?: typeof parseMessage;
   readonly Permission?: typeof parsePermission;
   readonly Post?: typeof parsePost;
-  readonly Profile?: typeof parseProfile;
+  readonly Persona?: typeof parsePersona;
   readonly Reaction?: typeof parseReaction;
   readonly Tag?: typeof parseTag;
   readonly Translation?: typeof parseTranslation;

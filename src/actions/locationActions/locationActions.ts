@@ -201,7 +201,7 @@ export const createLocationActions = (
     const {userId}: User = flux.getState('user.session', {});
     const {city, country, latitude, longitude, state}: User = flux.getState(['user', 'users', userId || ''], {});
     const locationStr: string = [city, state, country].join(', ');
-    const profileLocation = {
+    const personaLocation = {
       latitude,
       location: locationStr,
       longitude
@@ -223,23 +223,23 @@ export const createLocationActions = (
         },
         (locationError) => {
           console.log('getCurrentLocation::locationError', locationError);
-          console.log('getCurrentLocation::profileLocation1', profileLocation);
+          console.log('getCurrentLocation::personaLocation1', personaLocation);
           if(setLocation) {
-            setLocation(profileLocation);
+            setLocation(personaLocation);
           }
 
-          flux.dispatch({current: profileLocation, type: LOCATION_CONSTANTS.SET_CURRENT});
+          flux.dispatch({current: personaLocation, type: LOCATION_CONSTANTS.SET_CURRENT});
           reject(locationError);
         },
         {enableHighAccuracy: false, maximumAge: 0, timeout: 30000}
       );
     } else {
-      console.log('getCurrentLocation::profileLocation2', profileLocation);
+      console.log('getCurrentLocation::personaLocation2', personaLocation);
       if(setLocation) {
-        setLocation(profileLocation);
+        setLocation(personaLocation);
       }
 
-      flux.dispatch({current: profileLocation, type: LOCATION_CONSTANTS.SET_CURRENT});
+      flux.dispatch({current: personaLocation, type: LOCATION_CONSTANTS.SET_CURRENT});
       reject('Geolocation is not supported by this browser.');
     }
   });

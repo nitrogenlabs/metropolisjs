@@ -29,7 +29,7 @@ export type ReaktorDbCollection =
   'payments' |
   'permissions' |
   'posts' |
-  'profiles' |
+  'personas' |
   'reactions' |
   'subscriptions' |
   'tags' |

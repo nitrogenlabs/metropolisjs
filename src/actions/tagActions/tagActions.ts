@@ -144,14 +144,14 @@ export const createTagActions = (
     tagProps: string[] = []
   ): Promise<TagType> => {
     try {
-      const session = (flux.getState('user.session', {}) || {}) as {profileId?: string; tags?: TagType[]};
-      const sessionProfileDocId = session?.profileId ? `profiles/${session.profileId}` : '';
-      const existingProfileTag = itemDocId === sessionProfileDocId
+      const session = (flux.getState('user.session', {}) || {}) as {personaId?: string; tags?: TagType[]};
+      const sessionPersonaDocId = session?.personaId ? `personas/${session.personaId}` : '';
+      const existingPersonaTag = itemDocId === sessionPersonaDocId
         ? (session?.tags || []).find((tag) => String(tag?.tagId || '').trim() === String(tagId || '').trim())
         : null;
 
-      if(existingProfileTag) {
-        return existingProfileTag;
+      if(existingPersonaTag) {
+        return existingPersonaTag;
       }
 
       const requestedTagProps = sanitizeTagProps(tagProps);
@@ -169,8 +169,8 @@ export const createTagActions = (
       const onSuccess = async (data: TagApiResultsType): Promise<FluxAction> => {
         const tag = data?.tags?.addTagToItem || {};
 
-        if(itemDocId.startsWith('profiles/')) {
-          return await flux.dispatch({tag, type: TAG_CONSTANTS.ADD_PROFILE_SUCCESS});
+        if(itemDocId.startsWith('personas/')) {
+          return await flux.dispatch({tag, type: TAG_CONSTANTS.ADD_PERSONA_SUCCESS});
         }
 
         return await flux.dispatch({itemDocId, tag, type: TAG_CONSTANTS.ADD_LINK_SUCCESS});
@@ -185,7 +185,7 @@ export const createTagActions = (
         {onSuccess}
       );
     } catch(error) {
-      flux.dispatch({error, type: TAG_CONSTANTS.ADD_PROFILE_ERROR});
+      flux.dispatch({error, type: TAG_CONSTANTS.ADD_PERSONA_ERROR});
       throw error;
     }
   };
@@ -242,10 +242,10 @@ export const createTagActions = (
       const onSuccess = async (data: TagApiResultsType): Promise<FluxAction> => {
         const removed = data?.tags?.deleteTagFromItem ?? false;
 
-        if(removed && itemDocId.startsWith('profiles/')) {
+        if(removed && itemDocId.startsWith('personas/')) {
           return await flux.dispatch({
             tag: {tagId},
-            type: TAG_CONSTANTS.REMOVE_PROFILE_SUCCESS
+            type: TAG_CONSTANTS.REMOVE_PERSONA_SUCCESS
           });
         }
 
@@ -266,7 +266,7 @@ export const createTagActions = (
         {onSuccess}
       );
     } catch(error) {
-      flux.dispatch({error, type: TAG_CONSTANTS.REMOVE_PROFILE_ERROR});
+      flux.dispatch({error, type: TAG_CONSTANTS.REMOVE_PERSONA_ERROR});
       throw error;
     }
   };

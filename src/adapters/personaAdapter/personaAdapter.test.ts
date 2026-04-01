@@ -1,144 +1,372 @@
-import {parsePersona, PersonaValidationError, validatePersonaInput} from './personaAdapter';
+import {describe, expect} from '@jest/globals';
+
+import {
+  PersonaValidationError,
+  formatPersonaOutput,
+  parsePersona,
+  validatePersonaInput
+} from './personaAdapter';
 
 describe('personaAdapter', () => {
   describe('validatePersonaInput', () => {
     it('should validate valid persona input', () => {
       const validPersona = {
-        personaId: 'persona1',
-        name: 'Test Persona',
-        description: 'A test persona',
-        userId: 'user1',
-        active: true
+        active: true,
+        gender: 'M',
+        name: 'John Doe',
+        userId: 'user-123'
       };
 
       const result = validatePersonaInput(validPersona);
+
       expect(result).toEqual(validPersona);
     });
 
-    it('should handle minimal persona input', () => {
+    it('should validate persona with minimal input', () => {
       const minimalPersona = {
-        personaId: 'persona1',
-        name: 'Test Persona'
+        name: 'Jane Doe'
       };
 
       const result = validatePersonaInput(minimalPersona);
+
       expect(result).toEqual(minimalPersona);
     });
 
-    it('should throw PersonaValidationError for invalid input', () => {
-      const invalidPersona = {
-        personaId: 123,
-        name: 456
-      } as unknown;
-
-      expect(() => validatePersonaInput(invalidPersona)).toThrow(Error);
-    });
-
-    it('should handle additional properties', () => {
-      const personaWithExtra = {
-        personaId: 'persona1',
-        name: 'Test Persona',
-        customField: 'value'
+    it('should validate persona with all fields', () => {
+      const fullPersona = {
+        _from: 'users/456',
+        _id: 'personas/123',
+        _key: '123',
+        _oldRev: 'old-rev',
+        _rev: 'new-rev',
+        _to: 'posts/789',
+        active: true,
+        gender: 'F',
+        hasLike: true,
+        hasView: false,
+        id: 'persona-123',
+        imageCount: 5,
+        imageId: 'image-123',
+        imageUrl: 'https://example.com/persona.jpg',
+        images: [{url: 'https://example.com/image.jpg'}],
+        likeCount: 42,
+        name: 'Jane Smith',
+        personaId: 'persona-123',
+        tags: [{name: 'developer'}],
+        thumbUrl: 'https://example.com/thumb.jpg',
+        userId: 'user-123',
+        viewCount: 100
       };
 
-      const result = validatePersonaInput(personaWithExtra);
-      expect(result).toEqual(personaWithExtra);
+      const result = validatePersonaInput(fullPersona);
+
+      expect(result).toEqual(fullPersona);
+    });
+
+    it('should throw PersonaValidationError for invalid gender', () => {
+      const invalidPersona = {
+        gender: 'INVALID',
+        name: 'John Doe'
+      };
+
+      expect(() => validatePersonaInput(invalidPersona)).toThrow(PersonaValidationError);
+    });
+
+    it('should throw PersonaValidationError for name too long', () => {
+      const invalidPersona = {
+        name: 'a'.repeat(65)
+      };
+
+      expect(() => validatePersonaInput(invalidPersona)).toThrow(PersonaValidationError);
+    });
+
+    it('should handle empty object', () => {
+      const result = validatePersonaInput({});
+
+      expect(result).toEqual({});
+    });
+
+    it('should handle null and undefined values', () => {
+      const personaWithUndefined = {
+        name: undefined,
+        gender: undefined,
+        active: undefined
+      };
+
+      const result = validatePersonaInput(personaWithUndefined);
+
+      expect(result).toEqual(personaWithUndefined);
+    });
+
+    it('should validate boolean fields', () => {
+      const persona = {
+        active: false,
+        hasLike: true,
+        hasView: false
+      };
+
+      const result = validatePersonaInput(persona);
+
+      expect(result).toEqual(persona);
+    });
+
+    it('should validate numeric fields', () => {
+      const persona = {
+        imageCount: 10,
+        likeCount: 25,
+        viewCount: 150
+      };
+
+      const result = validatePersonaInput(persona);
+
+      expect(result).toEqual(persona);
+    });
+
+    it('should validate array fields', () => {
+      const persona = {
+        images: [{id: 'img1'}, {id: 'img2'}],
+        tags: [{name: 'tag1'}, {name: 'tag2'}]
+      };
+
+      const result = validatePersonaInput(persona);
+
+      expect(result).toEqual(persona);
+    });
+  });
+
+  describe('formatPersonaOutput', () => {
+    it('should return persona as-is', () => {
+      const persona = {
+        active: true,
+        gender: 'M',
+        name: 'John Doe'
+      };
+
+      const result = formatPersonaOutput(persona);
+
+      expect(result).toBe(persona);
+    });
+
+    it('should handle empty persona', () => {
+      const result = formatPersonaOutput({});
+
+      expect(result).toEqual({});
     });
   });
 
   describe('parsePersona', () => {
     it('should parse persona with all fields', () => {
       const persona = {
-        _id: 'personas/persona1',
-        _key: 'persona1',
-        personaId: 'persona1',
-        name: 'Test Persona',
-        description: 'A test persona',
-        userId: 'user1',
-        avatar: 'avatar.jpg',
-        cover: 'cover.jpg',
+        _id: 'personas/123',
+        _key: '123',
         active: true,
-        featured: false,
-        cached: 1234567890,
-        modified: 1234567890
+        gender: 'M',
+        hasLike: true,
+        hasView: false,
+        imageCount: 5,
+        imageId: 'image-123',
+        imageUrl: 'https://example.com/persona.jpg',
+        images: [{url: 'https://example.com/image.jpg'}],
+        likeCount: 42,
+        name: 'John Doe',
+        personaId: 'persona-123',
+        tags: [{name: 'developer'}],
+        thumbUrl: 'https://example.com/thumb.jpg',
+        userId: 'user-123',
+        viewCount: 100
       };
 
       const result = parsePersona(persona);
-      expect(result.personaId).toBe('persona1');
-      expect(result.name).toBe('Test Persona');
-      expect(result.description).toBe('A test persona');
-      expect(result.userId).toBe('user1');
-      expect(result.avatar).toBe('avatar.jpg');
-      expect(result.cover).toBe('cover.jpg');
-      expect(result.active).toBe(true);
-      expect(result.featured).toBe(false);
-      expect(result.cached).toBe(1234567890);
-      expect(result.modified).toBe(1234567890);
+
+      expect(result).toHaveProperty('id');
+      expect(result).toHaveProperty('personaId');
+      expect(result).toHaveProperty('name');
+      expect(result).toHaveProperty('gender');
+      expect(result).toHaveProperty('active');
+      expect(result).toHaveProperty('hasLike');
+      expect(result).toHaveProperty('hasView');
+      expect(result).toHaveProperty('imageCount');
+      expect(result).toHaveProperty('likeCount');
+      expect(result).toHaveProperty('viewCount');
+      expect(result).toHaveProperty('userId');
     });
 
-    it('should handle persona with minimal fields', () => {
-      const minimalPersona = {
-        personaId: 'persona1',
-        name: 'Test Persona'
-      };
-
-      const result = parsePersona(minimalPersona);
-      expect(result.personaId).toBe('persona1');
-      expect(result.name).toBe('Test Persona');
-      expect(result.description).toBeUndefined();
-      expect(result.userId).toBeUndefined();
-    });
-
-    it('should parse ArangoDB fields correctly', () => {
+    it('should parse persona with minimal fields', () => {
       const persona = {
-        _id: 'personas/persona1',
-        _key: 'persona1',
-        personaId: 'persona1',
-        name: 'Test Persona'
+        name: 'Jane Doe'
       };
 
       const result = parsePersona(persona);
-      expect(result.id).toBe('personas/persona1');
+
+      expect(result).toHaveProperty('name');
+      expect(result.name).toBe('Jane Doe');
+    });
+
+    it('should handle persona with only ID fields', () => {
+      const persona = {
+        _id: 'personas/123',
+        _key: '123'
+      };
+
+      const result = parsePersona(persona);
+
+      expect(result).toHaveProperty('id');
+      expect(result).toHaveProperty('personaId');
     });
 
     it('should handle boolean fields', () => {
       const persona = {
-        personaId: 'persona1',
-        name: 'Test Persona',
-        active: true,
-        featured: false
+        active: 'true',
+        hasLike: 'false',
+        hasView: 'true',
+        name: 'John Doe'
       };
 
       const result = parsePersona(persona);
-      expect(result.active).toBe(true);
-      expect(result.featured).toBe(false);
+
+      expect(result).toHaveProperty('active');
+      expect(result).toHaveProperty('hasLike');
+      expect(result).toHaveProperty('hasView');
+      expect(typeof result.active).toBe('boolean');
+      expect(typeof result.hasLike).toBe('boolean');
+      expect(typeof result.hasView).toBe('boolean');
     });
 
     it('should handle numeric fields', () => {
       const persona = {
-        personaId: 'persona1',
-        name: 'Test Persona',
-        cached: 1234567890,
-        modified: 1234567890
+        imageCount: '10',
+        likeCount: '25',
+        name: 'John Doe',
+        viewCount: '150'
       };
 
       const result = parsePersona(persona);
-      expect(result.cached).toBe(1234567890);
-      expect(result.modified).toBe(1234567890);
+
+      expect(result).toHaveProperty('imageCount');
+      expect(result).toHaveProperty('likeCount');
+      expect(result).toHaveProperty('viewCount');
+      expect(typeof result.imageCount).toBe('number');
+      expect(typeof result.likeCount).toBe('number');
+      expect(typeof result.viewCount).toBe('number');
+    });
+
+    it('should handle long name', () => {
+      const longName = 'a'.repeat(100);
+      const persona = {
+        name: longName
+      };
+
+      const result = parsePersona(persona);
+
+      expect(result).toHaveProperty('name');
+      expect(result.name.length).toBeLessThanOrEqual(64);
+    });
+
+    it('should handle long gender', () => {
+      const persona = {
+        gender: 'MALE',
+        name: 'John Doe'
+      };
+
+      const result = parsePersona(persona);
+
+      expect(result).toHaveProperty('gender');
+      expect(result.gender.length).toBeLessThanOrEqual(1);
+    });
+
+    it('should handle images array', () => {
+      const persona = {
+        images: [
+          {url: 'https://example.com/img1.jpg'},
+          {url: 'https://example.com/img2.jpg'}
+        ],
+        name: 'John Doe'
+      };
+
+      const result = parsePersona(persona);
+
+      expect(result).toHaveProperty('images');
+      expect(Array.isArray(result.images)).toBe(true);
+    });
+
+    it('should handle tags array', () => {
+      const persona = {
+        name: 'John Doe',
+        tags: [
+          {name: 'developer'},
+          {name: 'designer'}
+        ]
+      };
+
+      const result = parsePersona(persona);
+
+      expect(result).toHaveProperty('tags');
+      expect(Array.isArray(result.tags)).toBe(true);
+    });
+
+    it('should handle empty arrays', () => {
+      const persona = {
+        images: [],
+        name: 'John Doe',
+        tags: []
+      };
+
+      const result = parsePersona(persona);
+
+      expect(result).toHaveProperty('name');
+      expect(result.name).toBe('John Doe');
+    });
+
+    it('should handle persona with empty values', () => {
+      const persona = {
+        name: 'John Doe',
+        gender: 'M',
+        active: false,
+        imageCount: 0,
+        likeCount: 0,
+        viewCount: 0
+      };
+
+      const result = parsePersona(persona);
+
+      expect(result).toHaveProperty('name');
+      expect(result).toHaveProperty('active');
+      expect(result).toHaveProperty('imageCount');
+      expect(result).toHaveProperty('likeCount');
+      expect(result).toHaveProperty('viewCount');
+    });
+
+    it('should preserve URL fields', () => {
+      const persona = {
+        imageUrl: 'https://example.com/persona.jpg',
+        name: 'John Doe',
+        thumbUrl: 'https://example.com/thumb.jpg'
+      };
+
+      const result = parsePersona(persona);
+
+      expect(result).toHaveProperty('imageUrl');
+      expect(result).toHaveProperty('thumbUrl');
+      expect(result.imageUrl).toBe(persona.imageUrl);
+      expect(result.thumbUrl).toBe(persona.thumbUrl);
     });
   });
 
   describe('PersonaValidationError', () => {
-    it('should create error with message', () => {
+    it('should create PersonaValidationError with message', () => {
       const error = new PersonaValidationError('Test error');
+
+      expect(error).toBeInstanceOf(Error);
+      expect(error).toBeInstanceOf(PersonaValidationError);
       expect(error.message).toBe('Test error');
       expect(error.name).toBe('PersonaValidationError');
     });
 
-    it('should create error with field', () => {
-      const error = new PersonaValidationError('Test error', 'testField');
+    it('should create PersonaValidationError with message and field', () => {
+      const error = new PersonaValidationError('Test error', 'name');
+
       expect(error.message).toBe('Test error');
-      expect(error.field).toBe('testField');
+      expect(error.field).toBe('name');
     });
   });
 });

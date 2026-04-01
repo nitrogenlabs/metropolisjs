@@ -20,7 +20,7 @@ export {
   PermissionLevelNames
 } from './permissionAdapter/permissionAdapter.js';
 export {parsePost} from './postAdapter/postAdapter.js';
-export {parseProfile} from './profileAdapter/profileAdapter.js';
+export {parsePersona} from './personaAdapter/personaAdapter.js';
 export {parseReaction} from './reactionAdapter/reactionAdapter.js';
 export {parseTag} from './tagAdapter/tagAdapter.js';
 export {parseTranslation} from './translationAdapter/translationAdapter.js';
@@ -37,7 +37,7 @@ export type {LocationType} from './locationAdapter/locationAdapter.js';
 export type {MessageType} from './messageAdapter/messageAdapter.js';
 export type {Permission} from './permissionAdapter/permissionAdapter.js';
 export type {PostType} from './postAdapter/postAdapter.js';
-export type {ProfileType} from './profileAdapter/profileAdapter.js';
+export type {PersonaType} from './personaAdapter/personaAdapter.js';
 export type {ReactionType as ReactionAdapterType} from './reactionAdapter/reactionAdapter.js';
 export type {TagType} from './tagAdapter/tagAdapter.js';
 export type {TranslationType, TranslationInputType} from './translationAdapter/translationAdapter.js';

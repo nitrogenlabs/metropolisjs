@@ -12,7 +12,7 @@ export {LOCATION_CONSTANTS, locations} from './locationStore.js';
 export {MESSAGE_CONSTANTS, messages} from './messageStore.js';
 export {PERMISSION_CONSTANTS, permissions} from './permissionStore.js';
 export {POST_CONSTANTS, posts} from './postStore.js';
-export {PROFILE_CONSTANTS, profiles} from './profileStore.js';
+export {PERSONA_CONSTANTS, personas} from './personaStore.js';
 export {REACTION_CONSTANTS, reactions} from './reactionStore.js';
 export {TAG_CONSTANTS, tags} from './tagStore.js';
 export {TRANSLATION_CONSTANTS, translations} from './translationStore.js';

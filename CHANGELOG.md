@@ -38,7 +38,7 @@ MetropolisJS has undergone a comprehensive three-phase refactoring to align with
 - `useReactionActions()` - Reaction actions only
 - `useTagActions()` - Tag management actions only
 - `useContentActions()` - Content management actions only
-- `useProfileActions()` - Profile management actions only
+- `usePersonaActions()` - Persona management actions only
 - `useTranslationActions()` - Translation actions only
 - `useWebsocketActions()` - WebSocket actions only
 - Selective creation: `useMetropolis(['user', 'post'])`
@@ -86,7 +86,7 @@ MetropolisJS has undergone a comprehensive three-phase refactoring to align with
    - `useReactionActions()`
    - `useTagActions()`
    - `useContentActions()`
-   - `useProfileActions()`
+   - `usePersonaActions()`
    - `useTranslationActions()`
    - `useWebsocketActions()`
 

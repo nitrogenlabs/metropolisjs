@@ -10,7 +10,7 @@ import {createLocationActions} from '../actions/locationActions/locationActions.
 import {createMessageActions} from '../actions/messageActions/messageActions.js';
 import {createPermissionActions} from '../actions/permissionActions/permissionActions.js';
 import {createPostActions} from '../actions/postActions/postActions.js';
-import {createProfileActions} from '../actions/profileActions/profileActions.js';
+import {createPersonaActions} from '../actions/personaActions/personaActions.js';
 import {createReactionActions} from '../actions/reactionActions/reactionActions.js';
 import {createSSEActions} from '../actions/sseActions/sseActions.js';
 import {createTagActions} from '../actions/tagActions/tagActions.js';
@@ -27,7 +27,7 @@ import type {LocationActionsOptions} from '../actions/locationActions/locationAc
 import type {MessageActionsOptions} from '../actions/messageActions/messageActions.js';
 import type {PermissionActionsOptions} from '../actions/permissionActions/permissionActions.js';
 import type {PostActionsOptions} from '../actions/postActions/postActions.js';
-import type {ProfileActionsOptions} from '../actions/profileActions/profileActions.js';
+import type {PersonaActionsOptions} from '../actions/personaActions/personaActions.js';
 import type {ReactionActionsOptions} from '../actions/reactionActions/reactionActions.js';
 import type {SSEActionsOptions} from '../actions/sseActions/sseActions.js';
 import type {TagActionsOptions} from '../actions/tagActions/tagActions.js';
@@ -43,7 +43,7 @@ export type ActionType =
   | 'message'
   | 'permission'
   | 'post'
-  | 'profile'
+  | 'persona'
   | 'reaction'
   | 'sse'
   | 'tag'
@@ -60,7 +60,7 @@ export type ActionOptions =
   | MessageActionsOptions
   | PermissionActionsOptions
   | PostActionsOptions
-  | ProfileActionsOptions
+  | PersonaActionsOptions
   | ReactionActionsOptions
   | SSEActionsOptions
   | TagActionsOptions
@@ -98,8 +98,8 @@ export const createAction = <T extends ActionType>(
     case 'post':
       return createPostActions(flux, options as PostActionsOptions);
 
-    case 'profile':
-      return createProfileActions(flux, options as ProfileActionsOptions);
+    case 'persona':
+      return createPersonaActions(flux, options as PersonaActionsOptions);
 
     case 'reaction':
       return createReactionActions(flux, options as ReactionActionsOptions);
@@ -151,7 +151,7 @@ export const createAllActions = (
     'message',
     'permission',
     'post',
-    'profile',
+    'persona',
     'reaction',
     'sse',
     'tag',

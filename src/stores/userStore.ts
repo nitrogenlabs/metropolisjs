@@ -120,7 +120,7 @@ export const userStore = (type: string, data: UserData, state = defaultValues): 
       }
       return state;
     }
-    case TAG_CONSTANTS.ADD_PROFILE_SUCCESS: {
+    case TAG_CONSTANTS.ADD_PERSONA_SUCCESS: {
       const {tag} = data;
       const session = {...state.session};
       const {tags = []} = session;
@@ -128,7 +128,7 @@ export const userStore = (type: string, data: UserData, state = defaultValues): 
       session.tags = orderBy(updatedTags, ['name'], ['asc']);
       return {...state, session};
     }
-    case TAG_CONSTANTS.REMOVE_PROFILE_SUCCESS: {
+    case TAG_CONSTANTS.REMOVE_PERSONA_SUCCESS: {
       const {tag} = data;
       const session = {...state.session};
       const {tags = []} = session;

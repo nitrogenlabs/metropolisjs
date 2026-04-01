@@ -13,7 +13,7 @@ import {
   normalizeSession,
   persistSession
 } from '../../utils/session.js';
-import {syncProfileTagsToSession} from '../profileActions/profileActions.js';
+import {syncPersonaTagsToSession} from '../personaActions/personaActions.js';
 
 import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {User} from '../../adapters/userAdapter/userAdapter.js';
@@ -21,7 +21,7 @@ import type {ApiResultsType, ReaktorDbCollection, SessionType} from '../../utils
 import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'users';
-const PROFILE_DATA_TYPE: ReaktorDbCollection = 'profiles';
+const PERSONA_DATA_TYPE: ReaktorDbCollection = 'personas';
 const DEFAULT_USER_QUERY_FIELDS: string[] = ['userId', 'username'];
 const SENSITIVE_USER_FIELDS = new Set([
   'password',
@@ -55,40 +55,40 @@ const getSessionPayload = (payload: unknown): Record<string, unknown> => {
   return (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>;
 };
 
-const ensureSessionProfile = async (
+const ensureSessionPersona = async (
   flux: FluxFramework,
   sessionData: Partial<User> = {}
 ): Promise<SessionType> => {
-  const existingProfileId = String((sessionData as any)?.profileId || '').trim();
+  const existingPersonaId = String((sessionData as any)?.personaId || '').trim();
 
-  if(existingProfileId) {
+  if(existingPersonaId) {
     return syncStoredSession(flux, sessionData as Record<string, unknown>);
   }
 
   try {
     const data = await appMutation(
       flux,
-      'updateProfile',
-      PROFILE_DATA_TYPE,
+      'updatePersona',
+      PERSONA_DATA_TYPE,
       {
-        profile: {
-          type: 'ProfileInput!',
+        persona: {
+          type: 'PersonaInput!',
           value: {
             ...(sessionData?.username ? {name: sessionData.username} : {})
           }
         }
       },
-      ['profileId', 'userId']
+      ['personaId', 'userId']
     ) as unknown as {
-      profiles?: {updateProfile?: Record<string, unknown>};
+      personas?: {updatePersona?: Record<string, unknown>};
     };
-    const profile = data?.profiles?.updateProfile || {};
-    const nextProfileId = String((profile as any)?.profileId || '').trim();
+    const persona = data?.personas?.updatePersona || {};
+    const nextPersonaId = String((persona as any)?.personaId || '').trim();
 
-    if(nextProfileId) {
+    if(nextPersonaId) {
       return syncStoredSession(flux, {
         ...(sessionData as Record<string, unknown>),
-        profileId: nextProfileId
+        personaId: nextPersonaId
       });
     }
   } catch(error) {
@@ -243,14 +243,14 @@ export interface userActions {
     reactionNames: string[],
     from?: number,
     to?: number,
-    profileProps?: string[]
+    personaProps?: string[]
   ) => Promise<User[]>;
   listByTags: (
     username: string,
     tagNames: string[],
     from?: number,
     to?: number,
-    profileProps?: string[]
+    personaProps?: string[]
   ) => Promise<User[]>;
   forgotPassword: (username: string) => Promise<boolean>;
   isLoggedIn: () => boolean;
@@ -518,9 +518,9 @@ export const createUserActions = (
         throw new Error('invalid_session');
       }
 
-      const nextSession = await ensureSessionProfile(flux, sessionData);
+      const nextSession = await ensureSessionPersona(flux, sessionData);
       await flux.dispatch({session: nextSession, type: USER_CONSTANTS.GET_SESSION_SUCCESS});
-      await syncProfileTagsToSession(flux, String((nextSession as any)?.profileId || ''));
+      await syncPersonaTagsToSession(flux, String((nextSession as any)?.personaId || ''));
       syncStoredSession(flux, (flux.getState('user.session', {}) || {}) as Record<string, unknown>);
       return (flux.getState('user.session', nextSession) || nextSession) as User;
     },
@@ -615,7 +615,7 @@ export const createUserActions = (
     reactionNames: string[],
     from: number = 0,
     to: number = 10,
-    profileProps: string[] = []
+    personaProps: string[] = []
   ): Promise<User[]> =>
     []
   ;
@@ -625,7 +625,7 @@ export const createUserActions = (
     tagNames: string[],
     from: number = 0,
     to: number = 10,
-    profileProps: string[] = []
+    personaProps: string[] = []
   ): Promise<User[]> => {
     const queryVariables = {
       from: {
@@ -653,7 +653,7 @@ export const createUserActions = (
 
     return withInvalidFieldRetry(
       (safeUserProps) => appQuery(flux, 'listByTags', DATA_TYPE, queryVariables, safeUserProps, {onSuccess}),
-      profileProps,
+      personaProps,
       DEFAULT_USER_QUERY_FIELDS
     );
   };
@@ -750,8 +750,8 @@ export const createUserActions = (
       const baseSession = syncStoredSession(flux, getSessionPayload(sessionResult));
 
       try {
-        const hydratedSession = await session(['profileId', 'userAccess', 'username']);
-        await syncProfileTagsToSession(flux, String((hydratedSession as any)?.profileId || ''));
+        const hydratedSession = await session(['personaId', 'userAccess', 'username']);
+        await syncPersonaTagsToSession(flux, String((hydratedSession as any)?.personaId || ''));
       } catch(error) {
         syncStoredSession(flux, baseSession as Record<string, unknown>);
         return baseSession;

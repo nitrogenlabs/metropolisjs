@@ -252,7 +252,7 @@ export {
   useMessageActions, useMetropolis,
   useMetropolisConfig,
   useMetropolisFlux, usePostActions,
-  useProfileActions,
+  usePersonaActions,
   useReactionActions,
   useTagActions,
   useTranslationActions,

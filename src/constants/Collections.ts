@@ -11,7 +11,7 @@ export const COLLECTIONS = {
   IMAGES: 'images',
   MESSAGES: 'messages',
   POSTS: 'posts',
-  PROFILES: 'profiles',
+  PERSONAS: 'personas',
   TAGS: 'tags',
   USERS: 'users',
   VIDEOS: 'videos'

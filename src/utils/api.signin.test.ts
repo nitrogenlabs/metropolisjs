@@ -251,7 +251,7 @@ describe('SignIn GraphQL Mutation Generation', () => {
           addUser(user: UserInput!): User
           signIn(username: String!, password: String!, expires: Int): Session
           update(user: UserUpdateInput!): User
-          updateProfile(profile: ProfileUpdateInput!): Profile
+          updatePersona(persona: PersonaUpdateInput!): Persona
           refreshSession(token: String!, expires: Int): Session
           confirmCode(code: Int!, type: String!, value: String!): Boolean
           remove(userId: String!): User

@@ -9,7 +9,7 @@ export * from './locationActions/locationActions.js';
 export * from './messageActions/messageActions.js';
 export * from './permissionActions/permissionActions.js';
 export * from './postActions/postActions.js';
-export * from './profileActions/profileActions.js';
+export * from './personaActions/personaActions.js';
 export * from './reactionActions/reactionActions.js';
 export * from './sseActions/sseActions.js';
 export * from './tagActions/tagActions.js';

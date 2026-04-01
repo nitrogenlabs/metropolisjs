@@ -43,12 +43,12 @@ Each row links to:
 | Message | `useMessageActions` | `createMessageActions` | `sendMessage`, `getMessages`, `getConversations`, `getDirectConversation` | [messageActions.ts](../src/actions/messageActions/messageActions.ts) |
 | Permission | `usePermissionActions` | `createPermissionActions` | `add`, `check`, `itemById`, `list`, `listByUser`, `update`, `remove` | [permissionActions.ts](../src/actions/permissionActions/permissionActions.ts) |
 | Post | `usePostActions` | `createPostActions` | `add`, `itemById`, `listByLatest`, `listByLocation`, `listByReactions`, `listByTags`, `update`, `delete` | [postActions.ts](../src/actions/postActions/postActions.ts) |
-| Profile | `useProfileActions` | `createProfileActions` | `addProfile`, `getProfile`, `getProfiles`, `updateProfile`, `deleteProfile` | [profileActions.ts](../src/actions/profileActions/profileActions.ts) |
+| Persona | `usePersonaActions` | `createPersonaActions` | `addPersona`, `getPersona`, `getPersonas`, `updatePersona`, `deletePersona` | [personaActions.ts](../src/actions/personaActions/personaActions.ts) |
 | Reaction | `useReactionActions` | `createReactionActions` | `addReaction`, `deleteReaction`, `getReactionCount`, `hasReaction`, `abbreviateCount` | [reactionActions.ts](../src/actions/reactionActions/reactionActions.ts) |
 | SSE | `useMetropolis(['sse'])` | `createSSEActions` | `connect`, `disconnect`, `reconnect`, `isConnected`, `sendMessage`, `addEventListener`, `removeEventListener` | [sseActions.ts](../src/actions/sseActions/sseActions.ts) |
-| Tag | `useTagActions` | `createTagActions` | `addTag`, `addTagToProfile`, `getTags`, `updateTag`, `deleteTag`, `deleteTagFromProfile` | [tagActions.ts](../src/actions/tagActions/tagActions.ts) |
+| Tag | `useTagActions` | `createTagActions` | `addTag`, `addTagToItem`, `getTags`, `updateTag`, `deleteTag`, `deleteTagFromItem` | [tagActions.ts](../src/actions/tagActions/tagActions.ts) |
 | Translation | `useTranslationActions` | `createTranslationActions` | `addTranslations`, `getTranslation`, `getTranslations`, `hasTranslation`, `queueTranslationKey`, `processPendingTranslations` | [translationActions.ts](../src/actions/translationActions/translationActions.ts) |
-| User | `useUserActions` | `createUserActions` | `signIn`, `signUp`, `session`, `refreshSession`, `itemById`, `listByLatest`, `updateUser`, `updateProfile` | [userActions.ts](../src/actions/userActions/userActions.ts) |
+| User | `useUserActions` | `createUserActions` | `signIn`, `signUp`, `session`, `refreshSession`, `itemById`, `listByLatest`, `updateUser` | [userActions.ts](../src/actions/userActions/userActions.ts) |
 | Video | `useMetropolis(['video'])` | `createVideoActions` | `add`, `itemById`, `list`, `update`, `delete` | [videoActions.ts](../src/actions/videoActions/videoActions.ts) |
 | Websocket | `useWebsocketActions` | `createWebsocketActions` | `wsInit`, `wsSend`, `onOpen`, `onReceive`, `onClose`, `onError` | [websocketActions.ts](../src/actions/websocketActions/websocketActions.ts) |
 
@@ -61,4 +61,3 @@ All action creators are re-exported from:
 All specialized hooks are exposed from:
 
 - [src/utils/useMetropolis.ts](../src/utils/useMetropolis.ts)
-

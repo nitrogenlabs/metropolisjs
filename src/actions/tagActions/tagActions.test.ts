@@ -78,14 +78,14 @@ describe('createTagActions', () => {
 
     appQueryMock.mockResolvedValue([]);
 
-    await tagActions.getTags('', ['profileCount', 'userId']);
+    await tagActions.getTags('', ['personaCount', 'userId']);
 
     expect(appQueryMock).toHaveBeenCalledWith(
       flux,
       'getTags',
       'tags',
       {},
-      ['added', 'category', 'description', 'modified', 'name', 'tagId', 'profileCount', 'userId'],
+      ['added', 'category', 'description', 'modified', 'name', 'tagId', 'personaCount', 'userId'],
       expect.any(Object)
     );
   });
@@ -96,7 +96,7 @@ describe('createTagActions', () => {
 
     appQueryMock.mockResolvedValue([]);
 
-    await tagActions.getTagsByItem('profiles/profile123', ['userId']);
+    await tagActions.getTagsByItem('personas/persona123', ['userId']);
 
     expect(appQueryMock).toHaveBeenCalledWith(
       flux,
@@ -105,7 +105,7 @@ describe('createTagActions', () => {
       {
         itemDocId: {
           type: 'String!',
-          value: 'profiles/profile123'
+          value: 'personas/persona123'
         }
       },
       ['added', 'category', 'description', 'modified', 'name', 'tagId', 'userId'],
@@ -129,7 +129,7 @@ describe('createTagActions', () => {
       options?.onSuccess ? options.onSuccess(response) : response
     ));
 
-    const result = await tagActions.getTagsByItem('profiles/profile123');
+    const result = await tagActions.getTagsByItem('personas/persona123');
 
     expect(result).toEqual({
       tags: response.tags.getTagsByItem,
@@ -143,7 +143,7 @@ describe('createTagActions', () => {
 
     appMutationMock.mockResolvedValue({tagId: 'alpha', name: 'Alpha'});
 
-    await tagActions.addTagToItem('alpha', 'profiles/profile123', ['userId']);
+    await tagActions.addTagToItem('alpha', 'personas/persona123', ['userId']);
 
     expect(appMutationMock).toHaveBeenCalledWith(
       flux,
@@ -152,7 +152,7 @@ describe('createTagActions', () => {
       {
         itemDocId: {
           type: 'String!',
-          value: 'profiles/profile123'
+          value: 'personas/persona123'
         },
         tagId: {
           type: 'ID!',
@@ -170,7 +170,7 @@ describe('createTagActions', () => {
 
     appMutationMock.mockResolvedValue(true);
 
-    await tagActions.deleteTagFromItem('alpha', 'profiles/profile123');
+    await tagActions.deleteTagFromItem('alpha', 'personas/persona123');
 
     expect(appMutationMock).toHaveBeenCalledWith(
       flux,
@@ -179,7 +179,7 @@ describe('createTagActions', () => {
       {
         itemDocId: {
           type: 'String!',
-          value: 'profiles/profile123'
+          value: 'personas/persona123'
         },
         tagId: {
           type: 'ID!',

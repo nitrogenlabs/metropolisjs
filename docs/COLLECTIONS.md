@@ -14,7 +14,7 @@ Comprehensive reference for all MetropolisJS collection types, including availab
 - [Images](#images)
 - [Files](#files)
 - [Apps](#apps)
-- [Profiles](#profiles)
+- [Personas](#personas)
 - [Tags](#tags)
 - [Content](#content)
 
@@ -56,7 +56,7 @@ const collections = {
   IMAGES: 'images',
   MESSAGES: 'messages',
   POSTS: 'posts',
-  PROFILES: 'profiles',
+  PERSONAS: 'personas',
   TAGS: 'tags',
   USERS: 'users',
   VIDEOS: 'videos'
@@ -818,18 +818,18 @@ await appActions.update({
 await appActions.delete('app123');
 ```
 
-## Profiles
+## Personas
 
-Extended user profiles with additional information.
+Extended user personas with additional information.
 
-### Profile Fields
+### Persona Fields
 
 ```typescript
-interface ProfileType extends BaseDocument, ExtensibleFields {
+interface PersonaType extends BaseDocument, ExtensibleFields {
   bio?: string;              // User biography
   company?: string;          // Company name
   location?: string;         // Location string
-  profileId?: string;        // Unique profile identifier
+  personaId?: string;        // Unique persona identifier
   social?: Record<string, string>; // Social media links
   title?: string;            // Job title
   userId?: string;           // Associated user ID
@@ -837,11 +837,11 @@ interface ProfileType extends BaseDocument, ExtensibleFields {
 }
 ```
 
-### Profile Examples
+### Persona Examples
 
 ```typescript
-// Create profile
-const profile = await profileActions.add({
+// Create persona
+const persona = await personaActions.addPersona({
   userId: 'user123',
   bio: 'Software engineer passionate about web technologies',
   title: 'Senior Developer',
@@ -855,18 +855,18 @@ const profile = await profileActions.add({
   }
 });
 
-// Get profile
-const prof = await profileActions.itemById('profile123');
+// Get persona
+const persona = await personaActions.getPersona('persona123');
 
-// Update profile
-await profileActions.update({
-  profileId: 'profile123',
+// Update persona
+await personaActions.updatePersona({
+  personaId: 'persona123',
   bio: 'Updated bio',
   title: 'Lead Developer'
 });
 
-// Delete profile
-await profileActions.delete('profile123');
+// Delete persona
+await personaActions.deletePersona('persona123');
 ```
 
 ## Tags

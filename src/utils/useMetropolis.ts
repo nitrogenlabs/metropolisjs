@@ -40,8 +40,8 @@ const buildActionOptions = (
   if (adapters.Post) {
     options.post = {postAdapter: adapters.Post};
   }
-  if (adapters.Profile) {
-    options.profile = {profileAdapter: adapters.Profile};
+  if (adapters.Persona) {
+    options.persona = {personaAdapter: adapters.Persona};
   }
   if (adapters.Reaction) {
     options.reaction = {reactionAdapter: adapters.Reaction};
@@ -89,8 +89,8 @@ const mapActionsToReturnKeys = (actions: Record<string, any>): Record<string, an
   if (actions.post) {
     mapped.postActions = actions.post;
   }
-  if (actions.profile) {
-    mapped.profileActions = actions.profile;
+  if (actions.persona) {
+    mapped.personaActions = actions.persona;
   }
   if (actions.reaction) {
     mapped.reactionActions = actions.reaction;
@@ -246,9 +246,9 @@ export const usePostActions = () => {
   return postActions;
 };
 
-export const useProfileActions = () => {
-  const {profileActions} = useMetropolis(['profile']);
-  return profileActions;
+export const usePersonaActions = () => {
+  const {personaActions} = useMetropolis(['persona']);
+  return personaActions;
 };
 
 export const useReactionActions = () => {

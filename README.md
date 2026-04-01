@@ -195,7 +195,7 @@ import {parseUser, parseMessage} from '@nlabs/metropolisjs';
     Image: customImageAdapter,
     Location: customLocationAdapter,
     Post: customPostAdapter,
-    Profile: customProfileAdapter,
+    Persona: customPersonaAdapter,
     Reaction: customReactionAdapter,
     Tag: customTagAdapter,
     Translation: customTranslationAdapter
@@ -441,7 +441,7 @@ MetropolisJS provides comprehensive actions for all your needs. Access them usin
 
 ### Specialized Hooks (Recommended)
 
-- `useUserActions()` - Authentication, profiles, user management
+- `useUserActions()` - Authentication, personas, user management
 - `useMessageActions()` - Real-time messaging and conversations
 - `usePermissionActions()` - Permission and role management (RBAC)
 - `usePostActions()` - Social media posts and content
@@ -452,7 +452,7 @@ MetropolisJS provides comprehensive actions for all your needs. Access them usin
 - `useLocationActions()` - Geolocation and location-based features
 - `useWebsocketActions()` - Real-time communication setup
 - `useContentActions()` - Content management
-- `useProfileActions()` - Profile management
+- `usePersonaActions()` - Persona management
 - `useTranslationActions()` - Translation management
 
 ### Using Collection Actions
@@ -753,7 +753,7 @@ The following APIs have been removed:
 
 Customize data transformation with powerful adapters. Pass adapters to the `Metropolis` component:
 
-- **User**: User profiles and authentication data
+- **User**: User account and authentication data
 - **Permission**: Permission and role data with RBAC support
 - **Message**: Chat and messaging data
 - **Post**: Social media content
@@ -763,7 +763,7 @@ Customize data transformation with powerful adapters. Pass adapters to the `Metr
 - **Tag**: Categorization data
 - **Reaction**: User interaction data
 - **Content**: Content management
-- **Profile**: Profile management
+- **Persona**: Persona management
 - **Translation**: Translation data
 
 ## Real-Time Features
@@ -1230,7 +1230,7 @@ MetropolisJS now provides comprehensive CRUD (Create, Read, Update, Delete) oper
 
 ### Supported Collections
 
-- **users** - User accounts and profiles
+- **users** - User accounts and authentication data
 - **posts** - User posts and content
 - **groups** - Group entities and communities
 - **messages** - Direct messages
@@ -1239,7 +1239,7 @@ MetropolisJS now provides comprehensive CRUD (Create, Read, Update, Delete) oper
 - **images** - Image media
 - **videos** - Video media
 - **apps** - Application entities
-- **profiles** - Extended user profile details
+- **personas** - Extended user persona details
 - **tags** - Tag entities for categorization
 
 ### Basic CRUD Example
