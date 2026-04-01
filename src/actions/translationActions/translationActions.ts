@@ -89,7 +89,7 @@ export const createTranslationActions = (
       };
 
       const onSuccess = (data: TranslationApiResultsType) => {
-        const {translations: {addTranslations = []}} = data;
+        const addTranslations = data?.translations?.addTranslations || [];
         const result = flux.dispatch({
           translations: addTranslations,
           type: TRANSLATION_CONSTANTS.ADD_TRANSLATIONS_SUCCESS
@@ -146,7 +146,7 @@ export const createTranslationActions = (
       };
 
       const onSuccess = (data: TranslationApiResultsType) => {
-        const {translations: {getTranslations = []}} = data;
+        const getTranslations = data?.translations?.getTranslations || [];
         const result = flux.dispatch({
           translations: getTranslations,
           type: TRANSLATION_CONSTANTS.GET_TRANSLATIONS_SUCCESS

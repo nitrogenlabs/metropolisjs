@@ -119,7 +119,7 @@ export const createEventActions = (
       };
 
       const onSuccess = (data: PostApiResultsType) => {
-        const {posts: {addPost = {}}} = data;
+        const addPost = data?.posts?.addPost || {};
         return flux.dispatch({event: addPost, type: EVENT_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
@@ -140,7 +140,7 @@ export const createEventActions = (
       };
 
       const onSuccess = (data: PostApiResultsType) => {
-        const {posts: {getPost: event = {}}} = data;
+        const event = data?.posts?.getPost || {};
         return flux.dispatch({event, type: EVENT_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
@@ -199,7 +199,7 @@ export const createEventActions = (
       };
 
       const onSuccess = (data: PostApiResultsType) => {
-        const {posts: {getPostsByTags: eventsByTags = []}} = data;
+        const eventsByTags = data?.posts?.getPostsByTags || [];
         return flux.dispatch({
           list: eventsByTags,
           type: EVENT_CONSTANTS.GET_LIST_SUCCESS
@@ -259,7 +259,7 @@ export const createEventActions = (
       };
 
       const onSuccess = (data: PostApiResultsType) => {
-        const {posts: {getPostsByReactions: eventsByReactions = []}} = data;
+        const eventsByReactions = data?.posts?.getPostsByReactions || [];
         return flux.dispatch({
           list: eventsByReactions,
           type: EVENT_CONSTANTS.GET_LIST_SUCCESS
@@ -306,7 +306,7 @@ export const createEventActions = (
       };
 
       const onSuccess = (data: PostApiResultsType) => {
-        const {posts: {deletePost: event = {}}} = data;
+        const event = data?.posts?.deletePost || {};
         return flux.dispatch({event, type: EVENT_CONSTANTS.REMOVE_ITEM_SUCCESS});
       };
 
@@ -327,7 +327,7 @@ export const createEventActions = (
       };
 
       const onSuccess = (data: PostApiResultsType) => {
-        const {posts: {updatePost: updatedEvent = {}}} = data;
+        const updatedEvent = data?.posts?.updatePost || {};
         return flux.dispatch({event: updatedEvent, type: EVENT_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 
@@ -350,4 +350,3 @@ export const createEventActions = (
     updateEventAdapterOptions
   };
 };
-

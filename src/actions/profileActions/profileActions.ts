@@ -45,6 +45,7 @@ export interface ProfileApiResultsType {
     readonly deleteProfile?: ProfileType;
     readonly getProfile?: ProfileType;
     readonly getProfiles?: ProfileType[];
+    readonly listByTags?: ProfileType[];
     readonly updateProfile?: ProfileType;
   };
 }
@@ -53,6 +54,13 @@ export interface ProfileActions {
   readonly addProfile: (profileData: Partial<ProfileType>, profileProps?: string[]) => Promise<ProfileType>;
   readonly getProfile: (profileId: string, profileProps?: string[]) => Promise<ProfileType>;
   readonly getProfiles: (profileIds: string[], profileProps?: string[]) => Promise<ProfileType[]>;
+  readonly listByTags: (
+    username: string,
+    tags: string[],
+    from?: number,
+    to?: number,
+    profileProps?: string[]
+  ) => Promise<ProfileType[]>;
   readonly deleteProfile: (profileId: string, profileProps?: string[]) => Promise<ProfileType>;
   readonly updateProfile: (profile: Partial<ProfileType>, profileProps?: string[]) => Promise<ProfileType>;
   readonly updateProfileAdapter: (adapter: (input: unknown, options?: ProfileAdapterOptions) => any) => void;
@@ -161,7 +169,7 @@ export const createProfileActions = (
       };
 
       const onSuccess = (data: ProfileApiResultsType) => {
-        const {profiles: {addProfile = {}}} = data;
+        const addProfile = data?.profiles?.addProfile || {};
         return flux.dispatch({profile: addProfile, type: PROFILE_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
@@ -182,7 +190,7 @@ export const createProfileActions = (
       };
 
       const onSuccess = (data: ProfileApiResultsType) => {
-        const {profiles: {getProfile: profile = {}}} = data;
+        const profile = data?.profiles?.getProfile || {};
         syncProfileToSession(flux, profile);
         return flux.dispatch({profile, type: PROFILE_CONSTANTS.GET_ITEM_SUCCESS});
       };
@@ -211,13 +219,59 @@ export const createProfileActions = (
       };
 
       const onSuccess = (data: ProfileApiResultsType) => {
-        const {profiles: {getProfiles: profiles = []}} = data;
+        const profiles = data?.profiles?.getProfiles || [];
         return flux.dispatch({profiles, type: PROFILE_CONSTANTS.GET_LIST_SUCCESS});
       };
 
       return await appQuery<ProfileType[]>(
         flux,
         'getProfiles',
+        DATA_TYPE,
+        queryVariables,
+        [...DEFAULT_PROFILE_PROPS, ...profileProps],
+        {onSuccess}
+      );
+    } catch(error) {
+      flux.dispatch({error, type: PROFILE_CONSTANTS.GET_LIST_ERROR});
+      throw error;
+    }
+  };
+
+  const listByTags = async (
+    username: string,
+    tags: string[],
+    from: number = 0,
+    to: number = 10,
+    profileProps: string[] = []
+  ): Promise<ProfileType[]> => {
+    try {
+      const queryVariables = {
+        from: {
+          type: 'Int',
+          value: from
+        },
+        tags: {
+          type: '[String!]',
+          value: Array.isArray(tags) ? tags : []
+        },
+        to: {
+          type: 'Int',
+          value: to
+        },
+        username: {
+          type: 'String',
+          value: username
+        }
+      };
+
+      const onSuccess = (data: ProfileApiResultsType) => {
+        const profiles = data?.profiles?.listByTags || [];
+        return flux.dispatch({profiles, type: PROFILE_CONSTANTS.GET_LIST_SUCCESS});
+      };
+
+      return await appQuery<ProfileType[]>(
+        flux,
+        'listByTags',
         DATA_TYPE,
         queryVariables,
         [...DEFAULT_PROFILE_PROPS, ...profileProps],
@@ -239,7 +293,7 @@ export const createProfileActions = (
       };
 
       const onSuccess = (data: ProfileApiResultsType) => {
-        const {profiles: {deleteProfile: profile = {}}} = data;
+        const profile = data?.profiles?.deleteProfile || {};
         return flux.dispatch({profile, type: PROFILE_CONSTANTS.DELETE_ITEM_SUCCESS});
       };
 
@@ -260,7 +314,7 @@ export const createProfileActions = (
       };
 
       const onSuccess = (data: ProfileApiResultsType) => {
-        const {profiles: {updateProfile: profile = {}}} = data;
+        const profile = data?.profiles?.updateProfile || {};
         syncProfileToSession(flux, profile);
         return flux.dispatch({profile, type: PROFILE_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
@@ -276,6 +330,7 @@ export const createProfileActions = (
     addProfile,
     getProfile,
     getProfiles,
+    listByTags,
     deleteProfile,
     updateProfile,
     updateProfileAdapter: profileBase.updateAdapter,

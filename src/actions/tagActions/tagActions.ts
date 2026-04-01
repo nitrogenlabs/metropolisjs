@@ -2,16 +2,16 @@
  * Copyright (c) 2021-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import { validateTagInput } from '../../adapters/tagAdapter/tagAdapter.js';
-import { TAG_CONSTANTS } from '../../stores/tagStore.js';
-import { appMutation, appQuery } from '../../utils/api.js';
+import {validateTagInput} from '../../adapters/tagAdapter/tagAdapter.js';
+import {TAG_CONSTANTS} from '../../stores/tagStore.js';
+import {appMutation, appQuery} from '../../utils/api.js';
 
-import type { FluxFramework } from '@nlabs/arkhamjs';
-import type { TagType } from '../../adapters/tagAdapter/tagAdapter.js';
-import type { ReaktorDbCollection } from '../../utils/api.js';
+import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
+import type {TagType} from '../../adapters/tagAdapter/tagAdapter.js';
+import type {ReaktorDbCollection} from '../../utils/api.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'tags';
-const DEFAULT_TAG_PROPS = ['added', 'category', 'description', 'id', 'modified', 'name', 'tagId'];
+const DEFAULT_TAG_PROPS = ['added', 'category', 'description', 'modified', 'name', 'tagId'];
 const DELETE_TAG_PROPS = DEFAULT_TAG_PROPS.filter((field) => field !== 'tagId');
 
 const sanitizeTagProps = (tagProps: string[] = [], baseProps: string[] = DEFAULT_TAG_PROPS): string[] => {
@@ -119,9 +119,9 @@ export const createTagActions = (
         }
       };
 
-      const onSuccess = (data: TagApiResultsType) => {
-        const {tags: {addTag: tag = {}}} = data;
-        return flux.dispatch({tag, type: TAG_CONSTANTS.ADD_ITEM_SUCCESS});
+      const onSuccess = async (data: TagApiResultsType): Promise<FluxAction> => {
+        const tag = data?.tags?.addTag || {};
+        return await flux.dispatch({tag, type: TAG_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
       return await appMutation<TagType>(
@@ -161,19 +161,19 @@ export const createTagActions = (
           value: itemDocId
         },
         tagId: {
-          type: 'String!',
+          type: 'ID!',
           value: tagId
         }
       };
 
-      const onSuccess = (data: TagApiResultsType) => {
-        const {tags: {addTagToItem: tag = {}}} = data;
+      const onSuccess = async (data: TagApiResultsType): Promise<FluxAction> => {
+        const tag = data?.tags?.addTagToItem || {};
 
         if(itemDocId.startsWith('profiles/')) {
-          return flux.dispatch({tag, type: TAG_CONSTANTS.ADD_PROFILE_SUCCESS});
+          return await flux.dispatch({tag, type: TAG_CONSTANTS.ADD_PROFILE_SUCCESS});
         }
 
-        return flux.dispatch({itemDocId, tag, type: TAG_CONSTANTS.ADD_LINK_SUCCESS});
+        return await flux.dispatch({itemDocId, tag, type: TAG_CONSTANTS.ADD_LINK_SUCCESS});
       };
 
       return await appMutation<TagType>(
@@ -195,18 +195,18 @@ export const createTagActions = (
       const requestedTagProps = sanitizeTagProps(tagProps, DELETE_TAG_PROPS);
       const queryVariables = {
         tagId: {
-          type: 'String!',
+          type: 'ID!',
           value: tagId
         }
       };
 
-      const onSuccess = (data: TagApiResultsType) => {
-        const {tags: {deleteTag: tag = {}}} = data;
+      const onSuccess = async (data: TagApiResultsType): Promise<FluxAction> => {
+        const tag = data?.tags?.deleteTag || {};
         const deletedTag = {
           ...tag,
           ...(tagId ? {tagId} : {})
         };
-        return flux.dispatch({tag: deletedTag, type: TAG_CONSTANTS.REMOVE_ITEM_SUCCESS});
+        return await flux.dispatch({tag: deletedTag, type: TAG_CONSTANTS.REMOVE_ITEM_SUCCESS});
       };
 
       return await appMutation<TagType>(
@@ -234,22 +234,22 @@ export const createTagActions = (
           value: itemDocId
         },
         tagId: {
-          type: 'String!',
+          type: 'ID!',
           value: tagId
         }
       };
 
-      const onSuccess = (data: TagApiResultsType) => {
-        const {tags: {deleteTagFromItem: removed = false}} = data;
+      const onSuccess = async (data: TagApiResultsType): Promise<FluxAction> => {
+        const removed = data?.tags?.deleteTagFromItem ?? false;
 
         if(removed && itemDocId.startsWith('profiles/')) {
-          return flux.dispatch({
+          return await flux.dispatch({
             tag: {tagId},
             type: TAG_CONSTANTS.REMOVE_PROFILE_SUCCESS
           });
         }
 
-        return flux.dispatch({
+        return await flux.dispatch({
           itemDocId,
           removed,
           tag: {tagId},
@@ -297,9 +297,9 @@ export const createTagActions = (
         }
         : {};
 
-      const onSuccess = (data: TagApiResultsType) => {
-        const {tags: {getTags}} = data;
-        return flux.dispatch({
+      const onSuccess = async (data: TagApiResultsType): Promise<FluxAction> => {
+        const getTags = data?.tags?.getTags || [];
+        return await flux.dispatch({
           tags: getTags,
           type: TAG_CONSTANTS.GET_LIST_SUCCESS
         });
@@ -332,12 +332,22 @@ export const createTagActions = (
         }
       };
 
+      const onSuccess = async (data: TagApiResultsType): Promise<FluxAction> => {
+        const tags = data?.tags?.getTagsByItem || [];
+
+        return await flux.dispatch({
+          tags,
+          type: TAG_CONSTANTS.GET_LIST_SUCCESS
+        });
+      };
+
       return await appQuery<TagType[]>(
         flux,
         'getTagsByItem',
         DATA_TYPE,
         queryVariables,
-        requestedTagProps
+        requestedTagProps,
+        {onSuccess}
       );
     } catch(error) {
       flux.dispatch({error, type: TAG_CONSTANTS.GET_LIST_ERROR});
@@ -355,9 +365,9 @@ export const createTagActions = (
         }
       };
 
-      const onSuccess = (data: TagApiResultsType) => {
-        const {tags: {updateTag: tag = {}}} = data;
-        return flux.dispatch({tag, type: TAG_CONSTANTS.UPDATE_ITEM_SUCCESS});
+      const onSuccess = async (data: TagApiResultsType): Promise<FluxAction> => {
+        const tag = data?.tags?.updateTag || {};
+        return await flux.dispatch({tag, type: TAG_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 
       return await appMutation<TagType>(

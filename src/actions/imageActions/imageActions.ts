@@ -159,7 +159,7 @@ export const createImageActions = (
       };
 
       const onSuccess = (data: ApiResultsType = {}) => {
-        const {deleteImage = {}} = data;
+        const deleteImage = data?.deleteImage || {};
         return flux.dispatch({image: deleteImage, type: IMAGE_CONSTANTS.REMOVE_ITEM_SUCCESS});
       };
 
@@ -230,7 +230,7 @@ export const createImageActions = (
       };
 
       const onSuccess = (data: ApiResultsType = {}) => {
-        const {imageCount: count = 0} = data;
+        const count = data?.imageCount ?? 0;
         return flux.dispatch({itemId, count, type: IMAGE_CONSTANTS.GET_COUNT_SUCCESS});
       };
 
@@ -264,7 +264,9 @@ export const createImageActions = (
       };
 
       const onSuccess = (data: ApiResultsType = {}) => {
-        const {imagesByItem = []} = data as {imagesByItem: ImageType[]};
+        const imagesByItem = Array.isArray((data as {imagesByItem?: ImageType[]})?.imagesByItem)
+          ? (data as {imagesByItem?: ImageType[]}).imagesByItem || []
+          : [];
         return flux.dispatch({
           itemId,
           list: imagesByItem,
@@ -319,7 +321,9 @@ export const createImageActions = (
       };
 
       const onSuccess = (data: ApiResultsType = {}) => {
-        const {imagesByReactions = []} = data as {imagesByReactions: ImageType[]};
+        const imagesByReactions = Array.isArray((data as {imagesByReactions?: ImageType[]})?.imagesByReactions)
+          ? (data as {imagesByReactions?: ImageType[]}).imagesByReactions || []
+          : [];
         return flux.dispatch({
           list: imagesByReactions,
           type: IMAGE_CONSTANTS.GET_LIST_SUCCESS
@@ -362,4 +366,3 @@ export const createImageActions = (
     updateImageAdapterOptions
   };
 };
-

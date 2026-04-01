@@ -44,7 +44,7 @@ describe('createTagActions', () => {
       'getTags',
       'tags',
       {},
-      ['added', 'category', 'description', 'id', 'modified', 'name', 'tagId'],
+      ['added', 'category', 'description', 'modified', 'name', 'tagId'],
       expect.any(Object)
     );
   });
@@ -67,7 +67,7 @@ describe('createTagActions', () => {
           value: 'tech'
         }
       },
-      ['added', 'category', 'description', 'id', 'modified', 'name', 'tagId'],
+      ['added', 'category', 'description', 'modified', 'name', 'tagId'],
       expect.any(Object)
     );
   });
@@ -85,7 +85,7 @@ describe('createTagActions', () => {
       'getTags',
       'tags',
       {},
-      ['added', 'category', 'description', 'id', 'modified', 'name', 'tagId', 'profileCount', 'userId'],
+      ['added', 'category', 'description', 'modified', 'name', 'tagId', 'profileCount', 'userId'],
       expect.any(Object)
     );
   });
@@ -108,8 +108,33 @@ describe('createTagActions', () => {
           value: 'profiles/profile123'
         }
       },
-      ['added', 'category', 'description', 'id', 'modified', 'name', 'tagId', 'userId']
+      ['added', 'category', 'description', 'modified', 'name', 'tagId', 'userId'],
+      expect.any(Object)
     );
+  });
+
+  it('returns the extracted tag list for getTagsByItem', async () => {
+    const flux = createMockFlux();
+    const tagActions = createTagActions(flux as any);
+    const response = {
+      tags: {
+        getTagsByItem: [
+          {name: 'Boobs', tagId: '1'},
+          {name: 'Legs', tagId: '2'}
+        ]
+      }
+    };
+
+    appQueryMock.mockImplementation(async (_flux, _name, _type, _variables, _props, options) => (
+      options?.onSuccess ? options.onSuccess(response) : response
+    ));
+
+    const result = await tagActions.getTagsByItem('profiles/profile123');
+
+    expect(result).toEqual({
+      tags: response.tags.getTagsByItem,
+      type: 'TAG_GET_LIST_SUCCESS'
+    });
   });
 
   it('uses addTagToItem with a full item doc id', async () => {
@@ -134,7 +159,7 @@ describe('createTagActions', () => {
           value: 'alpha'
         }
       },
-      ['added', 'category', 'description', 'id', 'modified', 'name', 'tagId', 'userId'],
+      ['added', 'category', 'description', 'modified', 'name', 'tagId', 'userId'],
       expect.any(Object)
     );
   });
@@ -184,7 +209,7 @@ describe('createTagActions', () => {
           value: 'alpha'
         }
       },
-      ['added', 'category', 'description', 'id', 'modified', 'name'],
+      ['added', 'category', 'description', 'modified', 'name'],
       expect.any(Object)
     );
   });
@@ -249,7 +274,7 @@ describe('createTagActions', () => {
       'getTags',
       'tags',
       {},
-      ['added', 'category', 'description', 'id', 'modified', 'name', 'tagId'],
+      ['added', 'category', 'description', 'modified', 'name', 'tagId'],
       expect.any(Object)
     );
   });

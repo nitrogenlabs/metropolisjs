@@ -91,7 +91,7 @@ export const createMessageActions = (
       };
 
       const onSuccess = (data: ApiResultsType = {}) => {
-        const {sendMessage: message = {}} = data;
+        const message = data?.sendMessage || {};
         return flux.dispatch({message, type: MESSAGE_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
@@ -119,7 +119,7 @@ export const createMessageActions = (
       };
 
       const onSuccess = (data: ApiResultsType = {}) => {
-        const {directConversation: conversation = {}} = data;
+        const conversation = data?.directConversation || {};
         return flux.dispatch({conversation, type: MESSAGE_CONSTANTS.GET_CONVO_LIST_SUCCESS});
       };
 
@@ -147,7 +147,9 @@ export const createMessageActions = (
       };
 
       const onSuccess = (data: ApiResultsType = {}) => {
-        const {messages = []} = data as {messages: MessageType[]};
+        const messages = Array.isArray((data as {messages?: MessageType[]})?.messages)
+          ? (data as {messages?: MessageType[]}).messages || []
+          : [];
 
         return flux.dispatch({
           conversationId,
@@ -184,7 +186,9 @@ export const createMessageActions = (
       };
 
       const onSuccess = (data: ApiResultsType = {}) => {
-        const {conversations = []} = data;
+        const conversations = Array.isArray((data as {conversations?: ConversationType[]})?.conversations)
+          ? (data as {conversations?: ConversationType[]}).conversations || []
+          : [];
         return flux.dispatch({conversations, type: MESSAGE_CONSTANTS.GET_CONVO_LIST_SUCCESS});
       };
 
@@ -211,4 +215,3 @@ export const createMessageActions = (
     updateMessageAdapterOptions
   };
 };
-

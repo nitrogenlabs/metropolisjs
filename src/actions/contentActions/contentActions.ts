@@ -68,7 +68,7 @@ export const createContentActions = (
       };
 
       const onSuccess = (data: ContentApiResultsType) => {
-        const {contents: {addContent = {}}} = data;
+        const addContent = data?.contents?.addContent || {};
         return flux.dispatch({content: addContent, type: CONTENT_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
@@ -89,7 +89,7 @@ export const createContentActions = (
       };
 
       const onSuccess = (data: ContentApiResultsType) => {
-        const {contents: {getContent: content = {}}} = data;
+        const content = data?.contents?.getContent || {};
         return flux.dispatch({content, type: CONTENT_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
@@ -130,7 +130,7 @@ export const createContentActions = (
       };
 
       const onSuccess = (data: ContentApiResultsType) => {
-        const {contents: {getContentByKey: content = {}}} = data;
+        const content = data?.contents?.getContentByKey || {};
         return flux.dispatch({content, type: CONTENT_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
@@ -167,7 +167,7 @@ export const createContentActions = (
       };
 
       const onSuccess = (data: ContentApiResultsType) => {
-        const {contents: {getContentsByCategory: contentsByCategory = []}} = data;
+        const contentsByCategory = data?.contents?.getContentsByCategory || [];
         return flux.dispatch({
           list: contentsByCategory,
           type: CONTENT_CONSTANTS.GET_LIST_SUCCESS
@@ -200,7 +200,7 @@ export const createContentActions = (
   const list = async (contentProps: string[] = []): Promise<ContentType[]> => {
     try {
       const onSuccess = (data: ContentApiResultsType) => {
-        const {contents: {getContentsList: contentsList = []}} = data;
+        const contentsList = data?.contents?.getContentsList || [];
         return flux.dispatch({
           list: contentsList,
           type: CONTENT_CONSTANTS.GET_LIST_SUCCESS
@@ -240,7 +240,7 @@ export const createContentActions = (
       };
 
       const onSuccess = (data: ContentApiResultsType) => {
-        const {contents: {deleteContent = {}}} = data;
+        const deleteContent = data?.contents?.deleteContent || {};
         return flux.dispatch({content: deleteContent, type: CONTENT_CONSTANTS.REMOVE_ITEM_SUCCESS});
       };
 
@@ -261,7 +261,7 @@ export const createContentActions = (
       };
 
       const onSuccess = (data: ContentApiResultsType) => {
-        const {contents: {updateContent = {}}} = data;
+        const updateContent = data?.contents?.updateContent || {};
         return flux.dispatch({content: updateContent, type: CONTENT_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 

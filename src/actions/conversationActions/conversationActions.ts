@@ -67,7 +67,7 @@ export const createConversationActions = (
       };
 
       const onSuccess = (data: ConversationApiResultsType) => {
-        const {conversations: {add: conversation = {}}} = data;
+        const conversation = data?.conversations?.add || {};
         return flux.dispatch({conversation, type: CONVERSATION_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
@@ -95,7 +95,7 @@ export const createConversationActions = (
       };
 
       const onSuccess = (data: ConversationApiResultsType) => {
-        const {conversations: {itemById: conversation = {}}} = data;
+        const conversation = data?.conversations?.itemById || {};
         return flux.dispatch({conversation, type: CONVERSATION_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
@@ -142,7 +142,7 @@ export const createConversationActions = (
       };
 
       const onSuccess = (data: ConversationApiResultsType) => {
-        const {conversations: {list = []}} = data;
+        const list = data?.conversations?.list || [];
         return flux.dispatch({
           list,
           type: CONVERSATION_CONSTANTS.GET_LIST_SUCCESS
@@ -187,7 +187,7 @@ export const createConversationActions = (
       };
 
       const onSuccess = (data: ConversationApiResultsType) => {
-        const {conversations: {remove: conversation = {}}} = data;
+        const conversation = data?.conversations?.remove || {};
         return flux.dispatch({conversation, type: CONVERSATION_CONSTANTS.REMOVE_ITEM_SUCCESS});
       };
 
@@ -218,7 +218,7 @@ export const createConversationActions = (
       };
 
       const onSuccess = (data: ConversationApiResultsType) => {
-        const {conversations: {update: conversation = {}}} = data;
+        const conversation = data?.conversations?.update || {};
         return flux.dispatch({conversation, type: CONVERSATION_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 

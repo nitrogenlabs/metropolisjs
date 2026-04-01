@@ -67,7 +67,7 @@ export const createVideoActions = (
       };
 
       const onSuccess = (data: VideoApiResultsType) => {
-        const {videos: {add: video = {}}} = data;
+        const video = data?.videos?.add || {};
         return flux.dispatch({type: VIDEO_CONSTANTS.ADD_ITEM_SUCCESS, video});
       };
 
@@ -95,7 +95,7 @@ export const createVideoActions = (
       };
 
       const onSuccess = (data: VideoApiResultsType) => {
-        const {videos: {itemById: video = {}}} = data;
+        const video = data?.videos?.itemById || {};
         return flux.dispatch({type: VIDEO_CONSTANTS.GET_ITEM_SUCCESS, video});
       };
 
@@ -145,7 +145,7 @@ export const createVideoActions = (
       };
 
       const onSuccess = (data: VideoApiResultsType) => {
-        const {videos: {list = []}} = data;
+        const list = data?.videos?.list || [];
         return flux.dispatch({
           list,
           type: VIDEO_CONSTANTS.GET_LIST_SUCCESS
@@ -193,7 +193,7 @@ export const createVideoActions = (
       };
 
       const onSuccess = (data: VideoApiResultsType) => {
-        const {videos: {remove: video = {}}} = data;
+        const video = data?.videos?.remove || {};
         return flux.dispatch({type: VIDEO_CONSTANTS.REMOVE_ITEM_SUCCESS, video});
       };
 
@@ -224,7 +224,7 @@ export const createVideoActions = (
       };
 
       const onSuccess = (data: VideoApiResultsType) => {
-        const {videos: {update: video = {}}} = data;
+        const video = data?.videos?.update || {};
         return flux.dispatch({type: VIDEO_CONSTANTS.UPDATE_ITEM_SUCCESS, video});
       };
 

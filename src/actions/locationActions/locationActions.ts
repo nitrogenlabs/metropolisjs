@@ -138,7 +138,7 @@ export const createLocationActions = (
       };
 
       const onSuccess = (data: ApiResultsType = {}) => {
-        const {addLocation = {}} = data;
+        const addLocation = data?.addLocation || {};
         return flux.dispatch({location: addLocation, type: LOCATION_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
@@ -179,7 +179,7 @@ export const createLocationActions = (
       };
 
       const onSuccess = (data: ApiResultsType = {}) => {
-        const {deleteLocation: location = {}} = data;
+        const location = data?.deleteLocation || {};
         return flux.dispatch({location, type: LOCATION_CONSTANTS.REMOVE_ITEM_SUCCESS});
       };
 
@@ -268,7 +268,7 @@ export const createLocationActions = (
       };
 
       const onSuccess = (data: ApiResultsType = {}) => {
-        const {getLocation = {}} = data;
+        const getLocation = data?.getLocation || {};
         return flux.dispatch({location: getLocation, type: LOCATION_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
@@ -312,7 +312,9 @@ export const createLocationActions = (
       };
 
       const onSuccess = (data: ApiResultsType = {}) => {
-        const {locationsByItem = []} = data as {locationsByItem: LocationType[]};
+        const locationsByItem = Array.isArray((data as {locationsByItem?: LocationType[]})?.locationsByItem)
+          ? (data as {locationsByItem?: LocationType[]}).locationsByItem || []
+          : [];
         return flux.dispatch({
           itemId,
           list: locationsByItem,
@@ -360,7 +362,7 @@ export const createLocationActions = (
       };
 
       const onSuccess = (data: ApiResultsType = {}) => {
-        const {updateLocation = {}} = data;
+        const updateLocation = data?.updateLocation || {};
         return flux.dispatch({location: updateLocation, type: LOCATION_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 

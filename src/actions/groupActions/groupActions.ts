@@ -65,7 +65,7 @@ export const createGroupActions = (
       };
 
       const onSuccess = (data: GroupApiResultsType) => {
-        const {groups: {addGroup = {}}} = data;
+        const addGroup = data?.groups?.addGroup || {};
         return flux.dispatch({group: addGroup, type: GROUP_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
@@ -86,7 +86,7 @@ export const createGroupActions = (
       };
 
       const onSuccess = (data: GroupApiResultsType) => {
-        const {groups: {getGroup: group = {}}} = data;
+        const group = data?.groups?.getGroup || {};
         return flux.dispatch({group, type: GROUP_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
@@ -135,7 +135,7 @@ export const createGroupActions = (
       };
 
       const onSuccess = (data: GroupApiResultsType) => {
-        const {groups: {getGroupsByLatest: groupsByLatest = []}} = data;
+        const groupsByLatest = data?.groups?.getGroupsByLatest || [];
         return flux.dispatch({
           list: groupsByLatest,
           type: GROUP_CONSTANTS.GET_LIST_SUCCESS
@@ -179,7 +179,7 @@ export const createGroupActions = (
       };
 
       const onSuccess = (data: GroupApiResultsType) => {
-        const {groups: {deleteGroup = {}}} = data;
+        const deleteGroup = data?.groups?.deleteGroup || {};
         return flux.dispatch({group: deleteGroup, type: GROUP_CONSTANTS.REMOVE_ITEM_SUCCESS});
       };
 
@@ -200,7 +200,7 @@ export const createGroupActions = (
       };
 
       const onSuccess = (data: GroupApiResultsType) => {
-        const {groups: {updateGroup = {}}} = data;
+        const updateGroup = data?.groups?.updateGroup || {};
         return flux.dispatch({group: updateGroup, type: GROUP_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 

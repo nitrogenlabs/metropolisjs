@@ -3,7 +3,6 @@
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
 import {validateUserInput} from '../../adapters/userAdapter/userAdapter.js';
-import {syncProfileTagsToSession} from '../profileActions/profileActions.js';
 import {USER_CONSTANTS} from '../../stores/userStore.js';
 import {appMutation, appQuery, publicMutation, refreshSession} from '../../utils/api.js';
 import {createBaseActions} from '../../utils/baseActionFactory.js';
@@ -14,6 +13,7 @@ import {
   normalizeSession,
   persistSession
 } from '../../utils/session.js';
+import {syncProfileTagsToSession} from '../profileActions/profileActions.js';
 
 import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {User} from '../../adapters/userAdapter/userAdapter.js';
@@ -21,6 +21,7 @@ import type {ApiResultsType, ReaktorDbCollection, SessionType} from '../../utils
 import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'users';
+const PROFILE_DATA_TYPE: ReaktorDbCollection = 'profiles';
 const DEFAULT_USER_QUERY_FIELDS: string[] = ['userId', 'username'];
 const SENSITIVE_USER_FIELDS = new Set([
   'password',
@@ -52,6 +53,49 @@ const getSessionPayload = (payload: unknown): Record<string, unknown> => {
   }
 
   return (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>;
+};
+
+const ensureSessionProfile = async (
+  flux: FluxFramework,
+  sessionData: Partial<User> = {}
+): Promise<SessionType> => {
+  const existingProfileId = String((sessionData as any)?.profileId || '').trim();
+
+  if(existingProfileId) {
+    return syncStoredSession(flux, sessionData as Record<string, unknown>);
+  }
+
+  try {
+    const data = await appMutation(
+      flux,
+      'updateProfile',
+      PROFILE_DATA_TYPE,
+      {
+        profile: {
+          type: 'ProfileInput!',
+          value: {
+            ...(sessionData?.username ? {name: sessionData.username} : {})
+          }
+        }
+      },
+      ['profileId', 'userId']
+    ) as unknown as {
+      profiles?: {updateProfile?: Record<string, unknown>};
+    };
+    const profile = data?.profiles?.updateProfile || {};
+    const nextProfileId = String((profile as any)?.profileId || '').trim();
+
+    if(nextProfileId) {
+      return syncStoredSession(flux, {
+        ...(sessionData as Record<string, unknown>),
+        profileId: nextProfileId
+      });
+    }
+  } catch(error) {
+    // noop
+  }
+
+  return syncStoredSession(flux, sessionData as Record<string, unknown>);
 };
 
 const getFieldRoot = (field: string): string => {
@@ -246,7 +290,7 @@ export const createUserActions = (
     };
 
     const onSuccess = (data: UserApiResultsType): Promise<FluxAction> => {
-      const {users: {addUser: user = {}}} = data;
+      const user = data?.users?.addUser || {};
       return flux.dispatch({
         type: USER_CONSTANTS.ADD_ITEM_SUCCESS,
         user
@@ -266,7 +310,7 @@ export const createUserActions = (
       'mailingList',
       'modified',
       'state',
-      'tags {id, name, tagId}',
+      'tags {name, tagId}',
       'thumbUrl',
       'userAccess',
       'userId',
@@ -301,7 +345,7 @@ export const createUserActions = (
     };
 
     const onSuccess = (data: UserApiResultsType): Promise<FluxAction> => {
-      const {users: {signUp: user = {}}} = data;
+      const user = data?.users?.signUp || {};
       return flux.dispatch({
         type: USER_CONSTANTS.SIGN_UP_SUCCESS,
         user
@@ -364,12 +408,9 @@ export const createUserActions = (
     };
 
     const onSuccess = (data: ApiResultsType = {}) => {
-      const {
-        users: {
-          update: legacyUser = {},
-          updateUser: updatedUser = {}
-        }
-      } = data as unknown as UserApiResultsType;
+      const users = (data as unknown as UserApiResultsType)?.users;
+      const legacyUser = users?.update || {};
+      const updatedUser = users?.updateUser || {};
       const user = hasSessionIdentity(updatedUser) ? updatedUser : legacyUser;
 
       if((user as any)?.userId && (user as any).userId === flux.getState('user.session.userId')) {
@@ -399,7 +440,7 @@ export const createUserActions = (
       'modified',
       'phone',
       'state',
-      'tags {id, name, tagId}',
+      'tags {name, tagId}',
       'thumbUrl',
       'userAccess',
       'userId',
@@ -444,13 +485,13 @@ export const createUserActions = (
   const remove = async (userId: string): Promise<User> => {
     const queryVariables = {
       userId: {
-        type: 'String!',
+        type: 'ID!',
         value: userId
       }
     };
 
     const onSuccess = (data: ApiResultsType = {}) => {
-      const {users: {remove: user = {}}} = data as unknown as UserApiResultsType;
+      const user = (data as unknown as UserApiResultsType)?.users?.remove || {};
       return flux.dispatch({type: USER_CONSTANTS.REMOVE_ITEM_SUCCESS, user});
     };
 
@@ -477,11 +518,11 @@ export const createUserActions = (
         throw new Error('invalid_session');
       }
 
-      syncStoredSession(flux, sessionData as Record<string, unknown>);
-      await flux.dispatch({session: sessionData, type: USER_CONSTANTS.GET_SESSION_SUCCESS});
-      await syncProfileTagsToSession(flux, String((sessionData as any)?.profileId || ''));
+      const nextSession = await ensureSessionProfile(flux, sessionData);
+      await flux.dispatch({session: nextSession, type: USER_CONSTANTS.GET_SESSION_SUCCESS});
+      await syncProfileTagsToSession(flux, String((nextSession as any)?.profileId || ''));
       syncStoredSession(flux, (flux.getState('user.session', {}) || {}) as Record<string, unknown>);
-      return sessionData as User;
+      return (flux.getState('user.session', nextSession) || nextSession) as User;
     },
     userProps,
     DEFAULT_USER_QUERY_FIELDS
@@ -496,9 +537,9 @@ export const createUserActions = (
     };
 
     const onSuccess = (data: ApiResultsType = {}) => {
-      const {users: {getUserById = {}}} = data as unknown as UserApiResultsType & {
+      const getUserById = ((data as unknown as UserApiResultsType & {
         users?: {getUserById?: Partial<User>};
-      };
+      })?.users?.getUserById) || {};
 
       if(userId === flux.getState('user.session.userId')) {
         syncStoredSession(flux, getUserById as Record<string, unknown>);
@@ -516,7 +557,7 @@ export const createUserActions = (
 
   const list = async (userProps: string[] = []): Promise<User[]> => {
     const onSuccess = (data: ApiResultsType = {}) => {
-      const {users: {getUserList: list = []}} = data as unknown as UserApiResultsType;
+      const list = (data as unknown as UserApiResultsType)?.users?.getUserList || [];
       return flux.dispatch({list, type: USER_CONSTANTS.GET_LIST_SUCCESS});
     };
 
@@ -549,7 +590,7 @@ export const createUserActions = (
     };
 
     const onSuccess = (data: ApiResultsType = {}) => {
-      const {users: {listByLatest: list = []}} = data as unknown as UserApiResultsType;
+      const list = (data as unknown as UserApiResultsType)?.users?.listByLatest || [];
       return flux.dispatch({list, type: USER_CONSTANTS.GET_LIST_SUCCESS});
     };
 
@@ -585,9 +626,37 @@ export const createUserActions = (
     from: number = 0,
     to: number = 10,
     profileProps: string[] = []
-  ): Promise<User[]> =>
-    []
-  ;
+  ): Promise<User[]> => {
+    const queryVariables = {
+      from: {
+        type: 'Int',
+        value: from
+      },
+      tags: {
+        type: '[String!]',
+        value: tagNames
+      },
+      to: {
+        type: 'Int',
+        value: to
+      },
+      username: {
+        type: 'String',
+        value: username
+      }
+    };
+
+    const onSuccess = (data: ApiResultsType = {}) => {
+      const list = (data as unknown as UserApiResultsType)?.users?.listByTags || [];
+      return flux.dispatch({list, type: USER_CONSTANTS.GET_LIST_SUCCESS});
+    };
+
+    return withInvalidFieldRetry(
+      (safeUserProps) => appQuery(flux, 'listByTags', DATA_TYPE, queryVariables, safeUserProps, {onSuccess}),
+      profileProps,
+      DEFAULT_USER_QUERY_FIELDS
+    );
+  };
 
   const search = async (query: string, userProps: string[] = []): Promise<User[]> => {
     const queryVariables = {
@@ -598,7 +667,7 @@ export const createUserActions = (
     };
 
     const onSuccess = (data: ApiResultsType = {}) => {
-      const {users: {search: list = []}} = data as unknown as UserApiResultsType;
+      const list = (data as unknown as UserApiResultsType)?.users?.search || [];
       return flux.dispatch({list, type: USER_CONSTANTS.GET_LIST_SUCCESS});
     };
 
@@ -681,7 +750,7 @@ export const createUserActions = (
       const baseSession = syncStoredSession(flux, getSessionPayload(sessionResult));
 
       try {
-        const hydratedSession = await session(['profileId', 'userAccess']);
+        const hydratedSession = await session(['profileId', 'userAccess', 'username']);
         await syncProfileTagsToSession(flux, String((hydratedSession as any)?.profileId || ''));
       } catch(error) {
         syncStoredSession(flux, baseSession as Record<string, unknown>);

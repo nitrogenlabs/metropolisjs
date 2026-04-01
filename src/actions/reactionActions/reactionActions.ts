@@ -110,7 +110,7 @@ export const createReactionActions = (
       };
 
       const onSuccess = (data: ReactionApiResultsType) => {
-        const {reactions: {addReaction: reaction = {}}} = data;
+        const reaction = data?.reactions?.addReaction || {};
         return Flux.dispatch({itemId, itemType, reaction, type: REACTION_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
@@ -142,7 +142,7 @@ export const createReactionActions = (
       };
 
       const onSuccess = (data: ReactionApiResultsType) => {
-        const {reactions: {deleteReaction: reaction = {}}} = data;
+        const reaction = data?.reactions?.deleteReaction || {};
         return Flux.dispatch({
           itemId,
           itemType,
@@ -174,7 +174,7 @@ export const createReactionActions = (
       };
 
       const onSuccess = (data: ReactionApiResultsType) => {
-        const {reactions: {getReactionCount}} = data;
+        const getReactionCount = data?.reactions?.getReactionCount ?? 0;
         return flux.dispatch({
           count: getReactionCount,
           itemId,
@@ -215,7 +215,7 @@ export const createReactionActions = (
       };
 
       const onSuccess = (data: ReactionApiResultsType) => {
-        const {reactions: {hasReaction}} = data;
+        const hasReaction = data?.reactions?.hasReaction ?? false;
         return Flux.dispatch({
           hasReaction,
           itemId: `${itemType}/${itemId}`,
@@ -279,4 +279,3 @@ export const createReactionActions = (
     updateReactionAdapterOptions
   };
 };
-

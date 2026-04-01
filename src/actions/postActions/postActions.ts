@@ -70,7 +70,7 @@ export const createPostActions = (
       };
 
       const onSuccess = (data: PostApiResultsType) => {
-        const {posts: {addPost = {}}} = data;
+        const addPost = data?.posts?.addPost || {};
         return flux.dispatch({post: addPost, type: POST_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
@@ -91,7 +91,7 @@ export const createPostActions = (
       };
 
       const onSuccess = (data: PostApiResultsType) => {
-        const {posts: {getPost: post = {}}} = data;
+        const post = data?.posts?.getPost || {};
         return flux.dispatch({post, type: POST_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
@@ -138,7 +138,7 @@ export const createPostActions = (
       };
 
       const onSuccess = (data: PostApiResultsType) => {
-        const {posts: {getPostsByLatest: postsByLatest = []}} = data;
+        const postsByLatest = data?.posts?.getPostsByLatest || [];
         return flux.dispatch({
           list: postsByLatest,
           type: POST_CONSTANTS.GET_LIST_SUCCESS
@@ -198,7 +198,7 @@ export const createPostActions = (
       };
 
       const onSuccess = (data: PostApiResultsType) => {
-        const {posts: {getPostsByLocation: postsByLocation = []}} = data;
+        const postsByLocation = data?.posts?.getPostsByLocation || [];
         return flux.dispatch({
           list: postsByLocation,
           type: POST_CONSTANTS.GET_LIST_SUCCESS
@@ -263,7 +263,7 @@ export const createPostActions = (
       };
 
       const onSuccess = (data: PostApiResultsType) => {
-        const {posts: {getPostsByReactions: postsByReactions = []}} = data;
+        const postsByReactions = data?.posts?.getPostsByReactions || [];
         return flux.dispatch({
           list: postsByReactions,
           type: POST_CONSTANTS.GET_LIST_SUCCESS
@@ -328,7 +328,7 @@ export const createPostActions = (
       };
 
       const onSuccess = (data: PostApiResultsType) => {
-        const {posts: {getPostsByTags: postsByTags = []}} = data;
+        const postsByTags = data?.posts?.getPostsByTags || [];
         return flux.dispatch({
           list: postsByTags,
           type: POST_CONSTANTS.GET_LIST_SUCCESS
@@ -370,7 +370,7 @@ export const createPostActions = (
       };
 
       const onSuccess = (data: PostApiResultsType) => {
-        const {posts: {deletePost = {}}} = data;
+        const deletePost = data?.posts?.deletePost || {};
         return flux.dispatch({post: deletePost, type: POST_CONSTANTS.REMOVE_ITEM_SUCCESS});
       };
 
@@ -391,7 +391,7 @@ export const createPostActions = (
       };
 
       const onSuccess = (data: PostApiResultsType) => {
-        const {posts: {updatePost = {}}} = data;
+        const updatePost = data?.posts?.updatePost || {};
         return flux.dispatch({post: updatePost, type: POST_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 
