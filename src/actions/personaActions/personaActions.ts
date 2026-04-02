@@ -74,8 +74,18 @@ export const syncPersonaToSession = (flux: FluxFramework, persona: Partial<Perso
   const currentSession = (flux.getState('user.session', {}) || {}) as Record<string, unknown>;
   const sessionPersonaId = parseId(String(currentSession?.personaId || ''));
   const fetchedPersonaId = parseId(String(persona?.personaId || ''));
+  const sessionUserId = parseId(String(currentSession?.userId || ''));
+  const fetchedUserId = parseId(String(persona?.userId || ''));
 
-  if(!sessionPersonaId || !fetchedPersonaId || sessionPersonaId !== fetchedPersonaId) {
+  if(!fetchedPersonaId) {
+    return;
+  }
+
+  if(sessionPersonaId && sessionPersonaId !== fetchedPersonaId) {
+    return;
+  }
+
+  if(sessionUserId && fetchedUserId && sessionUserId !== fetchedUserId) {
     return;
   }
 
@@ -322,6 +332,7 @@ export const createPersonaActions = (
 
       const onSuccess = async (data: PersonaApiResultsType) => {
         const persona = data?.personas?.updatePersona || {};
+        syncPersonaToSession(flux, persona);
         return flux.dispatch({persona, type: PERSONA_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 
