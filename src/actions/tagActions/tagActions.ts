@@ -8,9 +8,8 @@ import {appMutation, appQuery} from '../../utils/api.js';
 
 import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {TagType} from '../../adapters/tagAdapter/tagAdapter.js';
-import type {ReaktorDbCollection} from '../../utils/api.js';
 
-const DATA_TYPE: ReaktorDbCollection = 'tags';
+const DATA_TYPE = 'tags';
 const DEFAULT_TAG_PROPS = ['added', 'category', 'description', 'modified', 'name', 'tagId'];
 const DELETE_TAG_PROPS = DEFAULT_TAG_PROPS.filter((field) => field !== 'tagId');
 
@@ -95,7 +94,7 @@ export const createTagActions = (
   flux: FluxFramework,
   options?: TagActionsOptions
 ): TagActions => {
-  let tagAdapterOptions: TagAdapterOptions = options?.tagAdapterOptions || {};
+  let tagAdapterOptions = options?.tagAdapterOptions || {};
   let customTagAdapter = options?.tagAdapter;
   let validateTag = createTagValidator(customTagAdapter, tagAdapterOptions);
 
@@ -276,9 +275,9 @@ export const createTagActions = (
     tagProps: string[] = [],
     options: {forceRefresh?: boolean} = {}
   ): Promise<TagType[]> => {
-    const initialTags: TagType[] = flux.getState('tag.list', []) as TagType[];
-    const cacheExpires: number = flux.getState('tag.expires', 0) as number;
-    const now: number = Date.now();
+    const initialTags = flux.getState('tag.list', []) as TagType[];
+    const cacheExpires = flux.getState('tag.expires', 0) as number;
+    const now = Date.now();
     const requestedTagProps = sanitizeTagProps(tagProps);
     const forceRefresh = !!options?.forceRefresh;
 

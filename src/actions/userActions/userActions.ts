@@ -17,12 +17,11 @@ import {syncPersonaTagsToSession} from '../personaActions/personaActions.js';
 
 import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {User} from '../../adapters/userAdapter/userAdapter.js';
-import type {ApiResultsType, ReaktorDbCollection, SessionType} from '../../utils/api.js';
+import type {ApiResultsType, SessionType} from '../../utils/api.js';
 import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
 
-const DATA_TYPE: ReaktorDbCollection = 'users';
-const PERSONA_DATA_TYPE: ReaktorDbCollection = 'personas';
-const DEFAULT_USER_QUERY_FIELDS: string[] = ['userId', 'username'];
+const DATA_TYPE = 'users';
+const DEFAULT_USER_QUERY_FIELDS = ['userId', 'username'];
 const SENSITIVE_USER_FIELDS = new Set([
   'password',
   'salt',
@@ -63,36 +62,6 @@ const ensureSessionPersona = async (
 
   if(existingPersonaId) {
     return syncStoredSession(flux, sessionData as Record<string, unknown>);
-  }
-
-  try {
-    const data = await appMutation(
-      flux,
-      'updatePersona',
-      PERSONA_DATA_TYPE,
-      {
-        persona: {
-          type: 'PersonaInput!',
-          value: {
-            ...(sessionData?.username ? {name: sessionData.username} : {})
-          }
-        }
-      },
-      ['personaId', 'userId']
-    ) as unknown as {
-      personas?: {updatePersona?: Record<string, unknown>};
-    };
-    const persona = data?.personas?.updatePersona || {};
-    const nextPersonaId = String((persona as any)?.personaId || '').trim();
-
-    if(nextPersonaId) {
-      return syncStoredSession(flux, {
-        ...(sessionData as Record<string, unknown>),
-        personaId: nextPersonaId
-      });
-    }
-  } catch(error) {
-    // noop
   }
 
   return syncStoredSession(flux, sessionData as Record<string, unknown>);
@@ -310,7 +279,6 @@ export const createUserActions = (
       'mailingList',
       'modified',
       'state',
-      'tags {name, tagId}',
       'thumbUrl',
       'userAccess',
       'userId',
@@ -440,7 +408,6 @@ export const createUserActions = (
       'modified',
       'phone',
       'state',
-      'tags {name, tagId}',
       'thumbUrl',
       'userAccess',
       'userId',
@@ -716,7 +683,7 @@ export const createUserActions = (
       throw new Error('Username, email, or phone number and password are required to sign in');
     }
 
-    const queryVariablesWithUserInput: any = {
+    const queryVariablesWithUserInput = {
       expires: {
         type: 'Int',
         value: expires

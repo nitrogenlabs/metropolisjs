@@ -64,11 +64,11 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
     }
 
     const config = getConfigFromFlux(flux);
-    const websocketUrl: string = config.app?.urls?.websocket || '';
-    const sessionToken: string = token || flux.getState('user.session.token');
+    const websocketUrl = config.app?.urls?.websocket || '';
+    const sessionToken = token || flux.getState('user.session.token');
 
     if(sessionToken) {
-      const url: string = `${websocketUrl}?token=${sessionToken}`;
+      const url = `${websocketUrl}?token=${sessionToken}`;
 
       ws = new Sockette(url, {
         maxAttempts: 5,

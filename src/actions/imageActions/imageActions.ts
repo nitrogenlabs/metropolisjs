@@ -12,9 +12,9 @@ import { convertFileToBase64 } from '../../utils/file.js';
 
 import type { FluxFramework } from '@nlabs/arkhamjs';
 import type { ImageType } from '../../adapters/imageAdapter/imageAdapter.js';
-import type { ApiResultsType, ReaktorDbCollection } from '../../utils/api.js';
+import type { ApiResultsType } from '../../utils/api.js';
 
-const DATA_TYPE: ReaktorDbCollection = 'images';
+const DATA_TYPE = 'images';
 
 export interface ImageAdapterOptions {
   strict?: boolean;
@@ -104,7 +104,7 @@ export const createImageActions = (
   options?: ImageActionsOptions
 ): ImageActions => {
   // Initialize adapter state
-  let imageAdapterOptions: ImageAdapterOptions = options?.imageAdapterOptions || {};
+  let imageAdapterOptions = options?.imageAdapterOptions || {};
   let customImageAdapter = options?.imageAdapter;
 
   // Create validators that merge custom adapters with defaults
@@ -206,7 +206,7 @@ export const createImageActions = (
           // Note: app.images.maxImageSize is not part of standard MetropolisEnvironmentConfiguration
           // Uses default value if not provided in config
           const maxImageSize = (config as any).app?.images?.maxImageSize || 5242880;
-          const base64: string = await convertFileToBase64(file, maxImageSize);
+          const base64 = await convertFileToBase64(file, maxImageSize);
           const {type: fileType} = file;
           return add({base64, fileType, itemId}, itemType);
         })

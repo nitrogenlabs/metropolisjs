@@ -8,6 +8,7 @@ import {useEffect, useMemo} from 'react';
 import {I18nextProvider} from 'react-i18next';
 
 import {createWebsocketActions} from './actions/websocketActions/websocketActions.js';
+import {syncPersonaTagsToSession, syncPersonaToSession} from './actions/personaActions/personaActions.js';
 import {resolveEnvironmentConfig} from './config/index.js';
 import {
   app,
@@ -16,15 +17,18 @@ import {
   locations,
   messages,
   permissions,
+  PERSONA_CONSTANTS,
   posts,
+  TAG_CONSTANTS,
   tags,
+  USER_CONSTANTS,
   users,
   websocket
 } from './stores/index.js';
 import {refreshSession} from './utils/api.js';
 import {initI18n} from './utils/i18n.js';
 import {MetropolisContext} from './utils/MetropolisProvider.js';
-import {hydrateSessionFromStorage} from './utils/session.js';
+import {hydrateSessionFromStorage, persistSession} from './utils/session.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {MetropolisConfiguration, MetropolisEnvironmentConfiguration} from './config/index.js';
@@ -51,6 +55,61 @@ export const onInit = (flux: FluxFramework) => {
     ]);
     hydrateSessionFromStorage(flux);
     const token = flux.getState('user.session.token');
+
+    flux.on(PERSONA_CONSTANTS.ADD_ITEM_SUCCESS, async ({persona = {}}: {persona?: Record<string, unknown>}) => {
+      syncPersonaToSession(flux, persona);
+
+      if(persona?.personaId && !Array.isArray(persona?.tags)) {
+        await syncPersonaTagsToSession(flux, String(persona.personaId));
+      }
+    });
+
+    flux.on(PERSONA_CONSTANTS.UPDATE_ITEM_SUCCESS, async ({persona = {}}: {persona?: Record<string, unknown>}) => {
+      syncPersonaToSession(flux, persona);
+
+      if(persona?.personaId && !Array.isArray(persona?.tags)) {
+        await syncPersonaTagsToSession(flux, String(persona.personaId));
+      }
+    });
+
+    flux.on(TAG_CONSTANTS.ADD_PERSONA_SUCCESS, ({tag}: {tag?: {name?: string; tagId?: string}}) => {
+      const currentSession = (flux.getState('user.session', {}) || {}) as Record<string, unknown> & {
+        tags?: Array<{name?: string; tagId?: string}>;
+      };
+      const currentTags = Array.isArray(currentSession.tags) ? currentSession.tags : [];
+      const nextTagId = String(tag?.tagId || '').trim();
+
+      if(!nextTagId) {
+        return;
+      }
+
+      const mergedTags = [...currentTags.filter((item) => String(item?.tagId || '').trim() !== nextTagId), tag as {name?: string; tagId?: string}]
+        .sort((left, right) => String(left?.name || '').localeCompare(String(right?.name || '')));
+      const nextSession = {...currentSession, tags: mergedTags};
+
+      flux.setState('user.session', nextSession);
+      persistSession(flux, nextSession);
+      flux.dispatch({type: USER_CONSTANTS.UPDATE_SESSION_SUCCESS, user: {tags: mergedTags}});
+    });
+
+    flux.on(TAG_CONSTANTS.REMOVE_PERSONA_SUCCESS, ({tag}: {tag?: {tagId?: string}}) => {
+      const currentSession = (flux.getState('user.session', {}) || {}) as Record<string, unknown> & {
+        tags?: Array<{name?: string; tagId?: string}>;
+      };
+      const currentTags = Array.isArray(currentSession.tags) ? currentSession.tags : [];
+      const nextTagId = String(tag?.tagId || '').trim();
+
+      if(!nextTagId) {
+        return;
+      }
+
+      const nextTags = currentTags.filter((item) => String(item?.tagId || '').trim() !== nextTagId);
+      const nextSession = {...currentSession, tags: nextTags};
+
+      flux.setState('user.session', nextSession);
+      persistSession(flux, nextSession);
+      flux.dispatch({type: USER_CONSTANTS.UPDATE_SESSION_SUCCESS, user: {tags: nextTags}});
+    });
 
     if(token) {
       refreshSession(flux, token as string);
@@ -279,4 +338,3 @@ export * from './actions/conversationActions/conversationActions.js';
 export * from './actions/videoActions/videoActions.js';
 export * from './constants/Collections.js';
 export * from './types/index.js';
-

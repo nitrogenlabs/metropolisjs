@@ -10,9 +10,8 @@ import {appMutation, appQuery} from '../../utils/api.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {ReactionType} from '../../adapters/reactionAdapter/reactionAdapter.js';
-import type {ReaktorDbCollection} from '../../utils/api.js';
 
-const DATA_TYPE: ReaktorDbCollection = 'reactions';
+const DATA_TYPE = 'reactions';
 
 export interface ReactionAdapterOptions {
   strict?: boolean;
@@ -70,7 +69,7 @@ export const createReactionActions = (
   flux: FluxFramework,
   options?: ReactionActionsOptions
 ): ReactionActions => {
-  let reactionAdapterOptions: ReactionAdapterOptions = options?.reactionAdapterOptions || {};
+  let reactionAdapterOptions = options?.reactionAdapterOptions || {};
   let customReactionAdapter = options?.reactionAdapter;
   let validateReaction = createReactionValidator(customReactionAdapter, reactionAdapterOptions);
 
@@ -239,19 +238,19 @@ export const createReactionActions = (
   };
 
   const abbreviateCount = (count: number): string => {
-    const value: number = count || 0;
-    let newValue: string = value.toString();
+    const value = count || 0;
+    let newValue = value.toString();
 
     if(value >= 1000) {
-      const suffixes: string[] = ['', 'k', 'm', 'b', 't'];
-      const suffixNum: number = Math.floor(`${value}`.length / 3);
-      let shortValue: number = 0;
-      let shortString: string = '';
+      const suffixes = ['', 'k', 'm', 'b', 't'];
+      const suffixNum = Math.floor(`${value}`.length / 3);
+      let shortValue = 0;
+      let shortString = '';
 
       for(let precision = 2; precision >= 1; precision--) {
         shortValue = parseFloat((suffixNum !== 0 ? value / Math.pow(1000, suffixNum) : value).toPrecision(precision));
         shortString = shortValue.toString();
-        const dotLessShortValue: string = `${shortValue}`.replace(/[^a-zA-Z 0-9]+/g, '');
+        const dotLessShortValue = `${shortValue}`.replace(/[^a-zA-Z 0-9]+/g, '');
 
         if(dotLessShortValue.length <= 2) {
           break;

@@ -6,14 +6,14 @@ import {parseId, parseNum} from '@nlabs/utils';
 
 import {validateVideoInput} from '../../adapters/videoAdapter/videoAdapter.js';
 import {VIDEO_CONSTANTS} from '../../stores/videoStore.js';
-import {appMutation, appQuery, type ReaktorDbCollection} from '../../utils/api.js';
+import {appMutation, appQuery} from '../../utils/api.js';
 import {createBaseActions} from '../../utils/baseActionFactory.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {VideoType} from '../../types/videos.types.js';
 import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
 
-const DATA_TYPE: ReaktorDbCollection = 'videos';
+const DATA_TYPE = 'videos';
 
 export type VideoAdapterOptions = BaseAdapterOptions;
 

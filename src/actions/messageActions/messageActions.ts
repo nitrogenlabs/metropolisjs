@@ -10,9 +10,9 @@ import { appMutation, appQuery } from '../../utils/api.js';
 import type { FluxFramework } from '@nlabs/arkhamjs';
 import type { ConversationType } from '../../adapters/conversationAdapter/conversationAdapter.js';
 import type { MessageType } from '../../adapters/messageAdapter/messageAdapter.js';
-import type { ApiResultsType, ReaktorDbCollection } from '../../utils/api.js';
+import type { ApiResultsType } from '../../utils/api.js';
 
-const DATA_TYPE: ReaktorDbCollection = 'messages';
+const DATA_TYPE = 'messages';
 
 export interface MessageAdapterOptions {
   strict?: boolean;
@@ -67,7 +67,7 @@ export const createMessageActions = (
   flux: FluxFramework,
   options?: MessageActionsOptions
 ): MessageActions => {
-  let messageAdapterOptions: MessageAdapterOptions = options?.messageAdapterOptions || {};
+  let messageAdapterOptions = options?.messageAdapterOptions || {};
   let customMessageAdapter = options?.messageAdapter;
 
   let validateMessage = createMessageValidator(customMessageAdapter, messageAdapterOptions);

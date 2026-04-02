@@ -168,12 +168,19 @@ export const createPersonaActions = (
         }
       };
 
-      const onSuccess = (data: PersonaApiResultsType) => {
+      const onSuccess = async (data: PersonaApiResultsType) => {
         const addPersona = data?.personas?.addPersona || {};
         return flux.dispatch({persona: addPersona, type: PERSONA_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
-      return await appMutation<PersonaType>(flux, 'addPersona', DATA_TYPE, queryVariables, ['personaId', ...personaProps], {onSuccess});
+      return await appMutation<PersonaType>(
+        flux,
+        'addPersona',
+        DATA_TYPE,
+        queryVariables,
+        [...DEFAULT_PERSONA_PROPS, ...personaProps],
+        {onSuccess}
+      );
     } catch(error) {
       flux.dispatch({error, type: PERSONA_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
@@ -313,13 +320,19 @@ export const createPersonaActions = (
         }
       };
 
-      const onSuccess = (data: PersonaApiResultsType) => {
+      const onSuccess = async (data: PersonaApiResultsType) => {
         const persona = data?.personas?.updatePersona || {};
-        syncPersonaToSession(flux, persona);
         return flux.dispatch({persona, type: PERSONA_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 
-      return await appMutation<PersonaType>(flux, 'updatePersona', DATA_TYPE, queryVariables, ['personaId', ...personaProps], {onSuccess});
+      return await appMutation<PersonaType>(
+        flux,
+        'updatePersona',
+        DATA_TYPE,
+        queryVariables,
+        [...DEFAULT_PERSONA_PROPS, ...personaProps],
+        {onSuccess}
+      );
     } catch(error) {
       flux.dispatch({error, type: PERSONA_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;

@@ -9,11 +9,10 @@ import {PERMISSION_CONSTANTS} from '../../stores/permissionStore.js';
 import {appMutation, appQuery} from '../../utils/api.js';
 import {createBaseActions} from '../../utils/baseActionFactory.js';
 
-import type {ReaktorDbCollection} from '../../utils/api.js';
 import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
 import type {FluxFramework} from '@nlabs/arkhamjs';
 
-const DATA_TYPE: ReaktorDbCollection = 'permissions';
+const DATA_TYPE = 'permissions';
 
 export interface PermissionAdapterOptions extends BaseAdapterOptions {}
 

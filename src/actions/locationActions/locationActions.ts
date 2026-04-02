@@ -10,9 +10,9 @@ import { autoCompleteLocation } from '../../utils/location.js';
 import type { FluxFramework } from '@nlabs/arkhamjs';
 import type { User } from '../../adapters/index.js';
 import type { LocationType } from '../../adapters/locationAdapter/locationAdapter.js';
-import type { ApiResultsType, ReaktorDbCollection } from '../../utils/api.js';
+import type { ApiResultsType } from '../../utils/api.js';
 
-const DATA_TYPE: ReaktorDbCollection = 'locations';
+const DATA_TYPE = 'locations';
 
 export interface LocationAdapterOptions {
   strict?: boolean;
@@ -100,7 +100,7 @@ export const createLocationActions = (
   options?: LocationActionsOptions
 ): LocationActions => {
   // Initialize adapter state
-  let locationAdapterOptions: LocationAdapterOptions = options?.locationAdapterOptions || {};
+  let locationAdapterOptions = options?.locationAdapterOptions || {};
   let customLocationAdapter = options?.locationAdapter;
 
   // Create validators that merge custom adapters with defaults
@@ -200,7 +200,7 @@ export const createLocationActions = (
   const getCurrentLocation = async (setLocation?: (location: LocationType) => void): Promise<LocationType> => new Promise((resolve, reject) => {
     const {userId}: User = flux.getState('user.session', {});
     const {city, country, latitude, longitude, state}: User = flux.getState(['user', 'users', userId || ''], {});
-    const locationStr: string = [city, state, country].join(', ');
+    const locationStr = [city, state, country].join(', ');
     const personaLocation = {
       latitude,
       location: locationStr,

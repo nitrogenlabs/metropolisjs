@@ -5,14 +5,14 @@
 import {parseId, parseNum} from '@nlabs/utils';
 
 import {validateAppInput} from '../../adapters/appAdapter/appAdapter.js';
-import {appMutation, appQuery, type ReaktorDbCollection} from '../../utils/api.js';
+import {appMutation, appQuery} from '../../utils/api.js';
 import {createBaseActions} from '../../utils/baseActionFactory.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {AppType} from '../../types/apps.types.js';
 import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
 
-const DATA_TYPE: ReaktorDbCollection = 'apps';
+const DATA_TYPE = 'apps';
 
 export type AppAdapterOptions = BaseAdapterOptions;
 

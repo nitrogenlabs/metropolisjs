@@ -11,10 +11,9 @@ import { createBaseActions } from '../../utils/baseActionFactory.js';
 
 import type { FluxFramework } from '@nlabs/arkhamjs';
 import type { GroupType } from '../../types/groups.types.js';
-import type { ReaktorDbCollection } from '../../utils/api.js';
 import type { BaseAdapterOptions } from '../../utils/validatorFactory.js';
 
-const DATA_TYPE: ReaktorDbCollection = 'groups';
+const DATA_TYPE = 'groups';
 
 export interface GroupAdapterOptions extends BaseAdapterOptions {
 }

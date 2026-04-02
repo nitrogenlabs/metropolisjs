@@ -3,7 +3,6 @@ import {z} from 'zod';
 
 import {parseDocument, removeEmptyKeys} from '../arangoAdapter/arangoAdapter.js';
 import {parseReaktorDate, parseReaktorItemId, parseReaktorName, parseReaktorType} from '../reaktorAdapter/reaktorAdapter.js';
-import {parseTag} from '../tagAdapter/tagAdapter.js';
 
 export interface User {
   [key: string]: any;
@@ -37,7 +36,6 @@ export interface User {
   street2?: string;
   stripeAccountId?: string;
   stripeCustomerId?: string;
-  tags?: any[];
   timezone?: string;
   thumbUrl?: string;
   type?: string;
@@ -91,7 +89,6 @@ const UserInputSchema = z.object({
   street2: z.string().max(160).optional(),
   stripeAccountId: z.string().max(160).optional(),
   stripeCustomerId: z.string().max(160).optional(),
-  tags: z.array(z.any()).optional(),
   timezone: z.string().max(160).optional(),
   type: z.string().max(160).optional(),
   updated: z.number().optional(),
@@ -213,7 +210,6 @@ const performUserTransformation = (user: User): User => {
     street2,
     stripeAccountId,
     stripeCustomerId,
-    tags,
     timezone,
     type,
     userAccess,
@@ -258,7 +254,6 @@ const performUserTransformation = (user: User): User => {
     ...(street2 && {street2: parseVarChar(street2, 160)}),
     ...(stripeAccountId && {stripeAccountId: parseVarChar(stripeAccountId, 160)}),
     ...(stripeCustomerId && {stripeCustomerId: parseVarChar(stripeCustomerId, 160)}),
-    ...(tags?.length && {tags: tags.filter((tag) => !!tag).map((tag) => parseTag(tag))}),
     ...(timezone && {timezone: parseString(timezone, 160)}),
     ...(type && {type: parseReaktorType(type)}),
     ...(userAccess !== undefined && {userAccess: userAccess ? parseNum(userAccess) : 0}),

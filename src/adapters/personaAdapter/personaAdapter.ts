@@ -21,6 +21,9 @@ export interface PersonaType {
   imageCount?: number;
   imageId?: string;
   imageUrl?: string;
+  latitude?: number;
+  location?: string;
+  longitude?: number;
   likeCount?: number;
   name?: string;
   personaId?: string;
@@ -54,6 +57,9 @@ const PersonaInputSchema = z.object({
   imageCount: z.number().optional(),
   imageId: z.string().optional(),
   imageUrl: z.string().optional(),
+  latitude: z.number().optional(),
+  location: z.string().optional(),
+  longitude: z.number().optional(),
   likeCount: z.number().optional(),
   name: z.string().max(64).optional(),
   personaId: z.string().optional(),
@@ -103,6 +109,9 @@ const performPersonaTransformation = (persona: PersonaType): PersonaType => {
     imageCount,
     imageId,
     imageUrl,
+    latitude,
+    location,
+    longitude,
     likeCount,
     name,
     personaId,
@@ -123,6 +132,9 @@ const performPersonaTransformation = (persona: PersonaType): PersonaType => {
     ...(imageCount !== undefined && {imageCount: parseNum(imageCount)}),
     ...(imageId && {imageId: parseId(imageId)}),
     ...(imageUrl && {imageUrl}),
+    ...(latitude !== undefined && {latitude: parseNum(latitude, 12)}),
+    ...(location && {location: parseString(location, 160)}),
+    ...(longitude !== undefined && {longitude: parseNum(longitude, 12)}),
     ...(likeCount !== undefined && {likeCount: parseNum(likeCount)}),
     ...(name && {name: parseString(name, 64)}),
     ...((_key || personaId) && {personaId: parseId(_key || personaId || '')}),

@@ -51,7 +51,7 @@ export const createConnectionActions = (flux: FluxFramework): ConnectionActions 
     metadata: Record<string, any> = {}
   ): Promise<ConnectionEdge> => {
     try {
-      const queryVariables = {
+      const queryVariables: Record<string, {type: string; value: unknown}> = {
         connection: {
           type: 'ConnectionInput!',
           value: {
@@ -95,7 +95,7 @@ export const createConnectionActions = (flux: FluxFramework): ConnectionActions 
     filters: Record<string, any> = {}
   ): Promise<ConnectionEdge[]> => {
     try {
-      const queryVariables: any = {
+      const queryVariables: Record<string, {type: string; value: unknown}> = {
         fromId: {
           type: 'String!',
           value: parseId(fromId)

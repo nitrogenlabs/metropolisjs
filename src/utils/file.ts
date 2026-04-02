@@ -22,7 +22,7 @@ export const convertFileToBase64 = (file: File, maxSize: number): Promise<string
         canvas.width = updatedWidth;
         canvas.height = updatedHeight;
         canvas.getContext('2d')?.drawImage(image, 0, 0, updatedWidth, updatedHeight);
-        const dataUrl: string = canvas.toDataURL('image/jpeg');
+        const dataUrl: string = canvas.toDataURL('image/jpeg', 0.82);
 
         resolve(dataUrl);
       };

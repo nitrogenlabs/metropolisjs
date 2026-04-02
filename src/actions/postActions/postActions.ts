@@ -11,10 +11,9 @@ import { createBaseActions } from '../../utils/baseActionFactory.js';
 
 import type { FluxFramework } from '@nlabs/arkhamjs';
 import type { PostType } from '../../adapters/postAdapter/postAdapter.js';
-import type { ReaktorDbCollection } from '../../utils/api.js';
 import type { BaseAdapterOptions } from '../../utils/validatorFactory.js';
 
-const DATA_TYPE: ReaktorDbCollection = 'posts';
+const DATA_TYPE = 'posts';
 
 export interface PostAdapterOptions extends BaseAdapterOptions {
 }

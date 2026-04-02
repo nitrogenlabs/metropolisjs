@@ -6,13 +6,13 @@ import {parseId, parseNum} from '@nlabs/utils';
 
 import {validateConversationInput, type ConversationType} from '../../adapters/conversationAdapter/conversationAdapter.js';
 import {CONVERSATION_CONSTANTS} from '../../stores/conversationStore.js';
-import {appMutation, appQuery, type ReaktorDbCollection} from '../../utils/api.js';
+import {appMutation, appQuery} from '../../utils/api.js';
 import {createBaseActions} from '../../utils/baseActionFactory.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
 
-const DATA_TYPE: ReaktorDbCollection = 'conversations';
+const DATA_TYPE = 'conversations';
 
 export interface ConversationAdapterOptions extends BaseAdapterOptions {
 }

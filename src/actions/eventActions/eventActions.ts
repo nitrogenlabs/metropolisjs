@@ -10,10 +10,9 @@ import { appMutation, appQuery } from '../../utils/api.js';
 
 import type { FluxFramework } from '@nlabs/arkhamjs';
 import type { EventType } from '../../adapters/eventAdapter/eventAdapter.js';
-import type { ReaktorDbCollection } from '../../utils/api.js';
 import type { PostApiResultsType } from '../postActions/postActions.js';
 
-const DATA_TYPE: ReaktorDbCollection = 'posts';
+const DATA_TYPE = 'posts';
 
 export interface EventAdapterOptions {
   readonly strict?: boolean;
@@ -91,7 +90,7 @@ export const createEventActions = (
   options?: EventActionsOptions
 ): EventActions => {
   // Initialize adapter state
-  let eventAdapterOptions: EventAdapterOptions = options?.eventAdapterOptions || {};
+  let eventAdapterOptions = options?.eventAdapterOptions || {};
   let customEventAdapter = options?.eventAdapter;
 
   // Create validators that merge custom adapters with defaults
@@ -180,7 +179,7 @@ export const createEventActions = (
     longitude: number,
     eventProps: string[] = []
   ): Promise<EventType[]> => {
-    const formatTags: string[] = tags.map((tag: string) => tag.trim().toLowerCase());
+    const formatTags = tags.map((tag) => tag.trim().toLowerCase());
 
     try {
       const queryVariables = {

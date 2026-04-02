@@ -11,10 +11,9 @@ import { createBaseActions } from '../../utils/baseActionFactory.js';
 
 import type { FluxFramework } from '@nlabs/arkhamjs';
 import type { ContentInputType, ContentType } from '../../adapters/contentAdapter/contentAdapter.js';
-import type { ReaktorDbCollection } from '../../utils/api.js';
 import type { BaseAdapterOptions } from '../../utils/validatorFactory.js';
 
-const DATA_TYPE: ReaktorDbCollection = 'contents';
+const DATA_TYPE = 'contents';
 
 export interface ContentAdapterOptions extends BaseAdapterOptions {
 }
