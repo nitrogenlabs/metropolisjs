@@ -12,12 +12,14 @@ import {
   isLoggedIn as isLoggedInWithStorage,
   normalizeSession
 } from '../../utils/session.js';
+import {clearCachedRequest, getCachedRequest, setCachedRequest} from '../../utils/requestCache.js';
 import {syncPersonaTagsToSession} from '../personaActions/personaActions.js';
 
 import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {User} from '../../adapters/userAdapter/userAdapter.js';
 import type {ApiResultsType, SessionType} from '../../utils/api.js';
 import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
+import type {ActionRequestOptions} from '../../utils/requestCache.js';
 
 const DATA_TYPE = 'users';
 const DEFAULT_USER_QUERY_FIELDS = ['userId', 'username'];
@@ -196,41 +198,43 @@ const defaultUserValidator = (input: unknown, options?: UserAdapterOptions) => {
 };
 
 export interface userActions {
-  addUser: (userInput: Partial<User>, userProps?: string[]) => Promise<User>;
-  confirmCode: (code: number, {type, value}: {type: 'email' | 'phone'; value: string}) => Promise<boolean>;
-  confirmSignUp: (code: string, type: 'email' | 'phone') => Promise<boolean>;
-  currentAuthenticatedUser: () => Promise<User>;
-  currentUser: () => Promise<User>;
-  list: (userProps?: string[]) => Promise<User[]>;
-  listByConnection: (userId: string, from?: number, to?: number, userProps?: string[]) => Promise<User[]>;
-  itemById: (userId: string, userProps?: string[]) => Promise<User>;
-  listByLatest: (username?: string, from?: number, to?: number, userProps?: string[]) => Promise<User[]>;
+  addUser: (userInput: Partial<User>, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
+  confirmCode: (code: number, {type, value}: {type: 'email' | 'phone'; value: string}, requestOptions?: ActionRequestOptions) => Promise<boolean>;
+  confirmSignUp: (code: string, type: 'email' | 'phone', requestOptions?: ActionRequestOptions) => Promise<boolean>;
+  currentAuthenticatedUser: (requestOptions?: ActionRequestOptions) => Promise<User>;
+  currentUser: (requestOptions?: ActionRequestOptions) => Promise<User>;
+  list: (userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
+  listByConnection: (userId: string, from?: number, to?: number, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
+  itemById: (userId: string, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
+  listByLatest: (username?: string, from?: number, to?: number, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
   listByReactions: (
     username: string,
     reactionNames: string[],
     from?: number,
     to?: number,
-    personaProps?: string[]
+    personaProps?: string[],
+    requestOptions?: ActionRequestOptions
   ) => Promise<User[]>;
   listByTags: (
     username: string,
     tagNames: string[],
     from?: number,
     to?: number,
-    personaProps?: string[]
+    personaProps?: string[],
+    requestOptions?: ActionRequestOptions
   ) => Promise<User[]>;
-  forgotPassword: (username: string) => Promise<boolean>;
+  forgotPassword: (username: string, requestOptions?: ActionRequestOptions) => Promise<boolean>;
   isLoggedIn: () => boolean;
-  refreshSession: (token?: string, expires?: number) => Promise<SessionType>;
-  remove: (userId: string) => Promise<User>;
-  resetPassword: (username: string, password: string, code: string, type: 'email' | 'phone') => Promise<boolean>;
-  search: (query: string, userProps?: string[]) => Promise<User[]>;
-  session: (userProps?: string[]) => Promise<User>;
-  signIn: (user: Partial<User>, expires?: number) => Promise<SessionType>;
-  signOut: () => Promise<boolean>;
-  signUp: (userInput: Partial<User>, userProps?: string[]) => Promise<User>;
-  updatePassword: (password: string, newPassword: string) => Promise<boolean>;
-  updateUser: (userInput: Partial<User>, userProps?: string[]) => Promise<User>;
+  refreshSession: (token?: string, expires?: number, requestOptions?: ActionRequestOptions) => Promise<SessionType>;
+  remove: (userId: string, requestOptions?: ActionRequestOptions) => Promise<User>;
+  resetPassword: (username: string, password: string, code: string, type: 'email' | 'phone', requestOptions?: ActionRequestOptions) => Promise<boolean>;
+  search: (query: string, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
+  session: (userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
+  signIn: (user: Partial<User>, expires?: number, requestOptions?: ActionRequestOptions) => Promise<SessionType>;
+  signOut: (requestOptions?: ActionRequestOptions) => Promise<boolean>;
+  signUp: (userInput: Partial<User>, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
+  updatePassword: (password: string, newPassword: string, requestOptions?: ActionRequestOptions) => Promise<boolean>;
+  updateUser: (userInput: Partial<User>, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
   updateUserAdapter: (adapter: (input: unknown, options?: UserAdapterOptions) => any) => void;
   updateUserAdapterOptions: (options: UserAdapterOptions) => void;
 }
@@ -243,7 +247,21 @@ export const createUserActions = (
     adapter: options?.userAdapter,
     adapterOptions: options?.userAdapterOptions
   });
-  const addUser = async (userInput: Partial<User>, userProps: string[] = []): Promise<User> => {
+  const clearUserRequestCaches = async (userId = ''): Promise<void> => {
+    await clearCachedRequest(flux, 'user.list');
+    await clearCachedRequest(flux, 'user.listByLatest');
+    await clearCachedRequest(flux, 'user.listByTags');
+    await clearCachedRequest(flux, 'user.search');
+    if(userId) {
+      await clearCachedRequest(flux, `user.itemById:${userId}`);
+    }
+  };
+
+  const addUser = async (
+    userInput: Partial<User>,
+    userProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<User> => {
     const {username, email, password} = userInput;
     const queryVariables = {
       user: {
@@ -283,17 +301,25 @@ export const createUserActions = (
       'username'
     ]);
 
-    return publicMutation<UserApiResultsType>(
-      flux,
-      'addUser',
-      DATA_TYPE,
-      queryVariables,
-      returnProps,
-      {onSuccess}
-    );
+    try {
+      return await publicMutation<UserApiResultsType>(
+        flux,
+        'addUser',
+        DATA_TYPE,
+        queryVariables,
+        returnProps,
+        {onSuccess}
+      );
+    } finally {
+      await clearUserRequestCaches();
+    }
   };
 
-  const signUp = async (userInput: Partial<User>, userProps: string[] = []): Promise<User> => {
+  const signUp = async (
+    userInput: Partial<User>,
+    userProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<User> => {
     const {username, email, password} = userInput;
     const queryVariables = {
       expires: {
@@ -327,7 +353,7 @@ export const createUserActions = (
     ]);
 
     try {
-      return publicMutation<UserApiResultsType>(
+      return await publicMutation<UserApiResultsType>(
         flux,
         'signUp',
         DATA_TYPE,
@@ -338,10 +364,16 @@ export const createUserActions = (
     } catch(error) {
       flux.dispatch({error, type: USER_CONSTANTS.SIGN_UP_ERROR});
       throw error;
+    } finally {
+      await clearUserRequestCaches();
     }
   };
 
-  const updateUser = async (userInput: Partial<User>, userProps: string[] = []): Promise<User> => {
+  const updateUser = async (
+    userInput: Partial<User>,
+    userProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<User> => {
     const {
       birthdate,
       dob,
@@ -413,17 +445,25 @@ export const createUserActions = (
       ...userProps
     ]);
 
-    return appMutation(
-      flux,
-      'updateUser',
-      DATA_TYPE,
-      queryVariables,
-      returnProps,
-      {onSuccess}
-    );
+    try {
+      return await appMutation(
+        flux,
+        'updateUser',
+        DATA_TYPE,
+        queryVariables,
+        returnProps,
+        {onSuccess}
+      );
+    } finally {
+      await clearUserRequestCaches(String(userId || ''));
+    }
   };
 
-  const confirmCode = async (code: number, {type, value}: {type: 'email' | 'phone'; value: string}): Promise<boolean> => {
+  const confirmCode = async (
+    code: number,
+    {type, value}: {type: 'email' | 'phone'; value: string},
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<boolean> => {
     const queryVariables = {
       code: {
         type: 'Int!',
@@ -447,7 +487,7 @@ export const createUserActions = (
     return confirmed;
   };
 
-  const remove = async (userId: string): Promise<User> => {
+  const remove = async (userId: string, requestOptions: ActionRequestOptions = {}): Promise<User> => {
     const queryVariables = {
       userId: {
         type: 'ID!',
@@ -460,10 +500,14 @@ export const createUserActions = (
       return flux.dispatch({type: USER_CONSTANTS.REMOVE_ITEM_SUCCESS, user});
     };
 
-    return appMutation(flux, 'remove', DATA_TYPE, queryVariables, [], {onSuccess});
+    try {
+      return await appMutation(flux, 'remove', DATA_TYPE, queryVariables, [], {onSuccess});
+    } finally {
+      await clearUserRequestCaches(userId);
+    }
   };
 
-  const session = async (userProps: string[] = []): Promise<User> => withInvalidFieldRetry(
+  const session = async (userProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<User> => withInvalidFieldRetry(
     async (sessionProps) => {
       const data = await appQuery(
         flux,
@@ -493,7 +537,13 @@ export const createUserActions = (
     DEFAULT_USER_QUERY_FIELDS
   );
 
-  const itemById = async (userId: string, userProps: string[] = []): Promise<User> => {
+  const itemById = async (userId: string, userProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<User> => {
+    const cachedResult = getCachedRequest<User>(flux, `user.itemById:${userId}`, {userId, userProps}, requestOptions);
+
+    if(cachedResult !== undefined) {
+      return cachedResult;
+    }
+
     const queryVariables = {
       userId: {
         type: 'ID!',
@@ -513,32 +563,49 @@ export const createUserActions = (
       return flux.dispatch({type: USER_CONSTANTS.GET_ITEM_SUCCESS, user: getUserById});
     };
 
-    return withInvalidFieldRetry(
+    const result = await withInvalidFieldRetry(
       (safeUserProps) => appQuery(flux, 'getUserById', DATA_TYPE, queryVariables, safeUserProps, {onSuccess}),
       userProps,
       DEFAULT_USER_QUERY_FIELDS
     );
+
+    return setCachedRequest<User>(flux, `user.itemById:${userId}`, {userId, userProps}, result as User, requestOptions);
   };
 
-  const list = async (userProps: string[] = []): Promise<User[]> => {
+  const list = async (userProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<User[]> => {
+    const cachedResult = getCachedRequest<User[]>(flux, 'user.list', {userProps}, requestOptions);
+
+    if(cachedResult !== undefined) {
+      return cachedResult;
+    }
+
     const onSuccess = (data: ApiResultsType = {}) => {
       const list = (data as unknown as UserApiResultsType)?.users?.getUserList || [];
       return flux.dispatch({list, type: USER_CONSTANTS.GET_LIST_SUCCESS});
     };
 
-    return withInvalidFieldRetry(
+    const result = await withInvalidFieldRetry(
       (safeUserProps) => appQuery(flux, 'getUserList', DATA_TYPE, {}, safeUserProps, {onSuccess}),
       userProps,
       DEFAULT_USER_QUERY_FIELDS
     );
+
+    return setCachedRequest<User[]>(flux, 'user.list', {userProps}, result as User[], requestOptions);
   };
 
   const listByLatest = async (
     username: string = '',
     from: number = 0,
     to: number = 10,
-    userProps: string[] = []
+    userProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<User[]> => {
+    const cachedResult = getCachedRequest<User[]>(flux, 'user.listByLatest', {username, from, to, userProps}, requestOptions);
+
+    if(cachedResult !== undefined) {
+      return cachedResult;
+    }
+
     const queryVariables = {
       from: {
         type: 'Int',
@@ -559,18 +626,21 @@ export const createUserActions = (
       return flux.dispatch({list, type: USER_CONSTANTS.GET_LIST_SUCCESS});
     };
 
-    return withInvalidFieldRetry(
+    const result = await withInvalidFieldRetry(
       (safeUserProps) => appQuery(flux, 'listByLatest', DATA_TYPE, queryVariables, safeUserProps, {onSuccess}),
       userProps,
       DEFAULT_USER_QUERY_FIELDS
     );
+
+    return setCachedRequest<User[]>(flux, 'user.listByLatest', {username, from, to, userProps}, result as User[], requestOptions);
   };
 
   const listByConnection = async (
     userId: string,
     from: number = 0,
     to: number = 10,
-    userProps: string[] = []
+    userProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<User[]> =>
     []
   ;
@@ -580,7 +650,8 @@ export const createUserActions = (
     reactionNames: string[],
     from: number = 0,
     to: number = 10,
-    personaProps: string[] = []
+    personaProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<User[]> =>
     []
   ;
@@ -590,8 +661,15 @@ export const createUserActions = (
     tagNames: string[],
     from: number = 0,
     to: number = 10,
-    personaProps: string[] = []
+    personaProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<User[]> => {
+    const cachedResult = getCachedRequest<User[]>(flux, 'user.listByTags', {username, tagNames, from, to, personaProps}, requestOptions);
+
+    if(cachedResult !== undefined) {
+      return cachedResult;
+    }
+
     const queryVariables = {
       from: {
         type: 'Int',
@@ -616,14 +694,22 @@ export const createUserActions = (
       return flux.dispatch({list, type: USER_CONSTANTS.GET_LIST_SUCCESS});
     };
 
-    return withInvalidFieldRetry(
+    const result = await withInvalidFieldRetry(
       (safeUserProps) => appQuery(flux, 'listByTags', DATA_TYPE, queryVariables, safeUserProps, {onSuccess}),
       personaProps,
       DEFAULT_USER_QUERY_FIELDS
     );
+
+    return setCachedRequest<User[]>(flux, 'user.listByTags', {username, tagNames, from, to, personaProps}, result as User[], requestOptions);
   };
 
-  const search = async (query: string, userProps: string[] = []): Promise<User[]> => {
+  const search = async (query: string, userProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<User[]> => {
+    const cachedResult = getCachedRequest<User[]>(flux, 'user.search', {query, userProps}, requestOptions);
+
+    if(cachedResult !== undefined) {
+      return cachedResult;
+    }
+
     const queryVariables = {
       query: {
         type: 'String!',
@@ -636,28 +722,34 @@ export const createUserActions = (
       return flux.dispatch({list, type: USER_CONSTANTS.GET_LIST_SUCCESS});
     };
 
-    return withInvalidFieldRetry(
+    const result = await withInvalidFieldRetry(
       (safeUserProps) => appQuery(flux, 'search', DATA_TYPE, queryVariables, safeUserProps, {onSuccess}),
       userProps,
       DEFAULT_USER_QUERY_FIELDS
     );
+
+    return setCachedRequest<User[]>(flux, 'user.search', {query, userProps}, result as User[], requestOptions);
   };
 
   const isLoggedIn = (): boolean => isLoggedInWithStorage(flux);
 
-  const currentAuthenticatedUser = async (): Promise<User> => {
+  const currentAuthenticatedUser = async (requestOptions: ActionRequestOptions = {}): Promise<User> => {
     const session = await hydrateSessionFromStorage(flux);
     return (session || {}) as User;
   };
 
-  const currentUser = async (): Promise<User> => currentAuthenticatedUser();
+  const currentUser = async (requestOptions: ActionRequestOptions = {}): Promise<User> => currentAuthenticatedUser(requestOptions);
 
-  const refreshSessionAction = async (token?: string, expires: number = 15): Promise<SessionType> => {
+  const refreshSessionAction = async (token?: string, expires: number = 15, requestOptions: ActionRequestOptions = {}): Promise<SessionType> => {
     const result = await refreshSession(flux, token, expires);
     return (result?.refreshSession || {}) as SessionType;
   };
 
-  const signIn = async (user: Partial<User>, expires: number = 15): Promise<SessionType> => {
+  const signIn = async (
+    user: Partial<User>,
+    expires: number = 15,
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<SessionType> => {
     const {email, phone, username, password} = user;
     let userInput: Record<string, unknown> | undefined;
     let legacyVariables: Record<string, {type: string; value: unknown}> | undefined;
@@ -715,7 +807,7 @@ export const createUserActions = (
       const baseSession = syncStoredSession(flux, getSessionPayload(sessionResult));
 
       try {
-        const hydratedSession = await session(['personaId', 'userAccess', 'username']);
+        const hydratedSession = await session(['personaId', 'userAccess', 'username'], requestOptions);
         await syncPersonaTagsToSession(flux, String((hydratedSession as any)?.personaId || ''));
       } catch(error) {
         syncStoredSession(flux, baseSession as Record<string, unknown>);
@@ -734,20 +826,23 @@ export const createUserActions = (
     } catch(error) {
       flux.dispatch({error, type: USER_CONSTANTS.SIGN_IN_ERROR});
       throw error;
+    } finally {
+      await clearUserRequestCaches(String((user as any)?.userId || ''));
     }
   };
 
-  const signOut = async (): Promise<boolean> => {
+  const signOut = async (requestOptions: ActionRequestOptions = {}): Promise<boolean> => {
     await clearPersistedSession(flux);
     flux.setState('user.session', {});
     await flux.dispatch({session: {}, type: USER_CONSTANTS.SIGN_OUT_SUCCESS});
+    await clearUserRequestCaches();
     return true;
   };
 
-  const confirmSignUp = async (code: string, type: 'email' | 'phone'): Promise<boolean> =>
+  const confirmSignUp = async (code: string, type: 'email' | 'phone', requestOptions: ActionRequestOptions = {}): Promise<boolean> =>
     true;
 
-  const forgotPassword = async (username: string): Promise<boolean> => {
+  const forgotPassword = async (username: string, requestOptions: ActionRequestOptions = {}): Promise<boolean> => {
     const queryVariables = {
       user: {
         type: 'UserInput!',
@@ -779,7 +874,8 @@ export const createUserActions = (
     username: string,
     password: string,
     code: string,
-    type: 'email' | 'phone'
+    type: 'email' | 'phone',
+    requestOptions: ActionRequestOptions = {}
   ): Promise<boolean> => {
     const queryVariables = {
       code: {
@@ -812,7 +908,7 @@ export const createUserActions = (
     });
   };
 
-  const updatePassword = async (password: string, newPassword: string): Promise<boolean> =>
+  const updatePassword = async (password: string, newPassword: string, requestOptions: ActionRequestOptions = {}): Promise<boolean> =>
     true
   ;
 

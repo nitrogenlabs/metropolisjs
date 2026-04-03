@@ -7,9 +7,11 @@ import {Flux} from '@nlabs/arkhamjs';
 import {validateReactionInput} from '../../adapters/reactionAdapter/reactionAdapter.js';
 import {REACTION_CONSTANTS} from '../../stores/reactionStore.js';
 import {appMutation, appQuery} from '../../utils/api.js';
+import {clearCachedRequest, getCachedRequest, setCachedRequest} from '../../utils/requestCache.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {ReactionType} from '../../adapters/reactionAdapter/reactionAdapter.js';
+import type {ActionRequestOptions} from '../../utils/requestCache.js';
 
 const DATA_TYPE = 'reactions';
 
@@ -35,10 +37,10 @@ export type ReactionApiResultsType = {
 };
 
 export interface ReactionActions {
-  addReaction: (itemId: string, itemType: string, reaction: Partial<ReactionType>, reactionProps?: string[]) => Promise<ReactionType>;
-  deleteReaction: (itemId: string, itemType: string, reactionName: string, reactionProps?: string[]) => Promise<ReactionType>;
-  getReactionCount: (itemId: string, itemType: string, reactionName: string) => Promise<number>;
-  hasReaction: (itemId: string, itemType: string, reactionName: string, direction: string) => Promise<boolean>;
+  addReaction: (itemId: string, itemType: string, reaction: Partial<ReactionType>, reactionProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ReactionType>;
+  deleteReaction: (itemId: string, itemType: string, reactionName: string, reactionProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ReactionType>;
+  getReactionCount: (itemId: string, itemType: string, reactionName: string, requestOptions?: ActionRequestOptions) => Promise<number>;
+  hasReaction: (itemId: string, itemType: string, reactionName: string, direction: string, requestOptions?: ActionRequestOptions) => Promise<boolean>;
   abbreviateCount: (count: number) => string;
   updateReactionAdapter: (adapter: (input: unknown, options?: ReactionAdapterOptions) => any) => void;
   updateReactionAdapterOptions: (options: ReactionAdapterOptions) => void;
@@ -87,7 +89,8 @@ export const createReactionActions = (
     itemId: string,
     itemType: string,
     reaction: Partial<ReactionType>,
-    reactionProps: string[] = []
+    reactionProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<ReactionType> => {
     const validatedReaction = validateReaction(reaction, reactionAdapterOptions);
     const {value} = validatedReaction;
@@ -119,6 +122,9 @@ export const createReactionActions = (
     } catch(error) {
       flux.dispatch({error, type: REACTION_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `reaction.getReactionCount:${itemType}:${itemId}:${reaction.name || ''}`);
+      await clearCachedRequest(flux, `reaction.hasReaction:${itemType}:${itemId}:${reaction.name || ''}`);
     }
   };
 
@@ -126,7 +132,8 @@ export const createReactionActions = (
     itemId: string,
     itemType: string,
     reactionName: string,
-    reactionProps: string[] = []
+    reactionProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<ReactionType> => {
     try {
       const queryVariables = {
@@ -156,11 +163,30 @@ export const createReactionActions = (
     } catch(error) {
       flux.dispatch({error, type: REACTION_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `reaction.getReactionCount:${itemType}:${itemId}:${reactionName}`);
+      await clearCachedRequest(flux, `reaction.hasReaction:${itemType}:${itemId}:${reactionName}`);
     }
   };
 
-  const getReactionCount = async (itemId: string, itemType: string, reactionName: string): Promise<number> => {
+  const getReactionCount = async (
+    itemId: string,
+    itemType: string,
+    reactionName: string,
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<number> => {
     try {
+      const cachedResult = getCachedRequest<number>(
+        flux,
+        `reaction.getReactionCount:${itemType}:${itemId}:${reactionName}`,
+        {itemId, itemType, reactionName},
+        requestOptions
+      );
+
+      if(cachedResult !== undefined) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         itemId: {
           type: 'ID!',
@@ -182,7 +208,7 @@ export const createReactionActions = (
         });
       };
 
-      return await appQuery<number>(
+      const result = await appQuery<number>(
         flux,
         'reactionCount',
         DATA_TYPE,
@@ -190,14 +216,39 @@ export const createReactionActions = (
         ['count'],
         {onSuccess}
       );
+
+      return await setCachedRequest(
+        flux,
+        `reaction.getReactionCount:${itemType}:${itemId}:${reactionName}`,
+        {itemId, itemType, reactionName},
+        result,
+        requestOptions
+      );
     } catch(error) {
       flux.dispatch({error, type: REACTION_CONSTANTS.GET_COUNT_ERROR});
       throw error;
     }
   };
 
-  const hasReaction = async (itemId: string, itemType: string, reactionName: string, direction: string): Promise<boolean> => {
+  const hasReaction = async (
+    itemId: string,
+    itemType: string,
+    reactionName: string,
+    direction: string,
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<boolean> => {
     try {
+      const cachedResult = getCachedRequest<boolean>(
+        flux,
+        `reaction.hasReaction:${itemType}:${itemId}:${reactionName}`,
+        {direction, itemId, itemType, reactionName},
+        requestOptions
+      );
+
+      if(cachedResult !== undefined) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         direction: {
           type: 'String',
@@ -223,13 +274,21 @@ export const createReactionActions = (
         });
       };
 
-      return await appQuery<boolean>(
+      const result = await appQuery<boolean>(
         flux,
         'hasReaction',
         DATA_TYPE,
         queryVariables,
         [],
         {onSuccess}
+      );
+
+      return await setCachedRequest(
+        flux,
+        `reaction.hasReaction:${itemType}:${itemId}:${reactionName}`,
+        {direction, itemId, itemType, reactionName},
+        result,
+        requestOptions
       );
     } catch(error) {
       flux.dispatch({error, type: REACTION_CONSTANTS.HAS_ERROR});

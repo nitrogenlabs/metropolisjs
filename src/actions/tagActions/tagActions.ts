@@ -5,9 +5,11 @@
 import {validateTagInput} from '../../adapters/tagAdapter/tagAdapter.js';
 import {TAG_CONSTANTS} from '../../stores/tagStore.js';
 import {appMutation, appQuery} from '../../utils/api.js';
+import {clearCachedRequest, getCachedRequest, setCachedRequest} from '../../utils/requestCache.js';
 
 import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {TagType} from '../../adapters/tagAdapter/tagAdapter.js';
+import type {ActionRequestOptions} from '../../utils/requestCache.js';
 
 const DATA_TYPE = 'tags';
 const DEFAULT_TAG_PROPS = ['added', 'category', 'description', 'modified', 'name', 'tagId'];
@@ -55,17 +57,17 @@ export type TagApiResultsType = {
 };
 
 export interface TagActions {
-  addTag: (tag: Partial<TagType>, tagProps?: string[]) => Promise<TagType>;
-  addTagToItem: (tagId: string, itemDocId?: string, tagProps?: string[]) => Promise<TagType>;
-  deleteTag: (tagId: string, tagProps?: string[]) => Promise<TagType>;
-  deleteTagFromItem: (tagId: string, itemDocId?: string) => Promise<boolean>;
-  getTagsByItem: (itemDocId: string, tagProps?: string[]) => Promise<TagType[]>;
+  addTag: (tag: Partial<TagType>, tagProps?: string[], requestOptions?: ActionRequestOptions) => Promise<TagType>;
+  addTagToItem: (tagId: string, itemDocId?: string, tagProps?: string[], requestOptions?: ActionRequestOptions) => Promise<TagType>;
+  deleteTag: (tagId: string, tagProps?: string[], requestOptions?: ActionRequestOptions) => Promise<TagType>;
+  deleteTagFromItem: (tagId: string, itemDocId?: string, requestOptions?: ActionRequestOptions) => Promise<boolean>;
+  getTagsByItem: (itemDocId: string, tagProps?: string[], requestOptions?: ActionRequestOptions) => Promise<TagType[]>;
   getTags: (
     searchQuery?: string,
     tagProps?: string[],
-    options?: {forceRefresh?: boolean}
+    options?: ActionRequestOptions
   ) => Promise<TagType[]>;
-  updateTag: (tag: Partial<TagType>, tagProps?: string[]) => Promise<TagType>;
+  updateTag: (tag: Partial<TagType>, tagProps?: string[], requestOptions?: ActionRequestOptions) => Promise<TagType>;
   updateTagAdapter: (adapter: (input: unknown, options?: TagAdapterOptions) => any) => void;
   updateTagAdapterOptions: (options: TagAdapterOptions) => void;
 }
@@ -108,7 +110,7 @@ export const createTagActions = (
     validateTag = createTagValidator(customTagAdapter, tagAdapterOptions);
   };
 
-  const addTag = async (tag: Partial<TagType>, tagProps: string[] = []): Promise<TagType> => {
+  const addTag = async (tag: Partial<TagType>, tagProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<TagType> => {
     try {
       const requestedTagProps = sanitizeTagProps(tagProps);
       const queryVariables = {
@@ -134,13 +136,16 @@ export const createTagActions = (
     } catch(error) {
       flux.dispatch({error, type: TAG_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, 'tag.getTags');
     }
   };
 
   const addTagToItem = async (
     tagId: string,
     itemDocId = '',
-    tagProps: string[] = []
+    tagProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<TagType> => {
     try {
       const session = (flux.getState('user.session', {}) || {}) as {personaId?: string; tags?: TagType[]};
@@ -186,10 +191,13 @@ export const createTagActions = (
     } catch(error) {
       flux.dispatch({error, type: TAG_CONSTANTS.ADD_PERSONA_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, 'tag.getTags');
+      await clearCachedRequest(flux, `tag.getTagsByItem:${itemDocId}`);
     }
   };
 
-  const deleteTag = async (tagId: string, tagProps: string[] = []): Promise<TagType> => {
+  const deleteTag = async (tagId: string, tagProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<TagType> => {
     try {
       const requestedTagProps = sanitizeTagProps(tagProps, DELETE_TAG_PROPS);
       const queryVariables = {
@@ -219,12 +227,15 @@ export const createTagActions = (
     } catch(error) {
       flux.dispatch({error, type: TAG_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, 'tag.getTags');
     }
   };
 
   const deleteTagFromItem = async (
     tagId: string,
-    itemDocId = ''
+    itemDocId = '',
+    requestOptions: ActionRequestOptions = {}
   ): Promise<boolean> => {
     try {
       const queryVariables = {
@@ -267,21 +278,32 @@ export const createTagActions = (
     } catch(error) {
       flux.dispatch({error, type: TAG_CONSTANTS.REMOVE_PERSONA_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `tag.getTagsByItem:${itemDocId}`);
     }
   };
 
   const getTags = async (
     searchQuery = '',
     tagProps: string[] = [],
-    options: {forceRefresh?: boolean} = {}
+    options: ActionRequestOptions = {}
   ): Promise<TagType[]> => {
     const initialTags = flux.getState('tag.list', []) as TagType[];
     const cacheExpires = flux.getState('tag.expires', 0) as number;
     const now = Date.now();
     const requestedTagProps = sanitizeTagProps(tagProps);
-    const forceRefresh = !!options?.forceRefresh;
+    const cachedResult = getCachedRequest<TagType[] | FluxAction>(
+      flux,
+      'tag.getTags',
+      {searchQuery, tagProps: requestedTagProps},
+      options
+    );
 
-    if(!forceRefresh && initialTags.length && now < cacheExpires && !searchQuery) {
+    if(cachedResult !== undefined) {
+      return cachedResult as TagType[];
+    }
+
+    if(initialTags.length && now < cacheExpires && !searchQuery && !options?.cacheTimeout) {
       await flux.dispatch({tags: initialTags, type: TAG_CONSTANTS.GET_LIST_SUCCESS});
       return initialTags;
     }
@@ -304,7 +326,7 @@ export const createTagActions = (
         });
       };
 
-      return await appQuery<TagType[]>(
+      const result = await appQuery<TagType[]>(
         flux,
         'getTags',
         DATA_TYPE,
@@ -312,6 +334,7 @@ export const createTagActions = (
         requestedTagProps,
         {onSuccess}
       );
+      return await setCachedRequest(flux, 'tag.getTags', {searchQuery, tagProps: requestedTagProps}, result, options);
     } catch(error) {
       flux.dispatch({error, type: TAG_CONSTANTS.GET_LIST_SUCCESS});
       throw error;
@@ -320,10 +343,22 @@ export const createTagActions = (
 
   const getTagsByItem = async (
     itemDocId: string,
-    tagProps: string[] = []
+    tagProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<TagType[]> => {
     try {
       const requestedTagProps = sanitizeTagProps(tagProps);
+      const cachedResult = getCachedRequest<TagType[] | FluxAction>(
+        flux,
+        `tag.getTagsByItem:${itemDocId}`,
+        {itemDocId, tagProps: requestedTagProps},
+        requestOptions
+      );
+
+      if(cachedResult !== undefined) {
+        return cachedResult as TagType[];
+      }
+
       const queryVariables = {
         itemDocId: {
           type: 'String!',
@@ -340,7 +375,7 @@ export const createTagActions = (
         });
       };
 
-      return await appQuery<TagType[]>(
+      const result = await appQuery<TagType[]>(
         flux,
         'getTagsByItem',
         DATA_TYPE,
@@ -348,13 +383,14 @@ export const createTagActions = (
         requestedTagProps,
         {onSuccess}
       );
+      return await setCachedRequest(flux, `tag.getTagsByItem:${itemDocId}`, {itemDocId, tagProps: requestedTagProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: TAG_CONSTANTS.GET_LIST_ERROR});
       throw error;
     }
   };
 
-  const updateTag = async (tag: Partial<TagType>, tagProps: string[] = []): Promise<TagType> => {
+  const updateTag = async (tag: Partial<TagType>, tagProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<TagType> => {
     try {
       const requestedTagProps = sanitizeTagProps(tagProps);
       const queryVariables = {
@@ -380,6 +416,8 @@ export const createTagActions = (
     } catch(error) {
       flux.dispatch({error, type: TAG_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, 'tag.getTags');
     }
   };
 

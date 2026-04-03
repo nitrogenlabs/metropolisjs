@@ -6,11 +6,13 @@
 import { validateMessageInput } from '../../adapters/messageAdapter/messageAdapter.js';
 import { MESSAGE_CONSTANTS } from '../../stores/messageStore.js';
 import { appMutation, appQuery } from '../../utils/api.js';
+import { clearCachedRequest, getCachedRequest, setCachedRequest } from '../../utils/requestCache.js';
 
 import type { FluxFramework } from '@nlabs/arkhamjs';
 import type { ConversationType } from '../../adapters/conversationAdapter/conversationAdapter.js';
 import type { MessageType } from '../../adapters/messageAdapter/messageAdapter.js';
 import type { ApiResultsType } from '../../utils/api.js';
+import type { ActionRequestOptions } from '../../utils/requestCache.js';
 
 const DATA_TYPE = 'messages';
 
@@ -34,10 +36,10 @@ export type MessageApiResultsType = {
 };
 
 export interface MessageActions {
-  sendMessage: (message: Partial<MessageType>, messageProps?: string[]) => Promise<MessageType>;
-  getDirectConversation: (userId: string) => Promise<ConversationType>;
-  getMessages: (conversationId: string, messageProps?: string[]) => Promise<MessageType[]>;
-  getConversations: (from?: number, to?: number) => Promise<ConversationType[]>;
+  sendMessage: (message: Partial<MessageType>, messageProps?: string[], requestOptions?: ActionRequestOptions) => Promise<MessageType>;
+  getDirectConversation: (userId: string, requestOptions?: ActionRequestOptions) => Promise<ConversationType>;
+  getMessages: (conversationId: string, messageProps?: string[], requestOptions?: ActionRequestOptions) => Promise<MessageType[]>;
+  getConversations: (from?: number, to?: number, requestOptions?: ActionRequestOptions) => Promise<ConversationType[]>;
   updateMessageAdapter: (adapter: (input: unknown, options?: MessageAdapterOptions) => any) => void;
   updateMessageAdapterOptions: (options: MessageAdapterOptions) => void;
 }
@@ -81,7 +83,11 @@ export const createMessageActions = (
     messageAdapterOptions = {...messageAdapterOptions, ...options};
     validateMessage = createMessageValidator(customMessageAdapter, messageAdapterOptions);
   };
-  const sendMessage = async (message: Partial<MessageType>, messageProps: string[] = []): Promise<MessageType> => {
+  const sendMessage = async (
+    message: Partial<MessageType>,
+    messageProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<MessageType> => {
     try {
       const queryVariables = {
         message: {
@@ -106,11 +112,23 @@ export const createMessageActions = (
     } catch(error) {
       flux.dispatch({error, type: MESSAGE_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `message.getMessages:${String(message?.conversationId || '')}`);
+      await clearCachedRequest(flux, 'message.getConversations');
     }
   };
 
-  const getDirectConversation = async (userId: string): Promise<ConversationType> => {
+  const getDirectConversation = async (
+    userId: string,
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<ConversationType> => {
     try {
+      const cachedResult = getCachedRequest<ConversationType>(flux, `message.getDirectConversation:${userId}`, {userId}, requestOptions);
+
+      if(cachedResult) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         userId: {
           type: 'ID!',
@@ -123,7 +141,7 @@ export const createMessageActions = (
         return flux.dispatch({conversation, type: MESSAGE_CONSTANTS.GET_CONVO_LIST_SUCCESS});
       };
 
-      return await appQuery<ConversationType>(
+      const result = await appQuery<ConversationType>(
         flux,
         'directConversation',
         DATA_TYPE,
@@ -131,14 +149,31 @@ export const createMessageActions = (
         ['added', 'conversationId', 'modified', 'name', 'users { userId, username }'],
         {onSuccess}
       );
+
+      return await setCachedRequest(flux, `message.getDirectConversation:${userId}`, {userId}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: MESSAGE_CONSTANTS.GET_CONVO_LIST_ERROR});
       throw error;
     }
   };
 
-  const getMessages = async (conversationId: string, messageProps: string[] = []): Promise<MessageType[]> => {
+  const getMessages = async (
+    conversationId: string,
+    messageProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<MessageType[]> => {
     try {
+      const cachedResult = getCachedRequest<MessageType[]>(
+        flux,
+        `message.getMessages:${conversationId}`,
+        {conversationId, messageProps},
+        requestOptions
+      );
+
+      if(cachedResult) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         conversationId: {
           type: 'ID!',
@@ -158,7 +193,7 @@ export const createMessageActions = (
         });
       };
 
-      return await appQuery<MessageType[]>(
+      const result = await appQuery<MessageType[]>(
         flux,
         'messages',
         DATA_TYPE,
@@ -166,14 +201,26 @@ export const createMessageActions = (
         ['added', 'content', 'modified', 'messageId', 'user { userId, username }', ...messageProps],
         {onSuccess}
       );
+
+      return await setCachedRequest(flux, `message.getMessages:${conversationId}`, {conversationId, messageProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: MESSAGE_CONSTANTS.GET_LIST_ERROR});
       throw error;
     }
   };
 
-  const getConversations = async (from: number = 0, to: number = 10): Promise<ConversationType[]> => {
+  const getConversations = async (
+    from: number = 0,
+    to: number = 10,
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<ConversationType[]> => {
     try {
+      const cachedResult = getCachedRequest<ConversationType[]>(flux, 'message.getConversations', {from, to}, requestOptions);
+
+      if(cachedResult) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         from: {
           type: 'Int',
@@ -192,7 +239,7 @@ export const createMessageActions = (
         return flux.dispatch({conversations, type: MESSAGE_CONSTANTS.GET_CONVO_LIST_SUCCESS});
       };
 
-      return await appQuery<ConversationType[]>(
+      const result = await appQuery<ConversationType[]>(
         flux,
         'conversations',
         DATA_TYPE,
@@ -200,6 +247,8 @@ export const createMessageActions = (
         ['added', 'content', 'conversationId', 'modified', 'name', 'thumbUrl', 'users { userId, username }'],
         {onSuccess}
       );
+
+      return await setCachedRequest(flux, 'message.getConversations', {from, to}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: MESSAGE_CONSTANTS.GET_CONVO_LIST_ERROR});
       throw error;

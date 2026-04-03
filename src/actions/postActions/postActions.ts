@@ -8,10 +8,12 @@ import { validatePostInput } from '../../adapters/postAdapter/postAdapter.js';
 import { POST_CONSTANTS } from '../../stores/postStore.js';
 import { appMutation, appQuery } from '../../utils/api.js';
 import { createBaseActions } from '../../utils/baseActionFactory.js';
+import { clearCachedRequest, getCachedRequest, setCachedRequest } from '../../utils/requestCache.js';
 
 import type { FluxFramework } from '@nlabs/arkhamjs';
 import type { PostType } from '../../adapters/postAdapter/postAdapter.js';
 import type { BaseAdapterOptions } from '../../utils/validatorFactory.js';
+import type { ActionRequestOptions } from '../../utils/requestCache.js';
 
 const DATA_TYPE = 'posts';
 
@@ -37,14 +39,14 @@ export type PostApiResultsType = {
 };
 
 export interface PostActions {
-  add: (postData: Partial<PostType>, postProps?: string[]) => Promise<PostType>;
-  itemById: (postId: string, postProps?: string[]) => Promise<PostType>;
-  listByLatest: (from?: number, to?: number, postProps?: string[]) => Promise<PostType[]>;
-  listByLocation: (latitude: number, longitude: number, from?: number, to?: number, postProps?: string[]) => Promise<PostType[]>;
-  listByReactions: (reactionNames: string[], latitude: number, longitude: number, from?: number, to?: number, postProps?: string[]) => Promise<PostType[]>;
-  listByTags: (tags: string[], latitude: number, longitude: number, from?: number, to?: number, postProps?: string[]) => Promise<PostType[]>;
-  delete: (postId: string, postProps?: string[]) => Promise<PostType>;
-  update: (post: Partial<PostType>, postProps?: string[]) => Promise<PostType>;
+  add: (postData: Partial<PostType>, postProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PostType>;
+  itemById: (postId: string, postProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PostType>;
+  listByLatest: (from?: number, to?: number, postProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PostType[]>;
+  listByLocation: (latitude: number, longitude: number, from?: number, to?: number, postProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PostType[]>;
+  listByReactions: (reactionNames: string[], latitude: number, longitude: number, from?: number, to?: number, postProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PostType[]>;
+  listByTags: (tags: string[], latitude: number, longitude: number, from?: number, to?: number, postProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PostType[]>;
+  delete: (postId: string, postProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PostType>;
+  update: (post: Partial<PostType>, postProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PostType>;
   updatePostAdapter: (adapter: (input: unknown, options?: PostAdapterOptions) => any) => void;
   updatePostAdapterOptions: (options: PostAdapterOptions) => void;
 }
@@ -59,7 +61,11 @@ export const createPostActions = (
     adapter: options?.postAdapter,
     adapterOptions: options?.postAdapterOptions
   });
-  const add = async (postData: Partial<PostType>, postProps: string[] = []): Promise<PostType> => {
+  const add = async (
+    postData: Partial<PostType>,
+    postProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<PostType> => {
     try {
       const queryVariables = {
         post: {
@@ -77,11 +83,26 @@ export const createPostActions = (
     } catch(error) {
       flux.dispatch({error, type: POST_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, 'post.listByLatest');
+      await clearCachedRequest(flux, 'post.listByLocation');
+      await clearCachedRequest(flux, 'post.listByReactions');
+      await clearCachedRequest(flux, 'post.listByTags');
     }
   };
 
-  const itemById = async (postId: string, postProps: string[] = []): Promise<PostType> => {
+  const itemById = async (
+    postId: string,
+    postProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<PostType> => {
     try {
+      const cachedResult = getCachedRequest<PostType>(flux, `post.itemById:${postId}`, {postId, postProps}, requestOptions);
+
+      if(cachedResult) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         postId: {
           type: 'ID!',
@@ -94,7 +115,7 @@ export const createPostActions = (
         return flux.dispatch({post, type: POST_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
-      return await appQuery<PostType>(
+      const result = await appQuery<PostType>(
         flux,
         'post',
         DATA_TYPE,
@@ -113,6 +134,8 @@ export const createPostActions = (
         ],
         {onSuccess}
       );
+
+      return await setCachedRequest(flux, `post.itemById:${postId}`, {postId, postProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: POST_CONSTANTS.GET_ITEM_ERROR});
       throw error;
@@ -122,9 +145,16 @@ export const createPostActions = (
   const listByLatest = async (
     from: number = 0,
     to: number = 0,
-    postProps: string[] = []
+    postProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<PostType[]> => {
     try {
+      const cachedResult = getCachedRequest<PostType[]>(flux, 'post.listByLatest', {from, to, postProps}, requestOptions);
+
+      if(cachedResult) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         from: {
           type: 'Int',
@@ -144,7 +174,7 @@ export const createPostActions = (
         });
       };
 
-      return await appQuery<PostType[]>(
+      const result = await appQuery<PostType[]>(
         flux,
         'postsByLatest',
         DATA_TYPE,
@@ -163,6 +193,8 @@ export const createPostActions = (
         ],
         {onSuccess}
       );
+
+      return await setCachedRequest(flux, 'post.listByLatest', {from, to, postProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: POST_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -174,9 +206,21 @@ export const createPostActions = (
     longitude: number,
     from: number = 0,
     to: number = 10,
-    postProps: string[] = []
+    postProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<PostType[]> => {
     try {
+      const cachedResult = getCachedRequest<PostType[]>(
+        flux,
+        'post.listByLocation',
+        {latitude, longitude, from, to, postProps},
+        requestOptions
+      );
+
+      if(cachedResult) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         from: {
           type: 'Int',
@@ -204,7 +248,7 @@ export const createPostActions = (
         });
       };
 
-      return await appQuery<PostType[]>(
+      const result = await appQuery<PostType[]>(
         flux,
         'postsByLocation',
         DATA_TYPE,
@@ -223,6 +267,8 @@ export const createPostActions = (
         ],
         {onSuccess}
       );
+
+      return await setCachedRequest(flux, 'post.listByLocation', {latitude, longitude, from, to, postProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: POST_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -235,9 +281,21 @@ export const createPostActions = (
     longitude: number,
     from: number = 0,
     to: number = 10,
-    postProps: string[] = []
+    postProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<PostType[]> => {
     try {
+      const cachedResult = getCachedRequest<PostType[]>(
+        flux,
+        'post.listByReactions',
+        {reactionNames, latitude, longitude, from, to, postProps},
+        requestOptions
+      );
+
+      if(cachedResult) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         from: {
           type: 'Int',
@@ -269,7 +327,7 @@ export const createPostActions = (
         });
       };
 
-      return await appQuery<PostType[]>(
+      const result = await appQuery<PostType[]>(
         flux,
         'postsByReactions',
         DATA_TYPE,
@@ -288,6 +346,14 @@ export const createPostActions = (
         ],
         {onSuccess}
       );
+
+      return await setCachedRequest(
+        flux,
+        'post.listByReactions',
+        {reactionNames, latitude, longitude, from, to, postProps},
+        result,
+        requestOptions
+      );
     } catch(error) {
       flux.dispatch({error, type: POST_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -300,9 +366,21 @@ export const createPostActions = (
     longitude: number,
     from: number = 0,
     to: number = 10,
-    postProps: string[] = []
+    postProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<PostType[]> => {
     try {
+      const cachedResult = getCachedRequest<PostType[]>(
+        flux,
+        'post.listByTags',
+        {tags, latitude, longitude, from, to, postProps},
+        requestOptions
+      );
+
+      if(cachedResult) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         from: {
           type: 'Int',
@@ -334,7 +412,7 @@ export const createPostActions = (
         });
       };
 
-      return await appQuery<PostType[]>(
+      const result = await appQuery<PostType[]>(
         flux,
         'postsByTags',
         DATA_TYPE,
@@ -353,13 +431,19 @@ export const createPostActions = (
         ],
         {onSuccess}
       );
+
+      return await setCachedRequest(flux, 'post.listByTags', {tags, latitude, longitude, from, to, postProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: POST_CONSTANTS.GET_LIST_ERROR});
       throw error;
     }
   };
 
-  const deletePost = async (postId: string, postProps: string[] = []): Promise<PostType> => {
+  const deletePost = async (
+    postId: string,
+    postProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<PostType> => {
     try {
       const queryVariables = {
         postId: {
@@ -377,10 +461,20 @@ export const createPostActions = (
     } catch(error) {
       flux.dispatch({error, type: POST_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `post.itemById:${postId}`);
+      await clearCachedRequest(flux, 'post.listByLatest');
+      await clearCachedRequest(flux, 'post.listByLocation');
+      await clearCachedRequest(flux, 'post.listByReactions');
+      await clearCachedRequest(flux, 'post.listByTags');
     }
   };
 
-  const update = async (post: Partial<PostType>, postProps: string[] = []): Promise<PostType> => {
+  const update = async (
+    post: Partial<PostType>,
+    postProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<PostType> => {
     try {
       const queryVariables = {
         post: {
@@ -398,6 +492,12 @@ export const createPostActions = (
     } catch(error) {
       flux.dispatch({error, type: POST_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `post.itemById:${String(post?.postId || '')}`);
+      await clearCachedRequest(flux, 'post.listByLatest');
+      await clearCachedRequest(flux, 'post.listByLocation');
+      await clearCachedRequest(flux, 'post.listByReactions');
+      await clearCachedRequest(flux, 'post.listByTags');
     }
   };
 

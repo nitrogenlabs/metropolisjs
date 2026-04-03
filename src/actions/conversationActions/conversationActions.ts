@@ -4,13 +4,16 @@
  */
 import {parseId, parseNum} from '@nlabs/utils';
 
-import {validateConversationInput, type ConversationType} from '../../adapters/conversationAdapter/conversationAdapter.js';
+import {validateConversationInput} from '../../adapters/conversationAdapter/conversationAdapter.js';
 import {CONVERSATION_CONSTANTS} from '../../stores/conversationStore.js';
 import {appMutation, appQuery} from '../../utils/api.js';
 import {createBaseActions} from '../../utils/baseActionFactory.js';
+import {clearCachedRequest, getCachedRequest, setCachedRequest} from '../../utils/requestCache.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
+import type {ConversationType} from '../../adapters/conversationAdapter/conversationAdapter.js';
 import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
+import type {ActionRequestOptions} from '../../utils/requestCache.js';
 
 const DATA_TYPE = 'conversations';
 
@@ -33,11 +36,11 @@ export type ConversationApiResultsType = {
 };
 
 export interface ConversationActions {
-  add: (conversationData: Partial<ConversationType>, conversationProps?: string[]) => Promise<ConversationType>;
-  delete: (conversationId: string, conversationProps?: string[]) => Promise<ConversationType>;
-  itemById: (conversationId: string, conversationProps?: string[]) => Promise<ConversationType>;
-  list: (from?: number, to?: number, conversationProps?: string[]) => Promise<ConversationType[]>;
-  update: (conversation: Partial<ConversationType>, conversationProps?: string[]) => Promise<ConversationType>;
+  add: (conversationData: Partial<ConversationType>, conversationProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ConversationType>;
+  delete: (conversationId: string, conversationProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ConversationType>;
+  itemById: (conversationId: string, conversationProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ConversationType>;
+  list: (from?: number, to?: number, conversationProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ConversationType[]>;
+  update: (conversation: Partial<ConversationType>, conversationProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ConversationType>;
   updateConversationAdapter: (adapter: (input: unknown, options?: ConversationAdapterOptions) => any) => void;
   updateConversationAdapterOptions: (options: ConversationAdapterOptions) => void;
 }
@@ -56,7 +59,8 @@ export const createConversationActions = (
 
   const add = async (
     conversationData: Partial<ConversationType>,
-    conversationProps: string[] = []
+    conversationProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<ConversationType> => {
     try {
       const queryVariables = {
@@ -82,11 +86,19 @@ export const createConversationActions = (
     } catch(error) {
       flux.dispatch({error, type: CONVERSATION_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, 'conversation.list');
     }
   };
 
-  const itemById = async (conversationId: string, conversationProps: string[] = []): Promise<ConversationType> => {
+  const itemById = async (conversationId: string, conversationProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<ConversationType> => {
     try {
+      const cachedResult = getCachedRequest<ConversationType>(flux, `conversation.itemById:${conversationId}`, {conversationId, conversationProps}, requestOptions);
+
+      if(cachedResult !== undefined) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         conversationId: {
           type: 'ID!',
@@ -99,7 +111,7 @@ export const createConversationActions = (
         return flux.dispatch({conversation, type: CONVERSATION_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
-      return await appQuery<ConversationType>(
+      const result = await appQuery<ConversationType>(
         flux,
         'itemById',
         DATA_TYPE,
@@ -118,6 +130,7 @@ export const createConversationActions = (
         ],
         {onSuccess}
       );
+      return await setCachedRequest(flux, `conversation.itemById:${conversationId}`, {conversationId, conversationProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: CONVERSATION_CONSTANTS.GET_ITEM_ERROR});
       throw error;
@@ -127,9 +140,16 @@ export const createConversationActions = (
   const list = async (
     from: number = 0,
     to: number = 10,
-    conversationProps: string[] = []
+    conversationProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<ConversationType[]> => {
     try {
+      const cachedResult = getCachedRequest<ConversationType[]>(flux, 'conversation.list', {from, to, conversationProps}, requestOptions);
+
+      if(cachedResult !== undefined) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         from: {
           type: 'Int',
@@ -149,7 +169,7 @@ export const createConversationActions = (
         });
       };
 
-      return await appQuery<ConversationType[]>(
+      const result = await appQuery<ConversationType[]>(
         flux,
         'list',
         DATA_TYPE,
@@ -168,6 +188,7 @@ export const createConversationActions = (
         ],
         {onSuccess}
       );
+      return await setCachedRequest(flux, 'conversation.list', {from, to, conversationProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: CONVERSATION_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -176,7 +197,8 @@ export const createConversationActions = (
 
   const deleteConversation = async (
     conversationId: string,
-    conversationProps: string[] = []
+    conversationProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<ConversationType> => {
     try {
       const queryVariables = {
@@ -202,12 +224,16 @@ export const createConversationActions = (
     } catch(error) {
       flux.dispatch({error, type: CONVERSATION_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `conversation.itemById:${conversationId}`);
+      await clearCachedRequest(flux, 'conversation.list');
     }
   };
 
   const update = async (
     conversation: Partial<ConversationType>,
-    conversationProps: string[] = []
+    conversationProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<ConversationType> => {
     try {
       const queryVariables = {
@@ -233,6 +259,9 @@ export const createConversationActions = (
     } catch(error) {
       flux.dispatch({error, type: CONVERSATION_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `conversation.itemById:${String(conversation?.conversationId || '')}`);
+      await clearCachedRequest(flux, 'conversation.list');
     }
   };
 

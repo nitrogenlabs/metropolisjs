@@ -6,11 +6,13 @@
 import {TRANSLATION_CONSTANTS} from '../../stores/translationStore.js';
 import {appMutation, appQuery} from '../../utils/api.js';
 import {createBaseActions} from '../../utils/baseActionFactory.js';
+import {clearCachedRequest, getCachedRequest, setCachedRequest} from '../../utils/requestCache.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {TranslationType} from '../../stores/translationStore.js';
 import {initI18n, updateI18nResources} from '../../utils/i18n.js';
 import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
+import type {ActionRequestOptions} from '../../utils/requestCache.js';
 
 const DATA_TYPE = 'translations';
 
@@ -35,16 +37,17 @@ export type TranslationApiResultsType = {
 };
 
 export interface TranslationActions {
-  addTranslations: (translations: TranslationInputType[], translationProps?: string[]) => Promise<TranslationType[]>;
+  addTranslations: (translations: TranslationInputType[], translationProps?: string[], requestOptions?: ActionRequestOptions) => Promise<TranslationType[]>;
   getTranslation: (key: string, locale: string, namespace?: string) => string | null;
   getTranslations: (
     keys: string[],
     locale: string,
     namespace?: string,
-    translationProps?: string[]
+    translationProps?: string[],
+    requestOptions?: ActionRequestOptions
   ) => Promise<TranslationType[]>;
   hasTranslation: (key: string, locale: string, namespace?: string) => boolean;
-  processPendingTranslations: (locale: string, namespace?: string) => Promise<void>;
+  processPendingTranslations: (locale: string, namespace?: string, requestOptions?: ActionRequestOptions) => Promise<void>;
   queueTranslationKey: (key: string, locale: string, namespace?: string) => void;
   syncWithI18n: () => void;
   updateTranslationAdapter: (adapter: (input: unknown, options?: BaseAdapterOptions) => any) => void;
@@ -77,7 +80,8 @@ export const createTranslationActions = (
 
   const addTranslations = async (
     translations: TranslationInputType[],
-    translationProps: string[] = []
+    translationProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<TranslationType[]> => {
     try {
       const queryVariables = {
@@ -110,6 +114,8 @@ export const createTranslationActions = (
     } catch(error) {
       flux.dispatch({error, type: TRANSLATION_CONSTANTS.ADD_TRANSLATIONS_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, 'translation.getTranslations');
     }
   };
 
@@ -124,9 +130,21 @@ export const createTranslationActions = (
     keys: string[],
     locale: string,
     namespace?: string,
-    translationProps: string[] = []
+    translationProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<TranslationType[]> => {
     try {
+      const cachedResult = getCachedRequest<TranslationType[]>(
+        flux,
+        'translation.getTranslations',
+        {keys, locale, namespace, translationProps},
+        requestOptions
+      );
+
+      if(cachedResult) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         keys: {
           type: '[String!]!',
@@ -156,7 +174,7 @@ export const createTranslationActions = (
         return result;
       };
 
-      return await appQuery<TranslationType[]>(
+      const result = await appQuery<TranslationType[]>(
         flux,
         'getTranslations',
         DATA_TYPE,
@@ -164,6 +182,8 @@ export const createTranslationActions = (
         ['key', 'locale', 'value', 'namespace', ...translationProps],
         {onSuccess}
       );
+
+      return await setCachedRequest(flux, 'translation.getTranslations', {keys, locale, namespace, translationProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: TRANSLATION_CONSTANTS.GET_TRANSLATIONS_ERROR});
       throw error;
@@ -181,7 +201,11 @@ export const createTranslationActions = (
     flux.dispatch({key: translationKey, type: TRANSLATION_CONSTANTS.QUEUE_TRANSLATION_KEY});
   };
 
-  const processPendingTranslations = async (locale: string, namespace?: string): Promise<void> => {
+  const processPendingTranslations = async (
+    locale: string,
+    namespace?: string,
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<void> => {
     const state = flux.getState('translations') as any;
     const pendingKeys = Array.from(state.pendingKeys || []) as string[];
 
@@ -203,7 +227,7 @@ export const createTranslationActions = (
         .filter(Boolean) as string[];
 
       if(keysToFetch.length > 0) {
-        await getTranslations(keysToFetch, locale, namespace);
+        await getTranslations(keysToFetch, locale, namespace, [], requestOptions);
       }
     } finally {
       flux.dispatch({isQueueing: false, type: TRANSLATION_CONSTANTS.SET_QUEUEING_STATE});

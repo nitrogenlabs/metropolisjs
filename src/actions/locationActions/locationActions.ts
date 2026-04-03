@@ -6,11 +6,13 @@ import { validateLocationInput } from '../../adapters/locationAdapter/locationAd
 import { LOCATION_CONSTANTS } from '../../stores/locationStore.js';
 import { appMutation } from '../../utils/api.js';
 import { autoCompleteLocation } from '../../utils/location.js';
+import { clearCachedRequest, getCachedRequest, setCachedRequest } from '../../utils/requestCache.js';
 
 import type { FluxFramework } from '@nlabs/arkhamjs';
 import type { User } from '../../adapters/index.js';
 import type { LocationType } from '../../adapters/locationAdapter/locationAdapter.js';
 import type { ApiResultsType } from '../../utils/api.js';
+import type { ActionRequestOptions } from '../../utils/requestCache.js';
 
 const DATA_TYPE = 'locations';
 
@@ -35,14 +37,14 @@ export type LocationApiResultsType = {
 };
 
 export interface LocationActions {
-  autocompleteLocation: (address: string, latitude?: number, longitude?: number, locationProps?: string[]) => Promise<LocationType[]>;
-  add: (location: Partial<LocationType>, locationProps?: string[]) => Promise<LocationType>;
-  delete: (locationId: string) => Promise<LocationType>;
-  getCurrentLocation: (setLocation?: (location: LocationType) => void) => Promise<LocationType>;
-  getGoogleLocation: (address: string) => Promise<{latitude: number; location: string; longitude: number}>;
-  getLocation: (location: Partial<LocationType>, locationProps?: string[]) => Promise<LocationType>;
-  listByItem: (itemId: string, locationProps?: string[]) => Promise<LocationType[]>;
-  update: (location: Partial<LocationType>, locationProps?: string[]) => Promise<LocationType>;
+  autocompleteLocation: (address: string, latitude?: number, longitude?: number, locationProps?: string[], requestOptions?: ActionRequestOptions) => Promise<LocationType[]>;
+  add: (location: Partial<LocationType>, locationProps?: string[], requestOptions?: ActionRequestOptions) => Promise<LocationType>;
+  delete: (locationId: string, requestOptions?: ActionRequestOptions) => Promise<LocationType>;
+  getCurrentLocation: (setLocation?: (location: LocationType) => void, requestOptions?: ActionRequestOptions) => Promise<LocationType>;
+  getGoogleLocation: (address: string, requestOptions?: ActionRequestOptions) => Promise<{latitude: number; location: string; longitude: number}>;
+  getLocation: (location: Partial<LocationType>, locationProps?: string[], requestOptions?: ActionRequestOptions) => Promise<LocationType>;
+  listByItem: (itemId: string, locationProps?: string[], requestOptions?: ActionRequestOptions) => Promise<LocationType[]>;
+  update: (location: Partial<LocationType>, locationProps?: string[], requestOptions?: ActionRequestOptions) => Promise<LocationType>;
   updateLocationAdapter: (adapter: (input: unknown, options?: LocationAdapterOptions) => any) => void;
   updateLocationAdapterOptions: (options: LocationAdapterOptions) => void;
 }
@@ -122,12 +124,28 @@ export const createLocationActions = (
     address: string,
     latitude?: number,
     longitude?: number,
-    locationProps: string[] = []
-  ): Promise<LocationType[]> => autoCompleteLocation(flux, address, latitude, longitude, locationProps);
+    locationProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<LocationType[]> => {
+    const cachedResult = getCachedRequest<LocationType[]>(
+      flux,
+      'location.autocompleteLocation',
+      {address, latitude, locationProps, longitude},
+      requestOptions
+    );
+
+    if(cachedResult) {
+      return cachedResult;
+    }
+
+    const result = await autoCompleteLocation(flux, address, latitude, longitude, locationProps);
+    return await setCachedRequest(flux, 'location.autocompleteLocation', {address, latitude, locationProps, longitude}, result, requestOptions);
+  };
 
   const add = async (
     location: Partial<LocationType>,
-    locationProps: string[] = []
+    locationProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<LocationType> => {
     try {
       const queryVariables = {
@@ -166,10 +184,12 @@ export const createLocationActions = (
     } catch(error) {
       flux.dispatch({error, type: LOCATION_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, 'location.autocompleteLocation');
     }
   };
 
-  const deleteLocation = async (locationId: string): Promise<LocationType> => {
+  const deleteLocation = async (locationId: string, requestOptions: ActionRequestOptions = {}): Promise<LocationType> => {
     try {
       const queryVariables = {
         locationId: {
@@ -194,10 +214,15 @@ export const createLocationActions = (
     } catch(error) {
       flux.dispatch({error, type: LOCATION_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `location.listByItem:${locationId}`);
     }
   };
 
-  const getCurrentLocation = async (setLocation?: (location: LocationType) => void): Promise<LocationType> => new Promise((resolve, reject) => {
+  const getCurrentLocation = async (
+    setLocation?: (location: LocationType) => void,
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<LocationType> => new Promise((resolve, reject) => {
     const {userId}: User = flux.getState('user.session', {});
     const {city, country, latitude, longitude, state}: User = flux.getState(['user', 'users', userId || ''], {});
     const locationStr = [city, state, country].join(', ');
@@ -244,8 +269,11 @@ export const createLocationActions = (
     }
   });
 
-  const getGoogleLocation = async (address: string): Promise<{latitude: number; location: string; longitude: number}> => {
-    const locations = await autocompleteLocation(address);
+  const getGoogleLocation = async (
+    address: string,
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<{latitude: number; location: string; longitude: number}> => {
+    const locations = await autocompleteLocation(address, undefined, undefined, [], requestOptions);
     const [firstLocation = {} as LocationType] = locations;
 
     return {
@@ -257,9 +285,16 @@ export const createLocationActions = (
 
   const getLocation = async (
     location: Partial<LocationType>,
-    locationProps: string[] = []
+    locationProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<LocationType> => {
     try {
+      const cachedResult = getCachedRequest<LocationType>(flux, 'location.getLocation', {location, locationProps}, requestOptions);
+
+      if(cachedResult) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         location: {
           type: 'LocationInput!',
@@ -272,7 +307,7 @@ export const createLocationActions = (
         return flux.dispatch({location: getLocation, type: LOCATION_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
-      return await appMutation<LocationType>(
+      const result = await appMutation<LocationType>(
         flux,
         'getLocation',
         DATA_TYPE,
@@ -293,6 +328,8 @@ export const createLocationActions = (
         ],
         {onSuccess}
       );
+
+      return await setCachedRequest(flux, 'location.getLocation', {location, locationProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: LOCATION_CONSTANTS.GET_ITEM_ERROR});
       throw error;
@@ -301,9 +338,21 @@ export const createLocationActions = (
 
   const listByItem = async (
     itemId: string,
-    locationProps: string[] = []
+    locationProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<LocationType[]> => {
     try {
+      const cachedResult = getCachedRequest<LocationType[]>(
+        flux,
+        `location.listByItem:${itemId}`,
+        {itemId, locationProps},
+        requestOptions
+      );
+
+      if(cachedResult) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         itemId: {
           type: 'ID!',
@@ -322,7 +371,7 @@ export const createLocationActions = (
         });
       };
 
-      return await appMutation<LocationType[]>(
+      const result = await appMutation<LocationType[]>(
         flux,
         'locationsByItem',
         DATA_TYPE,
@@ -343,6 +392,8 @@ export const createLocationActions = (
         ],
         {onSuccess}
       );
+
+      return await setCachedRequest(flux, `location.listByItem:${itemId}`, {itemId, locationProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: LOCATION_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -351,7 +402,8 @@ export const createLocationActions = (
 
   const update = async (
     location: Partial<LocationType>,
-    locationProps: string[] = []
+    locationProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<LocationType> => {
     try {
       const queryVariables = {
@@ -366,7 +418,7 @@ export const createLocationActions = (
         return flux.dispatch({location: updateLocation, type: LOCATION_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 
-      return await appMutation<LocationType>(
+      const result = await appMutation<LocationType>(
         flux,
         'updateLocation',
         DATA_TYPE,
@@ -387,9 +439,15 @@ export const createLocationActions = (
         ],
         {onSuccess}
       );
+
+      return result;
     } catch(error) {
       flux.dispatch({error, type: LOCATION_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, 'location.getLocation');
+      await clearCachedRequest(flux, 'location.autocompleteLocation');
+      await clearCachedRequest(flux, `location.listByItem:${String(location?.itemId || '')}`);
     }
   };
 

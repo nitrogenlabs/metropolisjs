@@ -7,10 +7,12 @@ import { parseId, parseNum } from '@nlabs/utils';
 import { validateEventInput } from '../../adapters/eventAdapter/eventAdapter.js';
 import { EVENT_CONSTANTS } from '../../stores/eventStore.js';
 import { appMutation, appQuery } from '../../utils/api.js';
+import { clearCachedRequest, getCachedRequest, setCachedRequest } from '../../utils/requestCache.js';
 
 import type { FluxFramework } from '@nlabs/arkhamjs';
 import type { EventType } from '../../adapters/eventAdapter/eventAdapter.js';
 import type { PostApiResultsType } from '../postActions/postActions.js';
+import type { ActionRequestOptions } from '../../utils/requestCache.js';
 
 const DATA_TYPE = 'posts';
 
@@ -27,12 +29,12 @@ export interface EventActionsOptions {
 }
 
 export interface EventActions {
-  readonly addEvent: (eventData: Partial<EventType>, eventProps?: string[]) => Promise<EventType>;
-  readonly getEvent: (eventId: string, eventProps?: string[]) => Promise<EventType>;
-  readonly getEventsByTags: (tags: string[], latitude: number, longitude: number, eventProps?: string[]) => Promise<EventType[]>;
-  readonly getEventsByReactions: (reactions: string[], latitude: number, longitude: number, eventProps?: string[]) => Promise<EventType[]>;
-  readonly deleteEvent: (eventId: string, eventProps?: string[]) => Promise<EventType>;
-  readonly updateEvent: (event: Partial<EventType>, eventProps?: string[]) => Promise<EventType>;
+  readonly addEvent: (eventData: Partial<EventType>, eventProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventType>;
+  readonly getEvent: (eventId: string, eventProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventType>;
+  readonly getEventsByTags: (tags: string[], latitude: number, longitude: number, eventProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventType[]>;
+  readonly getEventsByReactions: (reactions: string[], latitude: number, longitude: number, eventProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventType[]>;
+  readonly deleteEvent: (eventId: string, eventProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventType>;
+  readonly updateEvent: (event: Partial<EventType>, eventProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventType>;
   readonly updateEventAdapter: (adapter: (input: unknown, options?: EventAdapterOptions) => any) => void;
   readonly updateEventAdapterOptions: (options: EventAdapterOptions) => void;
 }
@@ -108,7 +110,11 @@ export const createEventActions = (
   };
 
   // Action implementations
-  const addEvent = async (eventData: Partial<EventType>, eventProps: string[] = []): Promise<EventType> => {
+  const addEvent = async (
+    eventData: Partial<EventType>,
+    eventProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<EventType> => {
     try {
       const queryVariables = {
         event: {
@@ -126,11 +132,24 @@ export const createEventActions = (
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, 'event.getEventsByTags');
+      await clearCachedRequest(flux, 'event.getEventsByReactions');
     }
   };
 
-  const getEvent = async (eventId: string, eventProps: string[] = []): Promise<EventType> => {
+  const getEvent = async (
+    eventId: string,
+    eventProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<EventType> => {
     try {
+      const cachedResult = getCachedRequest<EventType>(flux, `event.getEvent:${eventId}`, {eventId, eventProps}, requestOptions);
+
+      if(cachedResult) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         postId: {
           type: 'ID!',
@@ -143,7 +162,7 @@ export const createEventActions = (
         return flux.dispatch({event, type: EVENT_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
-      return await appQuery<EventType>(
+      const result = await appQuery<EventType>(
         flux,
         'event',
         DATA_TYPE,
@@ -167,6 +186,8 @@ export const createEventActions = (
         ],
         {onSuccess}
       );
+
+      return await setCachedRequest(flux, `event.getEvent:${eventId}`, {eventId, eventProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.GET_ITEM_ERROR});
       throw error;
@@ -177,11 +198,23 @@ export const createEventActions = (
     tags: string[],
     latitude: number,
     longitude: number,
-    eventProps: string[] = []
+    eventProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<EventType[]> => {
     const formatTags = tags.map((tag) => tag.trim().toLowerCase());
 
     try {
+      const cachedResult = getCachedRequest<EventType[]>(
+        flux,
+        'event.getEventsByTags',
+        {eventProps, latitude, longitude, tags: formatTags},
+        requestOptions
+      );
+
+      if(cachedResult) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         latitude: {
           type: 'Float',
@@ -205,7 +238,7 @@ export const createEventActions = (
         });
       };
 
-      return await appQuery<EventType[]>(
+      const result = await appQuery<EventType[]>(
         flux,
         'eventsByTags',
         DATA_TYPE,
@@ -229,6 +262,8 @@ export const createEventActions = (
         ],
         {onSuccess}
       );
+
+      return await setCachedRequest(flux, 'event.getEventsByTags', {eventProps, latitude, longitude, tags: formatTags}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -239,9 +274,21 @@ export const createEventActions = (
     reactions: string[],
     latitude: number,
     longitude: number,
-    eventProps: string[] = []
+    eventProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<EventType[]> => {
     try {
+      const cachedResult = getCachedRequest<EventType[]>(
+        flux,
+        'event.getEventsByReactions',
+        {eventProps, latitude, longitude, reactions},
+        requestOptions
+      );
+
+      if(cachedResult) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         latitude: {
           type: 'Float',
@@ -265,7 +312,7 @@ export const createEventActions = (
         });
       };
 
-      return await appQuery<EventType[]>(
+      const result = await appQuery<EventType[]>(
         flux,
         'eventsByReactions',
         DATA_TYPE,
@@ -289,13 +336,19 @@ export const createEventActions = (
         ],
         {onSuccess}
       );
+
+      return await setCachedRequest(flux, 'event.getEventsByReactions', {eventProps, latitude, longitude, reactions}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.GET_LIST_ERROR});
       throw error;
     }
   };
 
-  const deleteEvent = async (eventId: string, eventProps: string[] = []): Promise<EventType> => {
+  const deleteEvent = async (
+    eventId: string,
+    eventProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<EventType> => {
     try {
       const queryVariables = {
         postId: {
@@ -313,10 +366,18 @@ export const createEventActions = (
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `event.getEvent:${eventId}`);
+      await clearCachedRequest(flux, 'event.getEventsByTags');
+      await clearCachedRequest(flux, 'event.getEventsByReactions');
     }
   };
 
-  const updateEvent = async (event: Partial<EventType>, eventProps: string[] = []): Promise<EventType> => {
+  const updateEvent = async (
+    event: Partial<EventType>,
+    eventProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<EventType> => {
     try {
       const queryVariables = {
         event: {
@@ -334,6 +395,10 @@ export const createEventActions = (
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `event.getEvent:${String(event?.eventId || '')}`);
+      await clearCachedRequest(flux, 'event.getEventsByTags');
+      await clearCachedRequest(flux, 'event.getEventsByReactions');
     }
   };
 

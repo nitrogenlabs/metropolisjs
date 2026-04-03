@@ -7,9 +7,10 @@ import { isEmpty } from '@nlabs/utils';
 import pDebounce from 'p-debounce';
 
 import { parseLocation } from '../adapters/locationAdapter/locationAdapter.js';
-import { appQuery, type ReaktorDbCollection } from '../utils/api.js';
+import { appQuery } from '../utils/api.js';
 
 import type { LocationType } from '../adapters/locationAdapter/locationAdapter.js';
+import type { ReaktorDbCollection } from '../utils/api.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'locations';
 

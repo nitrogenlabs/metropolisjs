@@ -7,10 +7,12 @@ import {parseId, parseNum} from '@nlabs/utils';
 import {validateAppInput} from '../../adapters/appAdapter/appAdapter.js';
 import {appMutation, appQuery} from '../../utils/api.js';
 import {createBaseActions} from '../../utils/baseActionFactory.js';
+import {clearCachedRequest, getCachedRequest, setCachedRequest} from '../../utils/requestCache.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {AppType} from '../../types/apps.types.js';
 import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
+import type {ActionRequestOptions} from '../../utils/requestCache.js';
 
 const DATA_TYPE = 'apps';
 
@@ -32,11 +34,11 @@ export type AppApiResultsType = {
 };
 
 export interface AppActions {
-  add: (appData: Partial<AppType>, appProps?: string[]) => Promise<AppType>;
-  delete: (appId: string, appProps?: string[]) => Promise<AppType>;
-  itemById: (appId: string, appProps?: string[]) => Promise<AppType>;
-  list: (from?: number, to?: number, appProps?: string[]) => Promise<AppType[]>;
-  update: (app: Partial<AppType>, appProps?: string[]) => Promise<AppType>;
+  add: (appData: Partial<AppType>, appProps?: string[], requestOptions?: ActionRequestOptions) => Promise<AppType>;
+  delete: (appId: string, appProps?: string[], requestOptions?: ActionRequestOptions) => Promise<AppType>;
+  itemById: (appId: string, appProps?: string[], requestOptions?: ActionRequestOptions) => Promise<AppType>;
+  list: (from?: number, to?: number, appProps?: string[], requestOptions?: ActionRequestOptions) => Promise<AppType[]>;
+  update: (app: Partial<AppType>, appProps?: string[], requestOptions?: ActionRequestOptions) => Promise<AppType>;
   updateAppAdapter: (adapter: (input: unknown, options?: AppAdapterOptions) => any) => void;
   updateAppAdapterOptions: (options: AppAdapterOptions) => void;
 }
@@ -55,7 +57,8 @@ export const createAppActions = (
 
   const add = async (
     appData: Partial<AppType>,
-    appProps: string[] = []
+    appProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<AppType> => {
     try {
       const queryVariables = {
@@ -74,11 +77,19 @@ export const createAppActions = (
       );
     } catch(error) {
       throw error;
+    } finally {
+      await clearCachedRequest(flux, 'app.list');
     }
   };
 
-  const itemById = async (appId: string, appProps: string[] = []): Promise<AppType> => {
+  const itemById = async (appId: string, appProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<AppType> => {
     try {
+      const cachedResult = getCachedRequest<AppType>(flux, `app.itemById:${appId}`, {appId, appProps}, requestOptions);
+
+      if(cachedResult !== undefined) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         appId: {
           type: 'ID!',
@@ -86,7 +97,7 @@ export const createAppActions = (
         }
       };
 
-      return await appQuery<AppType>(
+      const result = await appQuery<AppType>(
         flux,
         'itemById',
         DATA_TYPE,
@@ -104,6 +115,7 @@ export const createAppActions = (
           ...appProps
         ]
       );
+      return await setCachedRequest(flux, `app.itemById:${appId}`, {appId, appProps}, result, requestOptions);
     } catch(error) {
       throw error;
     }
@@ -112,9 +124,16 @@ export const createAppActions = (
   const list = async (
     from: number = 0,
     to: number = 10,
-    appProps: string[] = []
+    appProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<AppType[]> => {
     try {
+      const cachedResult = getCachedRequest<AppType[]>(flux, 'app.list', {from, to, appProps}, requestOptions);
+
+      if(cachedResult !== undefined) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         from: {
           type: 'Int',
@@ -126,7 +145,7 @@ export const createAppActions = (
         }
       };
 
-      return await appQuery<AppType[]>(
+      const result = await appQuery<AppType[]>(
         flux,
         'list',
         DATA_TYPE,
@@ -144,6 +163,7 @@ export const createAppActions = (
           ...appProps
         ]
       );
+      return await setCachedRequest(flux, 'app.list', {from, to, appProps}, result, requestOptions);
     } catch(error) {
       throw error;
     }
@@ -151,7 +171,8 @@ export const createAppActions = (
 
   const deleteApp = async (
     appId: string,
-    appProps: string[] = []
+    appProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<AppType> => {
     try {
       const queryVariables = {
@@ -170,12 +191,16 @@ export const createAppActions = (
       );
     } catch(error) {
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `app.itemById:${appId}`);
+      await clearCachedRequest(flux, 'app.list');
     }
   };
 
   const update = async (
     app: Partial<AppType>,
-    appProps: string[] = []
+    appProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<AppType> => {
     try {
       const queryVariables = {
@@ -194,6 +219,9 @@ export const createAppActions = (
       );
     } catch(error) {
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `app.itemById:${String(app?.appId || '')}`);
+      await clearCachedRequest(flux, 'app.list');
     }
   };
 

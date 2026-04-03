@@ -8,10 +8,12 @@ import { parseContentInput } from '../../adapters/contentAdapter/contentAdapter.
 import { CONTENT_CONSTANTS } from '../../stores/contentStore.js';
 import { appMutation, appQuery } from '../../utils/api.js';
 import { createBaseActions } from '../../utils/baseActionFactory.js';
+import {clearCachedRequest, getCachedRequest, setCachedRequest} from '../../utils/requestCache.js';
 
 import type { FluxFramework } from '@nlabs/arkhamjs';
 import type { ContentInputType, ContentType } from '../../adapters/contentAdapter/contentAdapter.js';
 import type { BaseAdapterOptions } from '../../utils/validatorFactory.js';
+import type { ActionRequestOptions } from '../../utils/requestCache.js';
 
 const DATA_TYPE = 'contents';
 
@@ -36,13 +38,13 @@ export type ContentApiResultsType = {
 };
 
 export interface ContentActions {
-  add: (contentData: ContentInputType, contentProps?: string[]) => Promise<ContentType>;
-  itemById: (contentId: string, contentProps?: string[]) => Promise<ContentType>;
-  itemByKey: (key: string, locale?: string, contentProps?: string[]) => Promise<ContentType>;
-  listByCategory: (category: string, contentProps?: string[]) => Promise<ContentType[]>;
-  list: (contentProps?: string[]) => Promise<ContentType[]>;
-  delete: (contentId: string, contentProps?: string[]) => Promise<ContentType>;
-  update: (content: ContentInputType, contentProps?: string[]) => Promise<ContentType>;
+  add: (contentData: ContentInputType, contentProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ContentType>;
+  itemById: (contentId: string, contentProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ContentType>;
+  itemByKey: (key: string, locale?: string, contentProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ContentType>;
+  listByCategory: (category: string, contentProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ContentType[]>;
+  list: (contentProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ContentType[]>;
+  delete: (contentId: string, contentProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ContentType>;
+  update: (content: ContentInputType, contentProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ContentType>;
   updateContentAdapter: (adapter: (input: unknown, options?: ContentAdapterOptions) => any) => void;
   updateContentAdapterOptions: (options: ContentAdapterOptions) => void;
 }
@@ -57,7 +59,7 @@ export const createContentActions = (
     ...(options?.contentAdapter && {adapter: options.contentAdapter}),
     ...(options?.contentAdapterOptions && {adapterOptions: options.contentAdapterOptions})
   });
-  const add = async (contentData: ContentInputType, contentProps: string[] = []): Promise<ContentType> => {
+  const add = async (contentData: ContentInputType, contentProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<ContentType> => {
     try {
       const queryVariables = {
         content: {
@@ -75,11 +77,19 @@ export const createContentActions = (
     } catch(error) {
       flux.dispatch({error, type: CONTENT_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, 'content.list');
     }
   };
 
-  const itemById = async (contentId: string, contentProps: string[] = []): Promise<ContentType> => {
+  const itemById = async (contentId: string, contentProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<ContentType> => {
     try {
+      const cachedResult = getCachedRequest<ContentType>(flux, `content.itemById:${contentId}`, {contentId, contentProps}, requestOptions);
+
+      if(cachedResult !== undefined) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         contentId: {
           type: 'ID!',
@@ -92,7 +102,7 @@ export const createContentActions = (
         return flux.dispatch({content, type: CONTENT_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
-      return await appQuery<ContentType>(
+      const result = await appQuery<ContentType>(
         flux,
         'content',
         DATA_TYPE,
@@ -109,14 +119,21 @@ export const createContentActions = (
         ],
         {onSuccess}
       );
+      return await setCachedRequest(flux, `content.itemById:${contentId}`, {contentId, contentProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: CONTENT_CONSTANTS.GET_ITEM_ERROR});
       throw error;
     }
   };
 
-  const itemByKey = async (key: string, locale: string = 'en', contentProps: string[] = []): Promise<ContentType> => {
+  const itemByKey = async (key: string, locale: string = 'en', contentProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<ContentType> => {
     try {
+      const cachedResult = getCachedRequest<ContentType>(flux, `content.itemByKey:${key}:${locale}`, {key, locale, contentProps}, requestOptions);
+
+      if(cachedResult !== undefined) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         key: {
           type: 'String!',
@@ -133,7 +150,7 @@ export const createContentActions = (
         return flux.dispatch({content, type: CONTENT_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
-      return await appQuery<ContentType>(
+      const result = await appQuery<ContentType>(
         flux,
         'contentByKey',
         DATA_TYPE,
@@ -150,14 +167,21 @@ export const createContentActions = (
         ],
         {onSuccess}
       );
+      return await setCachedRequest(flux, `content.itemByKey:${key}:${locale}`, {key, locale, contentProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: CONTENT_CONSTANTS.GET_ITEM_ERROR});
       throw error;
     }
   };
 
-  const listByCategory = async (category: string, contentProps: string[] = []): Promise<ContentType[]> => {
+  const listByCategory = async (category: string, contentProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<ContentType[]> => {
     try {
+      const cachedResult = getCachedRequest<ContentType[]>(flux, `content.listByCategory:${category}`, {category, contentProps}, requestOptions);
+
+      if(cachedResult !== undefined) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         category: {
           type: 'String!',
@@ -173,7 +197,7 @@ export const createContentActions = (
         });
       };
 
-      return await appQuery<ContentType[]>(
+      const result = await appQuery<ContentType[]>(
         flux,
         'contentsByCategory',
         DATA_TYPE,
@@ -190,14 +214,21 @@ export const createContentActions = (
         ],
         {onSuccess}
       );
+      return await setCachedRequest(flux, `content.listByCategory:${category}`, {category, contentProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: CONTENT_CONSTANTS.GET_LIST_ERROR});
       throw error;
     }
   };
 
-  const list = async (contentProps: string[] = []): Promise<ContentType[]> => {
+  const list = async (contentProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<ContentType[]> => {
     try {
+      const cachedResult = getCachedRequest<ContentType[]>(flux, 'content.list', {contentProps}, requestOptions);
+
+      if(cachedResult !== undefined) {
+        return cachedResult;
+      }
+
       const onSuccess = (data: ContentApiResultsType) => {
         const contentsList = data?.contents?.getContentsList || [];
         return flux.dispatch({
@@ -206,7 +237,7 @@ export const createContentActions = (
         });
       };
 
-      return await appQuery<ContentType[]>(
+      const result = await appQuery<ContentType[]>(
         flux,
         'contentsList',
         DATA_TYPE,
@@ -223,13 +254,14 @@ export const createContentActions = (
         ],
         {onSuccess}
       );
+      return await setCachedRequest(flux, 'content.list', {contentProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: CONTENT_CONSTANTS.GET_LIST_ERROR});
       throw error;
     }
   };
 
-  const deleteContent = async (contentId: string, contentProps: string[] = []): Promise<ContentType> => {
+  const deleteContent = async (contentId: string, contentProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<ContentType> => {
     try {
       const queryVariables = {
         contentId: {
@@ -247,10 +279,13 @@ export const createContentActions = (
     } catch(error) {
       flux.dispatch({error, type: CONTENT_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `content.itemById:${contentId}`);
+      await clearCachedRequest(flux, 'content.list');
     }
   };
 
-  const update = async (content: ContentInputType, contentProps: string[] = []): Promise<ContentType> => {
+  const update = async (content: ContentInputType, contentProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<ContentType> => {
     try {
       const queryVariables = {
         content: {
@@ -268,6 +303,9 @@ export const createContentActions = (
     } catch(error) {
       flux.dispatch({error, type: CONTENT_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `content.itemById:${String(content?.contentId || '')}`);
+      await clearCachedRequest(flux, 'content.list');
     }
   };
 

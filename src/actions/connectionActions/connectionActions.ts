@@ -4,11 +4,15 @@
  */
 import {parseId} from '@nlabs/utils';
 
-import {CONNECTION_TYPES, EDGES, type CollectionType, type ConnectionType} from '../../constants/Collections.js';
-import {appMutation, appQuery, type ApiResultsType} from '../../utils/api.js';
+import {CONNECTION_TYPES, EDGES} from '../../constants/Collections.js';
+import {appMutation, appQuery} from '../../utils/api.js';
+import {clearCachedRequest, getCachedRequest, setCachedRequest} from '../../utils/requestCache.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
+import type {CollectionType, ConnectionType} from '../../constants/Collections.js';
+import type {ApiResultsType} from '../../utils/api.js';
 import type {ConnectionEdge} from '../../types/edges.types.js';
+import type {ActionRequestOptions} from '../../utils/requestCache.js';
 
 export interface ConnectionActions {
   addConnection: (
@@ -17,19 +21,22 @@ export interface ConnectionActions {
     toType: CollectionType,
     toId: string,
     connectionType?: ConnectionType,
-    metadata?: Record<string, any>
+    metadata?: Record<string, any>,
+    requestOptions?: ActionRequestOptions
   ) => Promise<ConnectionEdge>;
   getConnections: (
     fromType: CollectionType,
     fromId: string,
     toType?: CollectionType,
-    filters?: Record<string, any>
+    filters?: Record<string, any>,
+    requestOptions?: ActionRequestOptions
   ) => Promise<ConnectionEdge[]>;
   removeConnection: (
     fromType: CollectionType,
     fromId: string,
     toType: CollectionType,
-    toId: string
+    toId: string,
+    requestOptions?: ActionRequestOptions
   ) => Promise<boolean>;
 }
 
@@ -48,7 +55,8 @@ export const createConnectionActions = (flux: FluxFramework): ConnectionActions 
     toType: CollectionType,
     toId: string,
     connectionType: ConnectionType = CONNECTION_TYPES.MEMBER,
-    metadata: Record<string, any> = {}
+    metadata: Record<string, any> = {},
+    requestOptions: ActionRequestOptions = {}
   ): Promise<ConnectionEdge> => {
     try {
       const queryVariables: Record<string, {type: string; value: unknown}> = {
@@ -85,6 +93,8 @@ export const createConnectionActions = (flux: FluxFramework): ConnectionActions 
     } catch(error) {
       console.error('Error adding connection:', error);
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `connection.getConnections:${fromType}:${fromId}:${toType || ''}`);
     }
   };
 
@@ -92,9 +102,21 @@ export const createConnectionActions = (flux: FluxFramework): ConnectionActions 
     fromType: CollectionType,
     fromId: string,
     toType?: CollectionType,
-    filters: Record<string, any> = {}
+    filters: Record<string, any> = {},
+    requestOptions: ActionRequestOptions = {}
   ): Promise<ConnectionEdge[]> => {
     try {
+      const cachedResult = getCachedRequest<ConnectionEdge[]>(
+        flux,
+        `connection.getConnections:${fromType}:${fromId}:${toType || ''}`,
+        {filters, fromId, fromType, toType},
+        requestOptions
+      );
+
+      if(cachedResult) {
+        return cachedResult;
+      }
+
       const queryVariables: Record<string, {type: string; value: unknown}> = {
         fromId: {
           type: 'String!',
@@ -120,7 +142,7 @@ export const createConnectionActions = (flux: FluxFramework): ConnectionActions 
         };
       });
 
-      return await appQuery<ConnectionEdge[]>(
+      const result = await appQuery<ConnectionEdge[]>(
         flux,
         'connections',
         'connections',
@@ -137,6 +159,14 @@ export const createConnectionActions = (flux: FluxFramework): ConnectionActions 
         ],
         {}
       );
+
+      return await setCachedRequest(
+        flux,
+        `connection.getConnections:${fromType}:${fromId}:${toType || ''}`,
+        {filters, fromId, fromType, toType},
+        result,
+        requestOptions
+      );
     } catch(error) {
       console.error('Error getting connections:', error);
       throw error;
@@ -147,7 +177,8 @@ export const createConnectionActions = (flux: FluxFramework): ConnectionActions 
     fromType: CollectionType,
     fromId: string,
     toType: CollectionType,
-    toId: string
+    toId: string,
+    requestOptions: ActionRequestOptions = {}
   ): Promise<boolean> => {
     try {
       const queryVariables = {
@@ -182,6 +213,8 @@ export const createConnectionActions = (flux: FluxFramework): ConnectionActions 
     } catch(error) {
       console.error('Error removing connection:', error);
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `connection.getConnections:${fromType}:${fromId}:${toType || ''}`);
     }
   };
 

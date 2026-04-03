@@ -8,10 +8,12 @@ import { validateGroupInput } from '../../adapters/groupAdapter/groupAdapter.js'
 import { GROUP_CONSTANTS } from '../../stores/groupStore.js';
 import { appMutation, appQuery } from '../../utils/api.js';
 import { createBaseActions } from '../../utils/baseActionFactory.js';
+import { clearCachedRequest, getCachedRequest, setCachedRequest } from '../../utils/requestCache.js';
 
 import type { FluxFramework } from '@nlabs/arkhamjs';
 import type { GroupType } from '../../types/groups.types.js';
 import type { BaseAdapterOptions } from '../../utils/validatorFactory.js';
+import type { ActionRequestOptions } from '../../utils/requestCache.js';
 
 const DATA_TYPE = 'groups';
 
@@ -34,11 +36,11 @@ export type GroupApiResultsType = {
 };
 
 export interface GroupActions {
-  add: (groupData: Partial<GroupType>, groupProps?: string[]) => Promise<GroupType>;
-  itemById: (groupId: string, groupProps?: string[]) => Promise<GroupType>;
-  listByLatest: (from?: number, to?: number, groupProps?: string[]) => Promise<GroupType[]>;
-  delete: (groupId: string, groupProps?: string[]) => Promise<GroupType>;
-  update: (group: Partial<GroupType>, groupProps?: string[]) => Promise<GroupType>;
+  add: (groupData: Partial<GroupType>, groupProps?: string[], requestOptions?: ActionRequestOptions) => Promise<GroupType>;
+  itemById: (groupId: string, groupProps?: string[], requestOptions?: ActionRequestOptions) => Promise<GroupType>;
+  listByLatest: (from?: number, to?: number, groupProps?: string[], requestOptions?: ActionRequestOptions) => Promise<GroupType[]>;
+  delete: (groupId: string, groupProps?: string[], requestOptions?: ActionRequestOptions) => Promise<GroupType>;
+  update: (group: Partial<GroupType>, groupProps?: string[], requestOptions?: ActionRequestOptions) => Promise<GroupType>;
   updateGroupAdapter: (adapter: (input: unknown, options?: GroupAdapterOptions) => any) => void;
   updateGroupAdapterOptions: (options: GroupAdapterOptions) => void;
 }
@@ -54,7 +56,11 @@ export const createGroupActions = (
     adapterOptions: options?.groupAdapterOptions
   });
 
-  const add = async (groupData: Partial<GroupType>, groupProps: string[] = []): Promise<GroupType> => {
+  const add = async (
+    groupData: Partial<GroupType>,
+    groupProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<GroupType> => {
     try {
       const queryVariables = {
         group: {
@@ -72,11 +78,23 @@ export const createGroupActions = (
     } catch(error) {
       flux.dispatch({error, type: GROUP_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, 'group.listByLatest');
     }
   };
 
-  const itemById = async (groupId: string, groupProps: string[] = []): Promise<GroupType> => {
+  const itemById = async (
+    groupId: string,
+    groupProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<GroupType> => {
     try {
+      const cachedResult = getCachedRequest<GroupType>(flux, `group.itemById:${groupId}`, {groupId, groupProps}, requestOptions);
+
+      if(cachedResult) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         groupId: {
           type: 'ID!',
@@ -89,7 +107,7 @@ export const createGroupActions = (
         return flux.dispatch({group, type: GROUP_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
-      return await appQuery<GroupType>(
+      const result = await appQuery<GroupType>(
         flux,
         'group',
         DATA_TYPE,
@@ -110,6 +128,8 @@ export const createGroupActions = (
         ],
         {onSuccess}
       );
+
+      return await setCachedRequest(flux, `group.itemById:${groupId}`, {groupId, groupProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: GROUP_CONSTANTS.GET_ITEM_ERROR});
       throw error;
@@ -119,9 +139,16 @@ export const createGroupActions = (
   const listByLatest = async (
     from: number = 0,
     to: number = 0,
-    groupProps: string[] = []
+    groupProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<GroupType[]> => {
     try {
+      const cachedResult = getCachedRequest<GroupType[]>(flux, 'group.listByLatest', {from, to, groupProps}, requestOptions);
+
+      if(cachedResult) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         from: {
           type: 'Int',
@@ -141,7 +168,7 @@ export const createGroupActions = (
         });
       };
 
-      return await appQuery<GroupType[]>(
+      const result = await appQuery<GroupType[]>(
         flux,
         'groupsByLatest',
         DATA_TYPE,
@@ -162,13 +189,19 @@ export const createGroupActions = (
         ],
         {onSuccess}
       );
+
+      return await setCachedRequest(flux, 'group.listByLatest', {from, to, groupProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: GROUP_CONSTANTS.GET_LIST_ERROR});
       throw error;
     }
   };
 
-  const deleteGroup = async (groupId: string, groupProps: string[] = []): Promise<GroupType> => {
+  const deleteGroup = async (
+    groupId: string,
+    groupProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<GroupType> => {
     try {
       const queryVariables = {
         groupId: {
@@ -186,10 +219,17 @@ export const createGroupActions = (
     } catch(error) {
       flux.dispatch({error, type: GROUP_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `group.itemById:${groupId}`);
+      await clearCachedRequest(flux, 'group.listByLatest');
     }
   };
 
-  const update = async (group: Partial<GroupType>, groupProps: string[] = []): Promise<GroupType> => {
+  const update = async (
+    group: Partial<GroupType>,
+    groupProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<GroupType> => {
     try {
       const queryVariables = {
         group: {
@@ -207,6 +247,9 @@ export const createGroupActions = (
     } catch(error) {
       flux.dispatch({error, type: GROUP_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `group.itemById:${String(group?.groupId || '')}`);
+      await clearCachedRequest(flux, 'group.listByLatest');
     }
   };
 

@@ -8,10 +8,12 @@ import {validateVideoInput} from '../../adapters/videoAdapter/videoAdapter.js';
 import {VIDEO_CONSTANTS} from '../../stores/videoStore.js';
 import {appMutation, appQuery} from '../../utils/api.js';
 import {createBaseActions} from '../../utils/baseActionFactory.js';
+import {clearCachedRequest, getCachedRequest, setCachedRequest} from '../../utils/requestCache.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {VideoType} from '../../types/videos.types.js';
 import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
+import type {ActionRequestOptions} from '../../utils/requestCache.js';
 
 const DATA_TYPE = 'videos';
 
@@ -33,11 +35,11 @@ export type VideoApiResultsType = {
 };
 
 export interface VideoActions {
-  add: (videoData: Partial<VideoType>, videoProps?: string[]) => Promise<VideoType>;
-  delete: (videoId: string, videoProps?: string[]) => Promise<VideoType>;
-  itemById: (videoId: string, videoProps?: string[]) => Promise<VideoType>;
-  list: (from?: number, to?: number, videoProps?: string[]) => Promise<VideoType[]>;
-  update: (video: Partial<VideoType>, videoProps?: string[]) => Promise<VideoType>;
+  add: (videoData: Partial<VideoType>, videoProps?: string[], requestOptions?: ActionRequestOptions) => Promise<VideoType>;
+  delete: (videoId: string, videoProps?: string[], requestOptions?: ActionRequestOptions) => Promise<VideoType>;
+  itemById: (videoId: string, videoProps?: string[], requestOptions?: ActionRequestOptions) => Promise<VideoType>;
+  list: (from?: number, to?: number, videoProps?: string[], requestOptions?: ActionRequestOptions) => Promise<VideoType[]>;
+  update: (video: Partial<VideoType>, videoProps?: string[], requestOptions?: ActionRequestOptions) => Promise<VideoType>;
   updateVideoAdapter: (adapter: (input: unknown, options?: VideoAdapterOptions) => any) => void;
   updateVideoAdapterOptions: (options: VideoAdapterOptions) => void;
 }
@@ -56,7 +58,8 @@ export const createVideoActions = (
 
   const add = async (
     videoData: Partial<VideoType>,
-    videoProps: string[] = []
+    videoProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<VideoType> => {
     try {
       const queryVariables = {
@@ -82,11 +85,19 @@ export const createVideoActions = (
     } catch(error) {
       flux.dispatch({error, type: VIDEO_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, 'video.list');
     }
   };
 
-  const itemById = async (videoId: string, videoProps: string[] = []): Promise<VideoType> => {
+  const itemById = async (videoId: string, videoProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<VideoType> => {
     try {
+      const cachedResult = getCachedRequest<VideoType>(flux, `video.itemById:${videoId}`, {videoId, videoProps}, requestOptions);
+
+      if(cachedResult !== undefined) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         videoId: {
           type: 'ID!',
@@ -99,7 +110,7 @@ export const createVideoActions = (
         return flux.dispatch({type: VIDEO_CONSTANTS.GET_ITEM_SUCCESS, video});
       };
 
-      return await appQuery<VideoType>(
+      const result = await appQuery<VideoType>(
         flux,
         'itemById',
         DATA_TYPE,
@@ -121,6 +132,7 @@ export const createVideoActions = (
         ],
         {onSuccess}
       );
+      return await setCachedRequest(flux, `video.itemById:${videoId}`, {videoId, videoProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: VIDEO_CONSTANTS.GET_ITEM_ERROR});
       throw error;
@@ -130,9 +142,16 @@ export const createVideoActions = (
   const list = async (
     from: number = 0,
     to: number = 10,
-    videoProps: string[] = []
+    videoProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<VideoType[]> => {
     try {
+      const cachedResult = getCachedRequest<VideoType[]>(flux, 'video.list', {from, to, videoProps}, requestOptions);
+
+      if(cachedResult !== undefined) {
+        return cachedResult;
+      }
+
       const queryVariables = {
         from: {
           type: 'Int',
@@ -152,7 +171,7 @@ export const createVideoActions = (
         });
       };
 
-      return await appQuery<VideoType[]>(
+      const result = await appQuery<VideoType[]>(
         flux,
         'list',
         DATA_TYPE,
@@ -174,6 +193,7 @@ export const createVideoActions = (
         ],
         {onSuccess}
       );
+      return await setCachedRequest(flux, 'video.list', {from, to, videoProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: VIDEO_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -182,7 +202,8 @@ export const createVideoActions = (
 
   const deleteVideo = async (
     videoId: string,
-    videoProps: string[] = []
+    videoProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<VideoType> => {
     try {
       const queryVariables = {
@@ -208,12 +229,16 @@ export const createVideoActions = (
     } catch(error) {
       flux.dispatch({error, type: VIDEO_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `video.itemById:${videoId}`);
+      await clearCachedRequest(flux, 'video.list');
     }
   };
 
   const update = async (
     video: Partial<VideoType>,
-    videoProps: string[] = []
+    videoProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
   ): Promise<VideoType> => {
     try {
       const queryVariables = {
@@ -239,6 +264,9 @@ export const createVideoActions = (
     } catch(error) {
       flux.dispatch({error, type: VIDEO_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;
+    } finally {
+      await clearCachedRequest(flux, `video.itemById:${String(video?.videoId || '')}`);
+      await clearCachedRequest(flux, 'video.list');
     }
   };
 

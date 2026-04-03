@@ -3,9 +3,10 @@ import {useContext, useMemo} from 'react';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {MetropolisEnvironmentConfiguration} from '../config/index.js';
-import {createActions, createAllActions, type ActionOptions, type ActionType} from '../utils/actionFactory.js';
+import {createActions, createAllActions} from '../utils/actionFactory.js';
 import type {MetropolisAdapters} from './MetropolisProvider.js';
 import {MetropolisContext} from './MetropolisProvider.js';
+import type {ActionOptions, ActionType} from '../utils/actionFactory.js';
 
 /**
  * Builds action options from adapters in a type-safe way.
