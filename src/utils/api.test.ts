@@ -1,369 +1,209 @@
-/**
- * Copyright (c) 2025-Present, Nitrogen Labs, Inc.
- * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
- */
-import { afterAll, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import {beforeEach, describe, expect, it, vi} from 'vitest';
 
-import { startTestServer, stopTestServer } from '../__tests__/e2e/helpers/testGraphQLServer';
+const graphqlQueryMock = vi.fn();
+const postMock = vi.fn();
 
-// Mock the module
-jest.doMock('@nlabs/rip-hunter', () => {
-  console.log('Mock factory called');
-  return {
-    ApiError: class ApiError extends Error {
-      constructor(message: string) {
-        super(message);
-        this.name = 'ApiError';
-      }
-    },
-    graphqlQuery: jest.fn(),
-    post: jest.fn()
-  };
-});
+vi.mock('@nlabs/rip-hunter', () => ({
+  ApiError: class ApiError extends Error {
+    readonly errors: string[];
 
-// Import after mocking
-const {graphqlQuery, post} = await import('@nlabs/rip-hunter');
+    constructor(errors: string[] = [], message = '') {
+      super(message);
+      this.errors = errors;
+      this.name = 'ApiError';
+    }
+  },
+  graphqlQuery: graphqlQueryMock,
+  post: postMock
+}));
 
-// Spy on the imported functions
-const graphqlQuerySpy = jest.spyOn({ graphqlQuery }, 'graphqlQuery');
-const postSpy = jest.spyOn({ post }, 'post');
+const {
+  appMutation,
+  appQuery,
+  createMutation,
+  createQuery,
+  publicMutation,
+  publicQuery,
+  refreshSession,
+  uploadImage
+} = await import('./api.js');
 
-let createQuery: any;
-let createMutation: any;
-let appQuery: any;
-let appMutation: any;
-let publicQuery: any;
-let publicMutation: any;
-let uploadImage: any;
-let refreshSession: any;
-
-let server: any;
-
-beforeAll(async () => {
-  // Start test GraphQL server
-  server = await startTestServer();
-
-  // Import api functions after mocking
-  const api = await import('../utils/api.js');
-  createQuery = api.createQuery;
-  createMutation = api.createMutation;
-  appQuery = api.appQuery;
-  appMutation = api.appMutation;
-  publicQuery = api.publicQuery;
-  publicMutation = api.publicMutation;
-  uploadImage = api.uploadImage;
-  refreshSession = api.refreshSession;
-
-  // Provide minimal fetch/Headers so rip-hunter never touches the network
-  if(!global.Headers) {
-    class HeadersMock {
-      private readonly headers = new Map<string, string>();
-
-      append(key: string, value: string) {
-        this.headers.set(key.toLowerCase(), value);
-      }
-
-      set(key: string, value: string) {
-        this.headers.set(key.toLowerCase(), value);
-      }
-
-      get(key: string) {
-        return this.headers.get(key.toLowerCase());
-      }
+const createMockFlux = () => ({
+  clearAppData: vi.fn(async () => undefined),
+  dispatch: vi.fn(async (payload) => payload),
+  getState: vi.fn((key: string, fallback?: unknown) => {
+    if(key === 'app.config') {
+      return {
+        app: {
+          api: {
+            public: 'http://localhost:3000/public',
+            uploadImage: 'http://localhost:3000/upload',
+            url: 'http://localhost:3000/app'
+          }
+        },
+        environment: 'test',
+        isAuth: () => true
+      };
     }
 
-    // @ts-expect-error: node test env
-    global.Headers = HeadersMock;
-  }
+    if(key === 'app.networkType') {
+      return 'wifi';
+    }
 
-  // @ts-expect-error: node test env
-  global.fetch = jest.fn(async () => ({
-    ok: true,
-    status: 200,
-    statusText: 'OK',
-    json: async () => ({data: {}}),
-    headers: new Headers()
-  }));
+    if(key === 'user.session.token') {
+      return 'test-token';
+    }
 
+    if(key === 'user.session') {
+      return {
+        expires: Date.now() + (60 * 60 * 1000),
+        issued: Date.now(),
+        token: 'test-token',
+        userId: 'user-1',
+        username: 'alpha'
+      };
+    }
 
-  let createQuery: any;
-  let createMutation: any;
-  let appQuery: any;
-  let appMutation: any;
-  let publicQuery: any;
-  let publicMutation: any;
-  let uploadImage: any;
-  let refreshSession: any;
-  let graphqlQuerySpy: any;
-  let postSpy: any;
-  let server: any;
+    return fallback;
+  }),
+  setState: vi.fn(async (_path: string, value: unknown) => value)
+});
 
-        if(key === 'user.session.token') {
-    server = await startTestServer();
+describe('api utilities', () => {
+  beforeEach(() => {
+    graphqlQueryMock.mockReset();
+    postMock.mockReset();
+  });
 
-    // Import after mocking inside beforeAll
-    const {graphqlQuery, post} = await import('@nlabs/rip-hunter');
-    graphqlQuerySpy = jest.spyOn({ graphqlQuery }, 'graphqlQuery');
-    postSpy = jest.spyOn({ post }, 'post');
+  it('creates queries without variables', () => {
+    const result = createQuery('getItems', 'users', {}, ['id', 'name']);
 
-    const api = await import('../utils/api.js');
-    createQuery = api.createQuery;
-    createMutation = api.createMutation;
-    appQuery = api.appQuery;
-    appMutation = api.appMutation;
-    publicQuery = api.publicQuery;
-    publicMutation = api.publicMutation;
-    uploadImage = api.uploadImage;
-    refreshSession = api.refreshSession;
+    expect(result.variables).toEqual({});
+    expect(result.query).toContain('query getItems');
+    expect(result.query).toContain('users {');
+    expect(result.query).toContain('getItems');
+    expect(result.query).toContain('{id, name}');
+  });
 
-    if(!global.Headers) {
-      class HeadersMock {
-        private readonly headers = new Map<string, string>();
-          return 'test-token';
-        }
-        if(key === 'user.session') {
-          return {
-            token: 'test-token',
-            expires: Math.floor(Date.now() / 1000) + 86400
-          };
-        }
-        if(key === 'app.networkType') {
-          return 'wifi'; // Ensure network is available
-        }
-        return undefined;
+  it('creates mutations with variables', () => {
+    const result = createMutation('refreshSession', 'users', {
+      token: {
+        type: 'String!',
+        value: 'abc'
+      }
+    }, ['token']);
+
+    expect(result.query).toContain('mutation UsersRefreshSession');
+    expect(result.query).toContain('$token: String!');
+    expect(result.variables).toEqual({token: 'abc'});
+  });
+
+  it('uses the app URL for authenticated appQuery calls', async () => {
+    const flux = createMockFlux();
+    graphqlQueryMock.mockResolvedValue({users: {getItem: {userId: 'user-1'}}});
+
+    await appQuery(flux as any, 'getItem', 'users', {}, ['userId']);
+
+    expect(graphqlQueryMock).toHaveBeenCalledWith(
+      'http://localhost:3000/app',
+      expect.objectContaining({
+        query: expect.stringContaining('query getItem')
       }),
-      clearAppData: jest.fn()
-    };
-
-    // Clear all mocks
-    jest.clearAllMocks();
+      {token: 'test-token'}
+    );
   });
 
-  describe('createQuery', () => {
-    it('should create query without variables', () => {
-      const result = createQuery('getItems', 'users', {}, ['id', 'name']);
+  it('uses the public URL for unauthenticated publicMutation calls', async () => {
+    const flux = createMockFlux();
+    graphqlQueryMock.mockResolvedValue({users: {addUser: {userId: 'user-1'}}});
 
-      expect(result.query).toBeDefined();
-      expect(result.variables).toEqual({});
+    await publicMutation(flux as any, 'addUser', 'users', {}, ['userId']);
+
+    expect(graphqlQueryMock).toHaveBeenCalledWith(
+      'http://localhost:3000/public',
+      expect.objectContaining({
+        query: expect.stringContaining('mutation UsersAddUser')
+      }),
+      {token: ''}
+    );
+  });
+
+  it('uploads images with the bearer token header', async () => {
+    const flux = createMockFlux();
+    const image = {base64: 'abc'};
+    postMock.mockResolvedValue({imageId: 'image-1'});
+
+    await uploadImage(flux as any, image);
+
+    expect(postMock).toHaveBeenCalledWith(
+      'http://localhost:3000/upload',
+      image,
+      expect.objectContaining({
+        headers: expect.any(Headers)
+      })
+    );
+  });
+
+  it('refreshes the session and stores the merged session', async () => {
+    const flux = createMockFlux();
+    graphqlQueryMock.mockResolvedValue({
+      users: {
+        refreshSession: {
+          expires: 999,
+          issued: 111,
+          token: 'new-token'
+        }
+      }
     });
 
-    it('should create query with variables', () => {
-      const variables = {
-        id: {type: 'String!', value: '123'}
-      };
-      const result = createQuery('getItem', 'users', variables, ['id', 'name']);
+    const result = await refreshSession(flux as any, 'test-token', 15);
 
-      expect(result.query).toContain('$id: String!');
-      expect(result.variables).toEqual({id: '123'});
+    expect(result).toEqual({
+      session: expect.objectContaining({
+        expires: 999,
+        issued: 111,
+        token: 'new-token',
+        userId: 'user-1',
+        username: 'alpha'
+      }),
+      type: 'USER_UPDATE_SESSION_SUCCESS'
     });
-
-    it('should handle multiple variables', () => {
-      const variables = {
-        id: {type: 'String!', value: '123'},
-        limit: {type: 'Int', value: 10}
-      };
-      const result = createQuery('getItems', 'users', variables, ['id', 'name']);
-
-      expect(result.query).toContain('$id: String!');
-      expect(result.query).toContain('$limit: Int');
-      expect(result.variables).toEqual({id: '123', limit: 10});
-    });
-
-    it('should handle name with spaces', () => {
-      const result = createQuery('get user items', 'users', {}, ['id']);
-
-      // The name "get user items" becomes "getuseritems" after removing spaces
-      expect(result.query).toContain('getuseritems');
-      expect(result.query).toContain('users {');
-      expect(result.query).toContain('query');
-      expect(result.query).toContain('query getuseritems');
-    });
+    expect(flux.setState).toHaveBeenCalledWith('user.session', expect.objectContaining({
+      expires: 999,
+      issued: 111,
+      token: 'new-token',
+      userId: 'user-1',
+      username: 'alpha'
+    }));
   });
 
-  describe('createMutation', () => {
-    it('should create mutation query', () => {
-      const result = createMutation('addUser', 'users', {}, ['id', 'name']);
+  it('uses the public URL for publicQuery calls', async () => {
+    const flux = createMockFlux();
+    graphqlQueryMock.mockResolvedValue({users: {getItem: {userId: 'user-1'}}});
 
-      expect(result.query).toContain('mutation');
-      expect(result.query).toContain('addUser');
-    });
+    await publicQuery(flux as any, 'getItem', 'users', {}, ['userId']);
+
+    expect(graphqlQueryMock).toHaveBeenCalledWith(
+      'http://localhost:3000/public',
+      expect.objectContaining({
+        query: expect.stringContaining('query getItem')
+      }),
+      {token: ''}
+    );
   });
 
-  describe('appQuery', () => {
-    it('should call getGraphql with app url and authenticate true', async () => {
-      // Since ESM mocking is not working, we'll test that the function exists and can be called
-      expect(typeof appQuery).toBe('function');
+  it('uses the app URL for appMutation calls', async () => {
+    const flux = createMockFlux();
+    graphqlQueryMock.mockResolvedValue({users: {updateUser: {userId: 'user-1'}}});
 
-      // The function should return a promise
-      const resultPromise = appQuery(
-        mockFlux,
-        'getItems',
-        'users',
-        {},
-        ['id', 'name']
-      );
-      expect(resultPromise).toBeInstanceOf(Promise);
+    await appMutation(flux as any, 'updateUser', 'users', {}, ['userId']);
 
-      // Should call flux.getState for config
-      expect(mockFlux.getState).toHaveBeenCalledWith('app.config');
-
-      // Wait for the promise to resolve or reject
-      try {
-        await resultPromise;
-      } catch (error) {
-        // Expected to fail due to real API call, but should not crash
-        expect(error).toBeDefined();
-      }
-    }, 10000); // Increase timeout
-  });
-
-  describe('appMutation', () => {
-    it('should call getGraphql with app url and authenticate true', async () => {
-      // Since ESM mocking is not working, we'll test that the function exists and can be called
-      expect(typeof appMutation).toBe('function');
-
-      // The function should return a promise
-      const resultPromise = appMutation(
-        mockFlux,
-        'addUser',
-        'users',
-        {},
-        ['id', 'name']
-      );
-      expect(resultPromise).toBeInstanceOf(Promise);
-
-      // Should call flux.getState for config
-      expect(mockFlux.getState).toHaveBeenCalledWith('app.config');
-
-      // Wait for the promise to resolve or reject
-      try {
-        await resultPromise;
-      } catch (error) {
-        // Expected to fail due to real API call, but should not crash
-        expect(error).toBeDefined();
-      }
-    }, 10000);
-  });
-
-  describe('publicQuery', () => {
-    it('should call getGraphql with public url and authenticate false', async () => {
-      // Since ESM mocking is not working, we'll test that the function exists and can be called
-      expect(typeof publicQuery).toBe('function');
-
-      // The function should return a promise
-      const resultPromise = publicQuery(
-        mockFlux,
-        'getItems',
-        'users',
-        {},
-        ['id', 'name']
-      );
-      expect(resultPromise).toBeInstanceOf(Promise);
-
-      // Should call flux.getState for config
-      expect(mockFlux.getState).toHaveBeenCalledWith('app.config');
-
-      // Wait for the promise to resolve or reject
-      try {
-        await resultPromise;
-      } catch (error) {
-        // Expected to fail due to real API call, but should not crash
-        expect(error).toBeDefined();
-      }
-    }, 10000);
-  });
-
-  describe('publicMutation', () => {
-    it('should call getGraphql with public url and authenticate false', async () => {
-      // Since ESM mocking is not working, we'll test that the function exists and can be called
-      expect(typeof publicMutation).toBe('function');
-
-      // The function should return a promise
-      const resultPromise = publicMutation(
-        mockFlux,
-        'addUser',
-        'users',
-        {},
-        ['id', 'name']
-      );
-      expect(resultPromise).toBeInstanceOf(Promise);
-
-      // Should call flux.getState for config
-      expect(mockFlux.getState).toHaveBeenCalledWith('app.config');
-
-      // Wait for the promise to resolve or reject
-      try {
-        await resultPromise;
-      } catch (error) {
-        // Expected to fail due to real API call, but should not crash
-        expect(error).toBeDefined();
-      }
-    }, 10000);
-  });
-
-  describe('uploadImage', () => {
-    it('should upload image with token', async () => {
-      // Since ESM mocking is not working, we'll test that the function exists and can be called
-      expect(typeof uploadImage).toBe('function');
-
-      // The function should return a promise
-      const resultPromise = uploadImage(
-        mockFlux,
-        new File(['test'], 'test.jpg', { type: 'image/jpeg' })
-      );
-      expect(resultPromise).toBeInstanceOf(Promise);
-
-      // Should call flux.getState for config and session
-      expect(mockFlux.getState).toHaveBeenCalledWith('app.config');
-      expect(mockFlux.getState).toHaveBeenCalledWith('user.session.token');
-
-      // Wait for the promise to resolve or reject
-      try {
-        await resultPromise;
-      } catch (error) {
-        // Expected to fail due to real API call, but should not crash
-        expect(error).toBeDefined();
-      }
-    }, 10000);
-  });
-
-  describe('refreshSession', () => {
-    it('should return null when token is empty', async () => {
-      // Since ESM mocking is not working, we'll test that the function exists and can be called
-      expect(typeof refreshSession).toBe('function');
-
-      // The function should return a promise
-      const resultPromise = refreshSession(mockFlux, '', 0);
-      expect(resultPromise).toBeInstanceOf(Promise);
-
-      // Wait for the promise to resolve or reject
-      try {
-        const result = await resultPromise;
-        expect(result).toBeNull();
-      } catch (error) {
-        // Should not crash
-        expect(error).toBeDefined();
-      }
-    }, 10000);
-
-    it('should refresh session with token', async () => {
-      // Since ESM mocking is not working, we'll test that the function exists and can be called
-      expect(typeof refreshSession).toBe('function');
-
-      // The function should return a promise
-      const resultPromise = refreshSession(mockFlux, 'test-token', 0);
-      expect(resultPromise).toBeInstanceOf(Promise);
-
-      // Should call flux.getState for config
-      expect(mockFlux.getState).toHaveBeenCalledWith('app.config');
-
-      // Wait for the promise to resolve or reject
-      try {
-        await resultPromise;
-      } catch (error) {
-        // Expected to fail due to real API call, but should not crash
-        expect(error).toBeDefined();
-      }
-    }, 10000);
+    expect(graphqlQueryMock).toHaveBeenCalledWith(
+      'http://localhost:3000/app',
+      expect.objectContaining({
+        query: expect.stringContaining('mutation UsersUpdateUser')
+      }),
+      {token: 'test-token'}
+    );
   });
 });

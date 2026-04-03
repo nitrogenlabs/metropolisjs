@@ -1,4 +1,3 @@
-import { describe, expect, it } from '@jest/globals';
 import { buildSchema, graphql } from 'graphql';
 import http from 'http';
 
@@ -18,7 +17,7 @@ const typeDefs = `
   }
 
   type UsersMutation {
-    signIn(username: String!, password: String!, expires: Int): Session
+    signIn(user: UserInput!, expires: Int): Session
     addUser(user: UserInput!): User
     refreshSession(token: String!, expires: Int): Session
   }
@@ -103,7 +102,8 @@ export const startTestServer = async (port = 3001) => {
               // Return an object that resolves the UsersMutation fields
               return {
                 signIn: (args) => {
-                  const {username, password, expires} = args;
+                  const {expires, user = {}} = args;
+                  const {password, username} = user;
 
                   if (username === MOCK_USER.username && password === MOCK_USER.password) {
                     return {
@@ -189,7 +189,7 @@ export const startTestServer = async (port = 3001) => {
   });
 };
 
-// Sanity check for Jest so this helper file is treated as a test module without failing
+// Sanity check so this helper file is treated as a test module without failing
 describe('testGraphQLServer helper', () => {
   it('exports startTestServer and stopTestServer', () => {
     expect(typeof startTestServer).toBe('function');

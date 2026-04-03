@@ -2,19 +2,18 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {Flux} from '@nlabs/arkhamjs';
-
 import {createGroupActions} from './groupActions.js';
-import {groups} from '../../stores/groupStore.js';
 
 describe('createGroupActions', () => {
   let flux: any;
   let groupActions: any;
 
   beforeEach(() => {
-    flux = Flux.init({
-      stores: [groups]
-    });
+    flux = {
+      dispatch: () => Promise.resolve({}),
+      getState: () => ({}),
+      setState: () => Promise.resolve({})
+    };
 
     groupActions = createGroupActions(flux);
   });

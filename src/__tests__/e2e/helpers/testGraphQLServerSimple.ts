@@ -1,4 +1,3 @@
-import { describe, expect, it } from '@jest/globals';
 import http from 'http';
 
 export const startSimpleServer = async (port = 3002) => {

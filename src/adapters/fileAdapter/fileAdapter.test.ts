@@ -1,4 +1,4 @@
-import {describe, expect} from '@jest/globals';
+import {describe, expect, it} from 'vitest';
 
 import {
   FileValidationError,
@@ -333,3 +333,4 @@ describe('fileAdapter', () => {
     });
   });
 });
+import {it} from 'vitest';

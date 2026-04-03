@@ -2,7 +2,7 @@
  * Copyright (c) 2025-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {describe, expect, it, beforeEach, jest} from '@jest/globals';
+import {beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {createBaseActions} from './baseActionFactory';
 
@@ -11,10 +11,10 @@ describe('baseActionFactory', () => {
   let mockValidator;
 
   beforeEach(() => {
-    mockValidator = jest.fn((input) => input);
+    mockValidator = vi.fn((input) => input);
     mockFlux = {
-      dispatch: jest.fn(),
-      getState: jest.fn(() => ({})),
+      dispatch: vi.fn(),
+      getState: vi.fn(() => ({})),
       isInit: false,
       pluginTypes: [],
       state: {},
@@ -35,7 +35,7 @@ describe('baseActionFactory', () => {
     });
 
     it('should use custom adapter when provided', () => {
-      const customAdapter = jest.fn((input) => ({...input, custom: true}));
+      const customAdapter = vi.fn((input) => ({...input, custom: true}));
       const actions = createBaseActions(mockFlux, mockValidator, {
         adapter: customAdapter
       });
@@ -56,7 +56,7 @@ describe('baseActionFactory', () => {
     });
 
     it('should create mutation action that validates input', async () => {
-      const mockMutationFn = jest.fn().mockResolvedValue({result: {id: '123'}});
+      const mockMutationFn = vi.fn().mockResolvedValue({result: {id: '123'}});
       const actions = createBaseActions(mockFlux, mockValidator);
 
       const mutationAction = actions.createMutationAction(
@@ -77,7 +77,7 @@ describe('baseActionFactory', () => {
     });
 
     it('should create mutation action without input', async () => {
-      const mockMutationFn = jest.fn().mockResolvedValue({result: {id: '123'}});
+      const mockMutationFn = vi.fn().mockResolvedValue({result: {id: '123'}});
       const actions = createBaseActions(mockFlux, mockValidator);
 
       const mutationAction = actions.createMutationAction(
@@ -97,7 +97,7 @@ describe('baseActionFactory', () => {
     });
 
     it('should dispatch success action on mutation success', async () => {
-      const mockMutationFn = jest.fn().mockImplementation(async (flux, mutationName, dataType, variables, props, options) => {
+      const mockMutationFn = vi.fn().mockImplementation(async (flux, mutationName, dataType, variables, props, options) => {
         const data = {
           items: {
             addItem: {id: '123', name: 'Test'}
@@ -130,7 +130,7 @@ describe('baseActionFactory', () => {
 
     it('should dispatch error action on mutation error', async () => {
       const error = new Error('Mutation failed');
-      const mockMutationFn = jest.fn().mockRejectedValue(error);
+      const mockMutationFn = vi.fn().mockRejectedValue(error);
       const actions = createBaseActions(mockFlux, mockValidator);
 
       const mutationAction = actions.createMutationAction(
@@ -152,7 +152,7 @@ describe('baseActionFactory', () => {
     });
 
     it('should create query action', async () => {
-      const mockQueryFn = jest.fn().mockResolvedValue({result: {id: '123'}});
+      const mockQueryFn = vi.fn().mockResolvedValue({result: {id: '123'}});
       const actions = createBaseActions(mockFlux, mockValidator);
 
       const queryAction = actions.createQueryAction(
@@ -172,7 +172,7 @@ describe('baseActionFactory', () => {
     });
 
     it('should dispatch success action on query success', async () => {
-      const mockQueryFn = jest.fn().mockImplementation(async (flux, queryName, dataType, variables, props, options) => {
+      const mockQueryFn = vi.fn().mockImplementation(async (flux, queryName, dataType, variables, props, options) => {
         const data = {
           items: {
             getItem: {id: '123', name: 'Test'}
@@ -205,7 +205,7 @@ describe('baseActionFactory', () => {
 
     it('should dispatch error action on query error', async () => {
       const error = new Error('Query failed');
-      const mockQueryFn = jest.fn().mockRejectedValue(error);
+      const mockQueryFn = vi.fn().mockRejectedValue(error);
       const actions = createBaseActions(mockFlux, mockValidator);
 
       const queryAction = actions.createQueryAction(
@@ -227,7 +227,7 @@ describe('baseActionFactory', () => {
     });
 
     it('should update adapter', () => {
-      const newAdapter = jest.fn((input) => ({...input, updated: true}));
+      const newAdapter = vi.fn((input) => ({...input, updated: true}));
       const actions = createBaseActions(mockFlux, mockValidator);
 
       // First verify validator works without adapter

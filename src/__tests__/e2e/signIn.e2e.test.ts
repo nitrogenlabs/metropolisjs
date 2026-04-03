@@ -124,6 +124,10 @@ const createRealFlux = (port) => {
       }
       return state;
     },
+    setState: (key, value) => {
+      state[key] = value;
+      return Promise.resolve(value);
+    },
     isInit: true,
     pluginTypes: [],
     state,
@@ -189,16 +193,21 @@ describe('SignIn E2E Test', () => {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
-            query: `mutation UsersSignIn($password: String!, $username: String!) {
+            query: `mutation UsersSignIn($user: UserInput!) {
               users {
-                signIn(username: $username, password: $password) {
+                signIn(user: $user) {
                   token
                   userId
                   username
                 }
               }
             }`,
-            variables: {username: MOCK_USER.username, password: MOCK_USER.password}
+            variables: {
+              user: {
+                password: MOCK_USER.password,
+                username: MOCK_USER.username
+              }
+            }
           })
         });
 

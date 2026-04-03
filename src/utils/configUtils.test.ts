@@ -2,7 +2,7 @@
  * Copyright (c) 2025-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {describe, expect, it, beforeEach, jest, afterEach} from '@jest/globals';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {getConfigFromFlux} from './configUtils';
 
@@ -12,7 +12,7 @@ describe('configUtils', () => {
     let consoleWarnSpy;
 
     beforeEach(() => {
-      consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     });
 
     afterEach(() => {
@@ -30,7 +30,7 @@ describe('configUtils', () => {
       };
 
       mockFlux = {
-        getState: jest.fn((key) => {
+        getState: vi.fn((key) => {
           if(key === 'app.config') {
             return config;
           }
@@ -47,7 +47,7 @@ describe('configUtils', () => {
 
     it('should fallback to default config when config not in flux state', () => {
       mockFlux = {
-        getState: jest.fn(() => undefined)
+        getState: vi.fn(() => undefined)
       };
 
       const result = getConfigFromFlux(mockFlux);
@@ -59,7 +59,7 @@ describe('configUtils', () => {
 
     it('should return default config when flux state is empty', () => {
       mockFlux = {
-        getState: jest.fn(() => undefined)
+        getState: vi.fn(() => undefined)
       };
 
       const result = getConfigFromFlux(mockFlux);

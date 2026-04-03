@@ -2,7 +2,7 @@
  * Copyright (c) 2025-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {describe, expect, it, beforeEach, afterEach, jest} from '@jest/globals';
+import {beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {convertFileToBase64} from './file';
 
@@ -25,12 +25,17 @@ describe('file utilities', () => {
   let mockImage: any;
 
   beforeEach(() => {
+    // @ts-expect-error: test shim
+    global.document = {
+      createElement: vi.fn()
+    };
+
     // Mock FileReader
     mockFileReader = {
       result: null,
       onload: null,
       onerror: null,
-      readAsDataURL: jest.fn(function(this: any, file: File) {
+      readAsDataURL: vi.fn(function(this: any, file: File) {
         // Simulate async read
         setTimeout(() => {
           this.result = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
@@ -40,13 +45,16 @@ describe('file utilities', () => {
         }, 0);
       })
     };
-    global.FileReader = jest.fn(() => mockFileReader) as any;
+    global.FileReader = class FileReaderMock {
+      constructor() {
+        return mockFileReader;
+      }
+    } as any;
 
     // Mock Image - need to set up onload handler
     mockImage = {
       width: 100,
       height: 100,
-      src: '',
       onload: null,
       onerror: null,
       set src(value: string) {
@@ -61,18 +69,22 @@ describe('file utilities', () => {
         return '';
       }
     };
-    global.Image = jest.fn(() => mockImage) as any;
+    global.Image = class ImageMock {
+      constructor() {
+        return mockImage;
+      }
+    } as any;
 
     // Mock canvas
     const mockCanvas = {
       width: 0,
       height: 0,
-      getContext: jest.fn(() => ({
-        drawImage: jest.fn()
+      getContext: vi.fn(() => ({
+        drawImage: vi.fn()
       })),
-      toDataURL: jest.fn(() => 'data:image/jpeg;base64,mockdata')
+      toDataURL: vi.fn(() => 'data:image/jpeg;base64,mockdata')
     };
-    document.createElement = jest.fn((tag: string) => {
+    global.document.createElement = vi.fn((tag: string) => {
       if (tag === 'canvas') {
         return mockCanvas as any;
       }
@@ -145,16 +157,20 @@ describe('file utilities', () => {
         result: null,
         onload: null,
         onerror: null,
-        readAsDataURL: jest.fn(function(this: any) {
+        readAsDataURL: vi.fn(function(this: any) {
           setTimeout(() => {
             if (this.onerror) {
-              const errorEvent = new ProgressEvent('error');
+              const errorEvent = {type: 'error'} as ProgressEvent;
               this.onerror(errorEvent);
             }
           }, 0);
         })
       };
-      global.FileReader = jest.fn(() => errorFileReader) as any;
+      global.FileReader = class ErrorFileReaderMock {
+        constructor() {
+          return errorFileReader;
+        }
+      } as any;
 
       await expect(convertFileToBase64(file, 200)).rejects.toBeDefined();
     });
