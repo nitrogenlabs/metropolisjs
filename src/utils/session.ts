@@ -1,9 +1,5 @@
-import {getConfigFromFlux} from './configUtils.js';
-
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {SessionType} from './api.js';
-
-const DEFAULT_SESSION_STORAGE_KEY = 'metropolis';
 
 const parseJwtExpiryMs = (token: string): number => {
   try {
@@ -45,16 +41,6 @@ const parseJwtIssuedMs = (token: string): number => {
   } catch(error) {
     return 0;
   }
-};
-
-export const getSessionStorageKey = (flux: FluxFramework, key?: string): string => {
-  if(key) {
-    return key;
-  }
-
-  const config = getConfigFromFlux(flux);
-  const appName = String(config?.app?.name || '').trim();
-  return appName || DEFAULT_SESSION_STORAGE_KEY;
 };
 
 export const normalizeSession = (session: Record<string, unknown> = {}): Record<string, unknown> => {
@@ -99,84 +85,25 @@ export const isValidSession = (session: Record<string, unknown> = {}): boolean =
   return Boolean(expiresAt && Date.now() < expiresAt);
 };
 
-export const readStoredSession = (flux: FluxFramework, key?: string): SessionType => {
-  try {
-    if(typeof window === 'undefined') {
-      return {};
-    }
+export const readStoredSession = async (flux: FluxFramework): Promise<SessionType> =>
+  normalizeSession((flux.getState('user.session', {}) || {}) as Record<string, unknown>) as SessionType;
 
-    const storageKey = getSessionStorageKey(flux, key);
-    const raw = window.sessionStorage.getItem(storageKey);
-
-    if(!raw) {
-      return {};
-    }
-
-    const parsed = JSON.parse(raw) as {session?: Record<string, unknown>};
-    return normalizeSession(parsed?.session || {}) as SessionType;
-  } catch(error) {
-    return {};
-  }
+export const clearPersistedSession = async (flux: FluxFramework): Promise<void> => {
+  await flux.setState('user.session', {});
 };
 
-export const persistSession = (
-  flux: FluxFramework,
-  session: Record<string, unknown> = {},
-  key?: string
-): SessionType => {
-  const normalized = normalizeSession(session) as SessionType;
-
-  try {
-    if(typeof window !== 'undefined') {
-      const storageKey = getSessionStorageKey(flux, key);
-
-      if(Object.keys(normalized).length > 0) {
-        window.sessionStorage.setItem(storageKey, JSON.stringify({session: normalized}));
-      } else {
-        window.sessionStorage.removeItem(storageKey);
-      }
-    }
-  } catch(error) {
-    // noop
-  }
-
-  return normalized;
-};
-
-export const clearPersistedSession = (flux: FluxFramework, key?: string) => {
-  try {
-    if(typeof window !== 'undefined') {
-      const storageKey = getSessionStorageKey(flux, key);
-      window.sessionStorage.removeItem(storageKey);
-    }
-  } catch(error) {
-    // noop
-  }
-};
-
-export const hydrateSessionFromStorage = (flux: FluxFramework, key?: string): SessionType => {
+export const hydrateSessionFromStorage = async (flux: FluxFramework): Promise<SessionType> => {
   const currentSession = normalizeSession((flux.getState('user.session', {}) || {}) as Record<string, unknown>) as SessionType;
+
   if(isValidSession(currentSession as Record<string, unknown>)) {
-    persistSession(flux, currentSession as Record<string, unknown>, key);
     return currentSession;
   }
 
-  const storedSession = readStoredSession(flux, key);
-  if(isValidSession(storedSession as Record<string, unknown>)) {
-    flux.setState('user.session', storedSession);
-    return storedSession;
-  }
-
-  clearPersistedSession(flux, key);
+  await clearPersistedSession(flux);
   return {};
 };
 
-export const isLoggedIn = (flux: FluxFramework, key?: string): boolean => {
+export const isLoggedIn = (flux: FluxFramework): boolean => {
   const currentSession = (flux.getState('user.session', {}) || {}) as Record<string, unknown>;
-  if(isValidSession(currentSession)) {
-    return true;
-  }
-
-  const storedSession = readStoredSession(flux, key);
-  return isValidSession(storedSession as Record<string, unknown>);
+  return isValidSession(currentSession);
 };

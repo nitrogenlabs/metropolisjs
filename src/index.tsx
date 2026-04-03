@@ -28,7 +28,7 @@ import {
 import {refreshSession} from './utils/api.js';
 import {initI18n} from './utils/i18n.js';
 import {MetropolisContext} from './utils/MetropolisProvider.js';
-import {hydrateSessionFromStorage, persistSession} from './utils/session.js';
+import {hydrateSessionFromStorage} from './utils/session.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {MetropolisConfiguration, MetropolisEnvironmentConfiguration} from './config/index.js';
@@ -39,7 +39,7 @@ export {MetropolisContext, MetropolisProvider} from './utils/MetropolisProvider.
 export type {MetropolisConfiguration} from './config/index.js';
 export type {MetropolisAdapters} from './utils/MetropolisProvider.js';
 
-export const onInit = (flux: FluxFramework) => {
+export const onInit = async (flux: FluxFramework) => {
   try {
     flux.addStores([
       app,
@@ -53,7 +53,7 @@ export const onInit = (flux: FluxFramework) => {
       users,
       websocket
     ]);
-    hydrateSessionFromStorage(flux);
+    await hydrateSessionFromStorage(flux);
     const token = flux.getState('user.session.token');
 
     flux.on(PERSONA_CONSTANTS.ADD_ITEM_SUCCESS, async ({persona = {}}: {persona?: Record<string, unknown>}) => {
@@ -87,8 +87,7 @@ export const onInit = (flux: FluxFramework) => {
         .sort((left, right) => String(left?.name || '').localeCompare(String(right?.name || '')));
       const nextSession = {...currentSession, tags: mergedTags};
 
-      flux.setState('user.session', nextSession);
-      persistSession(flux, nextSession);
+      void flux.setState('user.session', nextSession);
       flux.dispatch({type: USER_CONSTANTS.UPDATE_SESSION_SUCCESS, user: {tags: mergedTags}});
     });
 
@@ -106,8 +105,7 @@ export const onInit = (flux: FluxFramework) => {
       const nextTags = currentTags.filter((item) => String(item?.tagId || '').trim() !== nextTagId);
       const nextSession = {...currentSession, tags: nextTags};
 
-      flux.setState('user.session', nextSession);
-      persistSession(flux, nextSession);
+      void flux.setState('user.session', nextSession);
       flux.dispatch({type: USER_CONSTANTS.UPDATE_SESSION_SUCCESS, user: {tags: nextTags}});
     });
 

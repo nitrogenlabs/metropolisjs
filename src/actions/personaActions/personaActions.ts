@@ -9,7 +9,6 @@ import { PERSONA_CONSTANTS } from '../../stores/personaStore.js';
 import { USER_CONSTANTS } from '../../stores/userStore.js';
 import { appMutation, appQuery } from '../../utils/api.js';
 import { createBaseActions } from '../../utils/baseActionFactory.js';
-import { persistSession } from '../../utils/session.js';
 
 import type { FluxFramework } from '@nlabs/arkhamjs';
 import type { PersonaType } from '../../adapters/personaAdapter/personaAdapter.js';
@@ -95,8 +94,7 @@ export const syncPersonaToSession = (flux: FluxFramework, persona: Partial<Perso
     ...(Array.isArray(persona?.tags) ? {tags: persona.tags} : {})
   };
 
-  flux.setState('user.session', nextSession);
-  persistSession(flux, nextSession);
+  void flux.setState('user.session', nextSession);
   flux.dispatch({type: USER_CONSTANTS.UPDATE_SESSION_SUCCESS, user: persona as any});
 };
 

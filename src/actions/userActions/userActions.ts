@@ -10,8 +10,7 @@ import {
   clearPersistedSession,
   hydrateSessionFromStorage,
   isLoggedIn as isLoggedInWithStorage,
-  normalizeSession,
-  persistSession
+  normalizeSession
 } from '../../utils/session.js';
 import {syncPersonaTagsToSession} from '../personaActions/personaActions.js';
 
@@ -39,8 +38,7 @@ const syncStoredSession = (flux: FluxFramework, sessionPatch: Record<string, unk
   const mergedSession = normalizeSession({...currentSession, ...sessionPatch}) as SessionType;
 
   if(Object.keys(mergedSession).length > 0) {
-    flux.setState('user.session', mergedSession);
-    persistSession(flux, mergedSession as unknown as Record<string, unknown>);
+    void flux.setState('user.session', mergedSession);
   }
 
   return mergedSession;
@@ -479,7 +477,7 @@ export const createUserActions = (
       const sessionData = data?.users?.getUserBySession || {};
 
       if(!hasSessionIdentity(sessionData)) {
-        clearPersistedSession(flux);
+        await clearPersistedSession(flux);
         flux.setState('user.session', {});
         flux.dispatch({type: USER_CONSTANTS.GET_SESSION_ERROR});
         throw new Error('invalid_session');
@@ -648,7 +646,7 @@ export const createUserActions = (
   const isLoggedIn = (): boolean => isLoggedInWithStorage(flux);
 
   const currentAuthenticatedUser = async (): Promise<User> => {
-    const session = hydrateSessionFromStorage(flux);
+    const session = await hydrateSessionFromStorage(flux);
     return (session || {}) as User;
   };
 
@@ -740,7 +738,7 @@ export const createUserActions = (
   };
 
   const signOut = async (): Promise<boolean> => {
-    clearPersistedSession(flux);
+    await clearPersistedSession(flux);
     flux.setState('user.session', {});
     await flux.dispatch({session: {}, type: USER_CONSTANTS.SIGN_OUT_SUCCESS});
     return true;

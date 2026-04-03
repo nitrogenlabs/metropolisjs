@@ -5,7 +5,7 @@ import {DateTime} from 'luxon';
 import {APP_CONSTANTS} from '../stores/appStore.js';
 import {USER_CONSTANTS} from '../stores/userStore.js';
 import {getConfigFromFlux} from './configUtils.js';
-import {hydrateSessionFromStorage, normalizeSession, persistSession} from './session.js';
+import {hydrateSessionFromStorage, normalizeSession} from './session.js';
 
 import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {HunterOptionsType, HunterQueryType} from '@nlabs/rip-hunter';
@@ -87,7 +87,7 @@ export const getGraphql = async (
   let token: string | undefined;
 
   if(authenticate) {
-    const hydratedSession: SessionType = currentToken ? stateSession : hydrateSessionFromStorage(flux);
+    const hydratedSession: SessionType = currentToken ? stateSession : await hydrateSessionFromStorage(flux);
     const {
       expires: authExpires = expires,
       issued: authIssued = issued,
@@ -306,15 +306,14 @@ export const refreshSession = async (
         value: refreshToken
       }
     };
-    const onSuccess = (data: ApiResultsType = {}): Promise<FluxAction> => {
+    const onSuccess = async (data: ApiResultsType = {}): Promise<FluxAction> => {
       const rawSessionData = (data as {users?: {refreshSession?: Record<string, unknown>}})?.users?.refreshSession;
       const sessionData = rawSessionData && typeof rawSessionData === 'object'
         ? rawSessionData as Record<string, unknown>
         : {};
       const currentSession = (flux.getState('user.session', {}) || {}) as Record<string, unknown>;
       const mergedSession = normalizeSession({...currentSession, ...sessionData});
-      persistSession(flux, mergedSession);
-      flux.setState('user.session', mergedSession);
+      await flux.setState('user.session', mergedSession);
       return flux.dispatch({session: mergedSession, type: USER_CONSTANTS.UPDATE_SESSION_SUCCESS});
     };
 
