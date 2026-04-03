@@ -26,6 +26,27 @@ const parseJwtExpiryMs = (token: string): number => {
   }
 };
 
+const parseJwtIssuedMs = (token: string): number => {
+  try {
+    if(!token) {
+      return 0;
+    }
+
+    const tokenParts = token.split('.');
+    if(tokenParts.length < 2 || typeof atob !== 'function') {
+      return 0;
+    }
+
+    const payloadBase64 = tokenParts[1]?.replace(/-/g, '+').replace(/_/g, '/');
+    const normalized = payloadBase64?.padEnd(Math.ceil(payloadBase64.length / 4) * 4, '=');
+    const payload = JSON.parse(atob(normalized || ''));
+    const iatSeconds = Number(payload?.iat || 0);
+    return iatSeconds > 0 ? iatSeconds * 1000 : 0;
+  } catch(error) {
+    return 0;
+  }
+};
+
 export const getSessionStorageKey = (flux: FluxFramework, key?: string): string => {
   if(key) {
     return key;
@@ -48,10 +69,17 @@ export const normalizeSession = (session: Record<string, unknown> = {}): Record<
     return {};
   }
 
+  const tokenExpires = parseJwtExpiryMs(token);
+  const tokenIssued = parseJwtIssuedMs(token);
+  const sessionExpires = Number(session?.expires || 0);
+  const sessionIssued = Number(session?.issued || 0);
+
   return {
     ...session,
     accessToken: session?.accessToken || {jwtToken: token},
+    expires: sessionExpires > 0 ? sessionExpires : tokenExpires,
     idToken: session?.idToken || {jwtToken: token},
+    issued: sessionIssued > 0 ? sessionIssued : tokenIssued,
     token
   };
 };
