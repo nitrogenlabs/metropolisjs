@@ -34,6 +34,8 @@ import type {TagActionsOptions} from '../actions/tagActions/tagActions.js';
 import type {TranslationActionsOptions} from '../actions/translationActions/translationActions.js';
 import type {UserActionsOptions} from '../actions/userActions/userActions.js';
 
+const websocketActionCache = new WeakMap<FluxFramework, ReturnType<typeof createWebsocketActions>>();
+
 export type ActionType =
   | 'content'
   | 'event'
@@ -117,7 +119,11 @@ export const createAction = <T extends ActionType>(
       return createUserActions(flux, options as UserActionsOptions);
 
     case 'websocket':
-      return createWebsocketActions(flux);
+      if(!websocketActionCache.has(flux)) {
+        websocketActionCache.set(flux, createWebsocketActions(flux));
+      }
+
+      return websocketActionCache.get(flux) as ReturnType<typeof createWebsocketActions>;
 
     default:
       throw new Error(`Unknown action type: ${actionType}`);

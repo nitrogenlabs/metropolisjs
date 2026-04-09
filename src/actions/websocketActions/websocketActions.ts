@@ -20,25 +20,53 @@ export interface WebSocketMessage {
 
 export interface WebsocketActions {
   readonly sendNotification: (notification: NotificationType) => NotificationType | null;
-  readonly sendTyping: (conversationId: string, isTyping: boolean) => void;
+  readonly sendTyping: (
+    conversationId: string,
+    isTyping: boolean,
+    options?: {
+      readonly name?: string;
+      readonly personaId?: string;
+      readonly userId?: string;
+      readonly username?: string;
+      readonly users?: Array<Record<string, unknown>>;
+    }
+  ) => void;
   readonly wsSend: (message: WebSocketMessage) => void;
   readonly wsClose: () => void;
   readonly onReceive: (event: any) => void;
   readonly onClose: (event: any) => void;
   readonly onError: (event: any) => void;
   readonly onOpen: (event: any) => void;
-  readonly wsInit: (token?: string) => Sockette | null;
+  readonly wsInit: (token?: string, personaId?: string) => Sockette | null;
 }
 
 
 export const createWebsocketActions = (flux: FluxFramework): WebsocketActions => {
   let ws: Sockette | null = null;
   let activeToken = '';
+  let activePersonaId = '';
+  let socketIsOpen = false;
+  let socketIsConnecting = false;
+  let closeRequested = false;
+  const pendingMessages: WebSocketMessage[] = [];
   const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
   const createNotificationId = () => `notification-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const getTypingIdentity = (typing?: MessageTypingStatus | Record<string, unknown>) => String((typing as any)?.personaId || (typing as any)?.userId || '');
 
-  const clearTypingTimeout = (conversationId: string, userId: string) => {
-    const typingKey = `${conversationId}:${userId}`;
+  const flushPendingMessages = () => {
+    if(!ws || !pendingMessages.length) {
+      return;
+    }
+
+    const queuedMessages = pendingMessages.splice(0, pendingMessages.length);
+
+    queuedMessages.forEach((message) => {
+      ws?.json(message);
+    });
+  };
+
+  const clearTypingTimeout = (conversationId: string, typingId: string) => {
+    const typingKey = `${conversationId}:${typingId}`;
     const timeoutId = typingTimeouts.get(typingKey);
 
     if(timeoutId) {
@@ -49,13 +77,13 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
 
   const scheduleTypingClear = (typing: MessageTypingStatus) => {
     const conversationId = String(typing?.conversationId || '');
-    const userId = String(typing?.userId || '');
+    const typingId = getTypingIdentity(typing);
 
-    if(!conversationId || !userId) {
+    if(!conversationId || !typingId) {
       return;
     }
 
-    clearTypingTimeout(conversationId, userId);
+    clearTypingTimeout(conversationId, typingId);
 
     const timeoutId = setTimeout(() => {
       flux.dispatch({
@@ -63,19 +91,29 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
         typing: {
           conversationId,
           isTyping: false,
-          userId
+          personaId: String(typing?.personaId || ''),
+          userId: String(typing?.userId || '')
         }
       });
-      typingTimeouts.delete(`${conversationId}:${userId}`);
-    }, 6000);
+      typingTimeouts.delete(`${conversationId}:${typingId}`);
+    }, 60000);
 
-    typingTimeouts.set(`${conversationId}:${userId}`, timeoutId);
+    typingTimeouts.set(`${conversationId}:${typingId}`, timeoutId);
   };
 
   const wsSend = (message: WebSocketMessage) => {
     console.log('websockets::onOpen::message', {ws, message});
-    if(ws) {
+    if(ws && socketIsOpen) {
       ws.json(message);
+      return;
+    }
+
+    pendingMessages.push(message);
+
+    const sessionToken = String(activeToken || flux.getState('user.session.token') || '');
+
+    if(sessionToken && !ws && !socketIsConnecting) {
+      wsInit(sessionToken);
     }
   };
 
@@ -84,17 +122,32 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
       clearTimeout(timeoutId);
     }
     typingTimeouts.clear();
+    pendingMessages.length = 0;
+    socketIsOpen = false;
+    socketIsConnecting = false;
 
     if(ws) {
       const previousSocket = ws;
 
+      closeRequested = true;
       ws = null;
+      activePersonaId = '';
       activeToken = '';
       previousSocket.close(1000, 'metropolis_close');
     }
   };
 
-  const sendTyping = (conversationId: string, isTyping: boolean) => {
+  const sendTyping = (
+    conversationId: string,
+    isTyping: boolean,
+    options: {
+      readonly name?: string;
+      readonly personaId?: string;
+      readonly userId?: string;
+      readonly username?: string;
+      readonly users?: Array<Record<string, unknown>>;
+    } = {}
+  ) => {
     if(!conversationId) {
       return;
     }
@@ -103,7 +156,12 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
       action: 'messageTyping',
       data: {
         conversationId,
-        isTyping
+        isTyping,
+        name: String(options?.name || ''),
+        personaId: String(options?.personaId || ''),
+        userId: String(options?.userId || ''),
+        username: String(options?.username || ''),
+        users: Array.isArray(options?.users) ? options.users : []
       }
     });
   };
@@ -172,14 +230,19 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
 
         flux.dispatch({message, type: MESSAGE_CONSTANTS.ADD_ITEM_SUCCESS});
 
-        if(message?.userId) {
-          clearTypingTimeout(String(message.conversationId || ''), String(message.userId || ''));
+        const typingPersonaId = String(message?.user?.personaId || '');
+        const typingUserId = String(message?.userId || '');
+        const typingId = typingPersonaId || typingUserId;
+
+        if(typingId) {
+          clearTypingTimeout(String(message.conversationId || ''), typingId);
           flux.dispatch({
             type: MESSAGE_CONSTANTS.TYPING_STATUS_UPDATE,
             typing: {
               conversationId: String(message.conversationId || ''),
               isTyping: false,
-              userId: String(message.userId || '')
+              personaId: typingPersonaId,
+              userId: typingUserId
             }
           });
         }
@@ -189,13 +252,13 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
     if(String(data?.action || '') === 'message.typing') {
       const typing = data?.data?.typing;
 
-      if(typing?.conversationId && typing?.userId) {
+      if(typing?.conversationId && getTypingIdentity(typing)) {
         flux.dispatch({type: MESSAGE_CONSTANTS.TYPING_STATUS_UPDATE, typing});
 
         if(typing?.isTyping) {
           scheduleTypingClear(typing);
         } else {
-          clearTypingTimeout(String(typing.conversationId || ''), String(typing.userId || ''));
+          clearTypingTimeout(String(typing.conversationId || ''), getTypingIdentity(typing));
         }
       }
     }
@@ -215,39 +278,79 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
   const onClose = (event: any) => {
     console.log('websockets::onOpen::message', event);
     const {timeStamp: timestamp} = event;
+    socketIsOpen = false;
+    socketIsConnecting = Boolean(activeToken) && !closeRequested;
+    closeRequested = false;
     flux.dispatch({timestamp, type: WEBSOCKET_CONSTANTS.CLOSE});
   };
 
   const onError = (event: any) => {
     const {timeStamp: timestamp} = event;
+    socketIsOpen = false;
     flux.dispatch({timestamp, type: WEBSOCKET_CONSTANTS.ERROR});
   };
 
   const onOpen = (event: any) => {
     console.log('websockets::onOpen::event', event);
     const {timeStamp: timestamp} = event;
+    socketIsOpen = true;
+    socketIsConnecting = false;
+    closeRequested = false;
+    flushPendingMessages();
     flux.dispatch({timestamp, type: WEBSOCKET_CONSTANTS.OPEN});
   };
 
-  const wsInit = (token?: string): Sockette | null => {
+  const wsInit = (token?: string, personaId?: string): Sockette | null => {
     const config = getConfigFromFlux(flux);
     const websocketUrl = config.app?.urls?.websocket || '';
     const sessionToken = String(token || flux.getState('user.session.token') || '');
+    const sessionPersonaId = String(personaId || flux.getState('user.session.personaId') || '');
 
     if(!sessionToken || !websocketUrl) {
+      console.log('websockets::wsInit::skipped', {
+        hasPersonaId: Boolean(sessionPersonaId),
+        hasToken: Boolean(sessionToken),
+        websocketUrl
+      });
       return null;
     }
 
-    if(ws && activeToken === sessionToken) {
+    if(ws && activeToken === sessionToken && activePersonaId === sessionPersonaId) {
+      console.log('websockets::wsInit::reuse', {
+        activePersonaId,
+        activeToken,
+        sessionPersonaId
+      });
       return ws;
     }
 
-    if(ws && activeToken !== sessionToken) {
+    if(ws && (activeToken !== sessionToken || activePersonaId !== sessionPersonaId)) {
+      console.log('websockets::wsInit::reconnect', {
+        activePersonaId,
+        activeToken,
+        sessionPersonaId
+      });
       wsClose();
     }
 
     activeToken = sessionToken;
-    ws = new Sockette(`${websocketUrl}?token=${sessionToken}`, {
+    activePersonaId = sessionPersonaId;
+    socketIsOpen = false;
+    socketIsConnecting = true;
+    closeRequested = false;
+    const websocketParams = new URLSearchParams({token: sessionToken});
+
+    if(sessionPersonaId) {
+      websocketParams.set('personaId', sessionPersonaId);
+    }
+
+    console.log('websockets::wsInit::connect', {
+      sessionPersonaId,
+      sessionToken,
+      url: `${websocketUrl}?${websocketParams.toString()}`
+    });
+
+    ws = new Sockette(`${websocketUrl}?${websocketParams.toString()}`, {
       maxAttempts: 5,
       onclose: onClose,
       onerror: onError,

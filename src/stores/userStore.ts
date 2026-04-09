@@ -179,7 +179,7 @@ export const userStore = (type: string, data: UserData, state = defaultValues): 
     case USER_CONSTANTS.SIGN_IN_SUCCESS: {
       const {session} = data;
       if(session) {
-        return {...state, lists: {}, session, users: {}};
+        return {...state, lists: {}, session: {...session}, users: {}};
       }
       return state;
     }

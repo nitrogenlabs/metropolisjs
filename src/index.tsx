@@ -33,6 +33,7 @@ import {getConfigFromFlux} from './utils/configUtils.js';
 import {initI18n} from './utils/i18n.js';
 import {MetropolisContext} from './utils/MetropolisProvider.js';
 import {getRefreshWindowMinutes, hydrateSessionFromStorage} from './utils/session.js';
+import {createAction} from './utils/actionFactory.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {MetropolisConfiguration, MetropolisEnvironmentConfiguration} from './config/index.js';
@@ -178,6 +179,7 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
   const flux = useFlux();
   const resolvedConfig = useMemo<MetropolisEnvironmentConfiguration>(() => resolveEnvironmentConfig(config), [config]);
   const mergedAdapters = useMemo(() => ({...resolvedConfig.adapters, ...adapters}), [resolvedConfig.adapters, adapters]);
+  const sessionPersonaId = String(useFluxState('user.session.personaId', '') || '');
   const sessionToken = String(useFluxState('user.session.token', '') || '');
   const sessionHydrated = Boolean(useFluxState('app.sessionHydrated', false));
   const session = useFluxState('user.session', {}) as Record<string, unknown>;
@@ -187,7 +189,7 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
 
   const websocketsRef = useRef<ReturnType<typeof createWebsocketActions> | null>(null);
   if(!websocketsRef.current) {
-    websocketsRef.current = createWebsocketActions(flux);
+    websocketsRef.current = createAction('websocket', flux) as ReturnType<typeof createWebsocketActions>;
   }
   const websockets = websocketsRef.current;
 
@@ -228,15 +230,17 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
     }
 
     if(sessionToken) {
-      websockets.wsInit(sessionToken);
+      websockets.wsInit(sessionToken, sessionPersonaId);
     } else {
       websockets.wsClose();
     }
+  }, [sessionHydrated, sessionPersonaId, sessionToken, websockets]);
 
+  useEffect(() => {
     return () => {
       websockets.wsClose();
     };
-  }, [sessionHydrated, sessionToken, websockets]);
+  }, [websockets]);
 
   const isAuth = useMemo(() => resolvedConfig.isAuth || (() => {
     const sessionState = flux.getState('user.session', {});

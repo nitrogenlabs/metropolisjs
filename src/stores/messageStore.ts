@@ -24,6 +24,7 @@ export interface MessageTypingStatus {
   readonly conversationId?: string;
   readonly isTyping?: boolean;
   readonly name?: string;
+  readonly personaId?: string;
   readonly updatedAt?: number;
   readonly userId?: string;
   readonly username?: string;
@@ -38,6 +39,8 @@ export const defaultValues: MessageState = {
   conversations: {},
   typingByConversation: {}
 };
+
+const getTypingIdentity = (typing?: MessageTypingStatus): string => String(typing?.personaId || typing?.userId || '');
 
 export const messageStore = (type: string, data: {
   message?: MessageType;
@@ -100,16 +103,16 @@ export const messageStore = (type: string, data: {
     case MESSAGE_CONSTANTS.TYPING_STATUS_UPDATE: {
       const typing = data?.typing || {};
       const conversationId = String(typing?.conversationId || '');
-      const userId = String(typing?.userId || '');
+      const typingId = getTypingIdentity(typing);
 
-      if(!conversationId || !userId) {
+      if(!conversationId || !typingId) {
         return state;
       }
 
       const currentConversationTyping = {...(state.typingByConversation?.[conversationId] || {})};
 
       if(!typing?.isTyping) {
-        delete currentConversationTyping[userId];
+        delete currentConversationTyping[typingId];
 
         if(!Object.keys(currentConversationTyping).length) {
           const {[conversationId]: removed, ...restTypingByConversation} = state.typingByConversation || {};
@@ -134,12 +137,13 @@ export const messageStore = (type: string, data: {
           ...state.typingByConversation,
           [conversationId]: {
             ...currentConversationTyping,
-            [userId]: {
+            [typingId]: {
               ...typing,
               conversationId,
               isTyping: true,
+              personaId: String(typing?.personaId || ''),
               updatedAt: Number(typing?.updatedAt || Date.now()),
-              userId
+              userId: String(typing?.userId || '')
             }
           }
         }
