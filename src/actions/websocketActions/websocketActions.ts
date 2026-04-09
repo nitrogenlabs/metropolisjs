@@ -4,28 +4,73 @@
  */
 import Sockette from 'sockette';
 
+import {MESSAGE_CONSTANTS} from '../../stores/messageStore.js';
+import {NOTIFICATION_CONSTANTS} from '../../stores/notificationStore.js';
 import {WEBSOCKET_CONSTANTS} from '../../stores/websocketStore.js';
 import {getConfigFromFlux} from '../../utils/configUtils.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
+import type {MessageTypingStatus} from '../../stores/messageStore.js';
+import type {NotificationType} from '../../stores/notificationStore.js';
 
-interface WebSocketMessage {
-  type: string;
-  payload?: Record<string, unknown>;
+export interface WebSocketMessage {
+  readonly action: string;
+  readonly data?: Record<string, unknown>;
 }
 
 export interface WebsocketActions {
-  wsSend: (message: WebSocketMessage) => void;
-  onReceive: (event: any) => void;
-  onClose: (event: any) => void;
-  onError: (event: any) => void;
-  onOpen: (event: any) => void;
-  wsInit: (token?: string) => Sockette | null;
+  readonly sendNotification: (notification: NotificationType) => NotificationType | null;
+  readonly sendTyping: (conversationId: string, isTyping: boolean) => void;
+  readonly wsSend: (message: WebSocketMessage) => void;
+  readonly wsClose: () => void;
+  readonly onReceive: (event: any) => void;
+  readonly onClose: (event: any) => void;
+  readonly onError: (event: any) => void;
+  readonly onOpen: (event: any) => void;
+  readonly wsInit: (token?: string) => Sockette | null;
 }
 
 
 export const createWebsocketActions = (flux: FluxFramework): WebsocketActions => {
-  let ws: Sockette;
+  let ws: Sockette | null = null;
+  let activeToken = '';
+  const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+  const createNotificationId = () => `notification-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+  const clearTypingTimeout = (conversationId: string, userId: string) => {
+    const typingKey = `${conversationId}:${userId}`;
+    const timeoutId = typingTimeouts.get(typingKey);
+
+    if(timeoutId) {
+      clearTimeout(timeoutId);
+      typingTimeouts.delete(typingKey);
+    }
+  };
+
+  const scheduleTypingClear = (typing: MessageTypingStatus) => {
+    const conversationId = String(typing?.conversationId || '');
+    const userId = String(typing?.userId || '');
+
+    if(!conversationId || !userId) {
+      return;
+    }
+
+    clearTypingTimeout(conversationId, userId);
+
+    const timeoutId = setTimeout(() => {
+      flux.dispatch({
+        type: MESSAGE_CONSTANTS.TYPING_STATUS_UPDATE,
+        typing: {
+          conversationId,
+          isTyping: false,
+          userId
+        }
+      });
+      typingTimeouts.delete(`${conversationId}:${userId}`);
+    }, 6000);
+
+    typingTimeouts.set(`${conversationId}:${userId}`, timeoutId);
+  };
 
   const wsSend = (message: WebSocketMessage) => {
     console.log('websockets::onOpen::message', {ws, message});
@@ -34,11 +79,137 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
     }
   };
 
+  const wsClose = () => {
+    for(const timeoutId of typingTimeouts.values()) {
+      clearTimeout(timeoutId);
+    }
+    typingTimeouts.clear();
+
+    if(ws) {
+      const previousSocket = ws;
+
+      ws = null;
+      activeToken = '';
+      previousSocket.close(1000, 'metropolis_close');
+    }
+  };
+
+  const sendTyping = (conversationId: string, isTyping: boolean) => {
+    if(!conversationId) {
+      return;
+    }
+
+    wsSend({
+      action: 'messageTyping',
+      data: {
+        conversationId,
+        isTyping
+      }
+    });
+  };
+
+  const sendNotification = (notification: NotificationType): NotificationType | null => {
+    if(!notification || typeof notification !== 'object') {
+      return null;
+    }
+
+    const nextNotification: NotificationType = {
+      ...notification,
+      added: Number(notification?.added || Date.now()),
+      modified: Number(notification?.modified || Date.now()),
+      notificationId: String(notification?.notificationId || createNotificationId())
+    };
+
+    flux.dispatch({notification: nextNotification, type: NOTIFICATION_CONSTANTS.ADD_ITEM_SUCCESS});
+    wsSend({
+      action: 'notification.created',
+      data: {
+        notification: nextNotification
+      }
+    });
+
+    return nextNotification;
+  };
+
   const onReceive = (event: any) => {
     const {data: eventData, timeStamp: timestamp} = event;
-    const data = JSON.parse(eventData);
+    const rawData = typeof eventData === 'string' ? eventData.trim() : '';
+
+    if(!rawData) {
+      return;
+    }
+
+    let data;
+
+    try {
+      data = JSON.parse(rawData);
+    } catch(parseError) {
+      console.warn('websockets::onReceive::invalidJson', rawData, parseError);
+      return;
+    }
+
     console.log('websockets::onRecieve::data', data);
     flux.dispatch({data, timestamp, type: WEBSOCKET_CONSTANTS.MESSAGE});
+
+    if(String(data?.action || '') === 'message.created') {
+      const message = data?.data?.message;
+      const conversation = data?.data?.conversation || (message?.conversationId
+        ? {
+          added: Number(message?.added || Date.now()),
+          content: String(message?.content || ''),
+          conversationId: String(message?.conversationId || ''),
+          lastMessage: {
+            content: String(message?.content || '')
+          },
+          modified: Number(message?.modified || message?.added || Date.now())
+        }
+        : undefined);
+
+      if(message?.conversationId) {
+        if(conversation) {
+          flux.dispatch({conversation, type: MESSAGE_CONSTANTS.GET_CONVO_LIST_SUCCESS});
+        }
+
+        flux.dispatch({message, type: MESSAGE_CONSTANTS.ADD_ITEM_SUCCESS});
+
+        if(message?.userId) {
+          clearTypingTimeout(String(message.conversationId || ''), String(message.userId || ''));
+          flux.dispatch({
+            type: MESSAGE_CONSTANTS.TYPING_STATUS_UPDATE,
+            typing: {
+              conversationId: String(message.conversationId || ''),
+              isTyping: false,
+              userId: String(message.userId || '')
+            }
+          });
+        }
+      }
+    }
+
+    if(String(data?.action || '') === 'message.typing') {
+      const typing = data?.data?.typing;
+
+      if(typing?.conversationId && typing?.userId) {
+        flux.dispatch({type: MESSAGE_CONSTANTS.TYPING_STATUS_UPDATE, typing});
+
+        if(typing?.isTyping) {
+          scheduleTypingClear(typing);
+        } else {
+          clearTypingTimeout(String(typing.conversationId || ''), String(typing.userId || ''));
+        }
+      }
+    }
+
+    if(String(data?.action || '') === 'notification.created') {
+      const notification = data?.data?.notification;
+
+      if(notification && typeof notification === 'object') {
+        flux.dispatch({
+          notification: notification as NotificationType,
+          type: NOTIFICATION_CONSTANTS.ADD_ITEM_SUCCESS
+        });
+      }
+    }
   };
 
   const onClose = (event: any) => {
@@ -59,39 +230,44 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
   };
 
   const wsInit = (token?: string): Sockette | null => {
-    if(ws) {
-      return ws;
-    }
-
     const config = getConfigFromFlux(flux);
     const websocketUrl = config.app?.urls?.websocket || '';
-    const sessionToken = token || flux.getState('user.session.token');
+    const sessionToken = String(token || flux.getState('user.session.token') || '');
 
-    if(sessionToken) {
-      const url = `${websocketUrl}?token=${sessionToken}`;
+    if(!sessionToken || !websocketUrl) {
+      return null;
+    }
 
-      ws = new Sockette(url, {
-        maxAttempts: 5,
-        onclose: onClose,
-        onerror: onError,
-        onmessage: onReceive,
-        onopen: onOpen,
-        timeout: 60000
-      });
-
+    if(ws && activeToken === sessionToken) {
       return ws;
     }
 
-    return null;
+    if(ws && activeToken !== sessionToken) {
+      wsClose();
+    }
+
+    activeToken = sessionToken;
+    ws = new Sockette(`${websocketUrl}?token=${sessionToken}`, {
+      maxAttempts: 5,
+      onclose: onClose,
+      onerror: onError,
+      onmessage: onReceive,
+      onopen: onOpen,
+      timeout: 60000
+    });
+
+    return ws;
   };
 
   return {
-    wsSend,
-    onReceive,
     onClose,
     onError,
     onOpen,
-    wsInit
+    onReceive,
+    sendNotification,
+    sendTyping,
+    wsClose,
+    wsInit,
+    wsSend
   };
 };
-

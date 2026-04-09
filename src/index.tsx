@@ -2,9 +2,10 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {useFlux} from '@nlabs/arkhamjs-utils-react';
+import {useFlux, useFluxState} from '@nlabs/arkhamjs-utils-react';
 import i18n from 'i18next';
-import {useEffect, useMemo} from 'react';
+import {DateTime} from 'luxon';
+import {useEffect, useMemo, useRef} from 'react';
 import {I18nextProvider} from 'react-i18next';
 
 import {createWebsocketActions} from './actions/websocketActions/websocketActions.js';
@@ -16,6 +17,8 @@ import {
   images,
   locations,
   messages,
+  notifications,
+  NOTIFICATION_CONSTANTS,
   permissions,
   PERSONA_CONSTANTS,
   posts,
@@ -26,9 +29,10 @@ import {
   websocket
 } from './stores/index.js';
 import {refreshSession} from './utils/api.js';
+import {getConfigFromFlux} from './utils/configUtils.js';
 import {initI18n} from './utils/i18n.js';
 import {MetropolisContext} from './utils/MetropolisProvider.js';
-import {hydrateSessionFromStorage} from './utils/session.js';
+import {getRefreshWindowMinutes, hydrateSessionFromStorage} from './utils/session.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {MetropolisConfiguration, MetropolisEnvironmentConfiguration} from './config/index.js';
@@ -40,22 +44,23 @@ export type {MetropolisConfiguration} from './config/index.js';
 export type {MetropolisAdapters} from './utils/MetropolisProvider.js';
 
 export const onInit = async (flux: FluxFramework) => {
-  try {
+  if(!flux.getState('app.metropolisInitialized')) {
     flux.addStores([
       app,
       events,
       images,
       locations,
       messages,
+      notifications,
       permissions,
       posts,
       tags,
       users,
       websocket
     ]);
-    await hydrateSessionFromStorage(flux);
-    const token = flux.getState('user.session.token');
-
+    flux.on(USER_CONSTANTS.SIGN_OUT_SUCCESS, () => {
+      flux.dispatch({type: NOTIFICATION_CONSTANTS.CLEAR_ITEMS});
+    });
     flux.on(PERSONA_CONSTANTS.ADD_ITEM_SUCCESS, async ({persona = {}}: {persona?: Record<string, unknown>}) => {
       syncPersonaToSession(flux, persona);
 
@@ -108,12 +113,31 @@ export const onInit = async (flux: FluxFramework) => {
       void flux.setState('user.session', nextSession);
       flux.dispatch({type: USER_CONSTANTS.UPDATE_SESSION_SUCCESS, user: {tags: nextTags}});
     });
+    await Promise.resolve(flux.setState('app.metropolisInitialized', true));
+  }
 
-    if(token) {
-      refreshSession(flux, token as string);
+  const token = String(flux.getState('user.session.token') || '');
+
+  if(token) {
+    const session = (flux.getState('user.session', {}) || {}) as {expires?: number; issued?: number; token?: string};
+    const config = getConfigFromFlux(flux);
+    const sessionLifetimeMinutes = Math.round((Number(session.expires || 0) - Number(session.issued || 0)) / (1000 * 60));
+    const refreshWindowMinutes = getRefreshWindowMinutes(
+      sessionLifetimeMinutes || 15,
+      config.app?.session || {}
+    );
+    const refreshExpiresMinutes = Math.max(1, Number(config.app?.session?.maxMinutes || sessionLifetimeMinutes || 15));
+    const expiresAt = Number(session.expires || 0);
+
+    if(!expiresAt) {
+      await refreshSession(flux, token, refreshExpiresMinutes);
+    } else {
+      const minutesUntilExpiry = Math.round(DateTime.fromMillis(expiresAt).diff(DateTime.local(), 'minutes').toObject().minutes || 0);
+
+      if(minutesUntilExpiry > 0 && minutesUntilExpiry <= refreshWindowMinutes) {
+        await refreshSession(flux, token as string, refreshExpiresMinutes);
+      }
     }
-  } catch(error) {
-    throw error;
   }
 };
 
@@ -140,7 +164,6 @@ export interface MetropolisProps {
   readonly translations?: SimpleTranslations | ComplexTranslations;
 }
 
-// Translation type definitions
 export type SimpleTranslations = Record<string, string>;
 
 export interface ComplexTranslation {
@@ -153,110 +176,68 @@ export type ComplexTranslations = Record<string, ComplexTranslation>;
 
 export const Metropolis = ({adapters, children, config = {}, translations = {}}: MetropolisProps) => {
   const flux = useFlux();
-
-  // Resolve environment-specific configuration
   const resolvedConfig = useMemo<MetropolisEnvironmentConfiguration>(() => resolveEnvironmentConfig(config), [config]);
-
-  // Merge adapters from config with prop adapters (prop takes precedence)
   const mergedAdapters = useMemo(() => ({...resolvedConfig.adapters, ...adapters}), [resolvedConfig.adapters, adapters]);
+  const sessionToken = String(useFluxState('user.session.token', '') || '');
+  const sessionHydrated = Boolean(useFluxState('app.sessionHydrated', false));
+  const session = useFluxState('user.session', {}) as Record<string, unknown>;
+  const notificationList = useFluxState('notification.list', []) as Array<Record<string, unknown>>;
+  const conversationMap = useFluxState('message.conversations', {}) as Record<string, Array<Record<string, unknown>>>;
+  const messages = useMemo(() => Object.values(conversationMap).flat(), [conversationMap]);
 
-  const websockets = createWebsocketActions(flux);
-  // const [messages, setMessages] = useState<MessageType[]>([]);
-  // const [notifications, setNotifications] = useState<any[]>([]);
-  // const [session, setSession] = useState<SessionType>({});
-
-  const messages = [];
-  const notifications = [];
-  const session = {};
+  const websocketsRef = useRef<ReturnType<typeof createWebsocketActions> | null>(null);
+  if(!websocketsRef.current) {
+    websocketsRef.current = createWebsocketActions(flux);
+  }
+  const websockets = websocketsRef.current;
 
   useEffect(() => {
     initI18n(translations);
   }, [translations]);
 
-  // Save config to app
-  // const {isAuth: configAuth} = config;
-
-  // const onUpdateMessages = useCallback(() => {
-  //   const cachedSession = Flux.getState('user.session', {});
-  //   setMessages(cachedSession);
-  // }, []);
-  // const onUpdateNotifications = useCallback(() => {
-  //   const cachedSession = Flux.getState('user.session', {});
-  //   setNotifications(cachedSession);
-  // }, []);
-  // const onUpdateSession = useCallback(() => {
-  //   const cachedSession = Flux.getState('user.session', {});
-  //   setSession(cachedSession);
-  // }, []);
-  // const onSignOut = useCallback(() => {
-  //   Flux.setState('user.session', {});
-  //   setSession({});
-  // }, []);
-  // const isAuth = useCallback(() => {
-  //   if(configAuth) {
-  //     return configAuth();
-  //   }
-
-  //   const {userActive} = Flux.getState('user.session', {});
-  //   return userActive;
-  // }, []);
-  // const updateMessage = useCallback((message) => {
-  //   API.graphql(graphqlOperation(UPDATE_MESSAGES, {message}));
-  // }, []);
-  // const updateNotification = useCallback((notification) => {
-  //   API.graphql(graphqlOperation(UPDATE_NOTIFICATIONS, {notification}));
-  // }, []);
-
-  // useFluxListener(ArkhamConstants.INIT, onUpdateSession);
-  // useFluxListener(SIGNOUT, onSignOut);
-  // useFluxListener(UPDATE_MESSAGES, onUpdateMessages);
-  // useFluxListener(UPDATE_NOTIFICATIONS, onUpdateNotifications);
-  // useFluxListener(UPDATE_SESSION, onUpdateSession);
-
   useEffect(() => {
-    // Store config in flux state for access by actions
-    flux.setState('app.config', resolvedConfig);
+    let isActive = true;
 
-    // Initialize
-    onInit(flux);
-    websockets.wsInit();
+    void (async () => {
+      await Promise.resolve(flux.setState('app.config', resolvedConfig));
+      await Promise.resolve(flux.setState('app.sessionHydrated', false));
+      await hydrateSessionFromStorage(flux);
 
-    // const messageSubscription = API.graphql(graphqlOperation(MessageSubscription))
-    //   // @ts-ignore
-    //   .subscribe({
-    //     next: ({provider, value: messages}) => {
-    //       console.log({provider, messages});
-    //       Flux.dispatch({type: UPDATE_MESSAGES, messages});
-    //     },
-    //     error: (error) => console.warn(error)
-    //   });
-    // const notificationSubscription = API.graphql(graphqlOperation(NotificationSubscription))
-    //   // @ts-ignore
-    //   .subscribe({
-    //     next: ({provider, value: notifications}) => {
-    //       console.log({provider, notifications});
-    //       Flux.dispatch({type: UPDATE_NOTIFICATIONS, notifications});
-    //     },
-    //     error: (error) => console.warn(error)
-    //   });
-    // const sessionSubscription = API.graphql(graphqlOperation(SessionSubscription))
-    //   // @ts-ignore
-    //   .subscribe({
-    //     next: ({provider, value: session}) => {
-    //       console.log({provider, session});
-    //       Flux.dispatch({type: UPDATE_SESSION, session});
-    //     },
-    //     error: (error) => console.warn(error)
-    //   });
+      if(!isActive) {
+        return;
+      }
 
-    // return () => {
-    //   sessionSubscription.unsubscribe();
-    //   messageSubscription.unsubscribe();
-    //   notificationSubscription.unsubscribe();
-    // };
+      await onInit(flux);
+
+      if(!isActive) {
+        return;
+      }
+
+      await Promise.resolve(flux.setState('app.sessionHydrated', true));
+    })();
+
+    return () => {
+      isActive = false;
+    };
   }, [flux, resolvedConfig]);
 
-  // Compute isAuth function from config or default
+  useEffect(() => {
+    if(!sessionHydrated) {
+      websockets.wsClose();
+      return;
+    }
+
+    if(sessionToken) {
+      websockets.wsInit(sessionToken);
+    } else {
+      websockets.wsClose();
+    }
+
+    return () => {
+      websockets.wsClose();
+    };
+  }, [sessionHydrated, sessionToken, websockets]);
+
   const isAuth = useMemo(() => resolvedConfig.isAuth || (() => {
     const sessionState = flux.getState('user.session', {});
     return !!sessionState.userActive;
@@ -270,10 +251,10 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
         flux,
         isAuth,
         messages,
-        notifications,
+        notifications: notificationList,
         session,
         updateMessage: () => { },
-        updateNotification: () => { }
+        updateNotification: websockets.sendNotification
       }}>
       <I18nextProvider i18n={i18n}>
         {children}

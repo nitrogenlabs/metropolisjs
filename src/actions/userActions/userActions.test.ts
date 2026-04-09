@@ -7,6 +7,10 @@ const refreshSessionMock = vi.fn();
 const clearPersistedSessionMock = vi.fn();
 const hydrateSessionFromStorageMock = vi.fn();
 const normalizeSessionMock = vi.fn((session = {}) => session);
+const storeSessionMock = vi.fn((flux, session = {}) => {
+  void flux.setState('user.session', session);
+  return session;
+});
 const syncPersonaTagsToSessionMock = vi.fn(async () => undefined);
 
 vi.mock('../../utils/api.js', () => ({
@@ -20,7 +24,8 @@ vi.mock('../../utils/session.js', () => ({
   clearPersistedSession: clearPersistedSessionMock,
   hydrateSessionFromStorage: hydrateSessionFromStorageMock,
   isLoggedIn: vi.fn(() => false),
-  normalizeSession: normalizeSessionMock
+  normalizeSession: normalizeSessionMock,
+  storeSession: storeSessionMock
 }));
 
 vi.mock('../personaActions/personaActions.js', () => ({
@@ -115,6 +120,7 @@ describe('createUserActions', () => {
     clearPersistedSessionMock.mockReset();
     hydrateSessionFromStorageMock.mockReset();
     normalizeSessionMock.mockClear();
+    storeSessionMock.mockClear();
     syncPersonaTagsToSessionMock.mockClear();
     hydrateSessionFromStorageMock.mockResolvedValue({});
   });
@@ -215,6 +221,44 @@ describe('createUserActions', () => {
         token: 'token-1',
         userId: 'user-1'
       })
+    );
+  });
+
+  it('uses the configured session max when signIn expires is omitted', async () => {
+    const flux = createMockFlux();
+    flux.state.app = {
+      config: {
+        app: {
+          api: {
+            public: 'http://localhost:3000/public',
+            url: 'http://localhost:3000/app'
+          },
+          session: {
+            maxMinutes: 180
+          }
+        },
+        environment: 'test',
+        isAuth: () => true
+      }
+    };
+    const actions = createUserActions(flux as any);
+    publicMutationMock.mockImplementation(async (_flux, _name, _type, variables, _props, options) => {
+      await options?.onSuccess?.({users: {signIn: {token: 'token-2', userId: 'user-2', username: 'beta'}}});
+      return {token: 'token-2', userId: 'user-2', username: 'beta'};
+    });
+    appQueryMock.mockResolvedValue({users: {getUserBySession: {userId: 'user-2', username: 'beta'}}});
+
+    await actions.signIn({password: 'secret', username: 'beta'});
+
+    expect(publicMutationMock).toHaveBeenCalledWith(
+      flux,
+      'signIn',
+      'users',
+      expect.objectContaining({
+        expires: expect.objectContaining({value: 180})
+      }),
+      ['expires', 'issued', 'token', 'userId', 'username'],
+      expect.any(Object)
     );
   });
 

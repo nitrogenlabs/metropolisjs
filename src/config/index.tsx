@@ -9,6 +9,7 @@ import type {MetropolisAdapters} from '../utils/MetropolisProvider.js';
 export interface ConfigAppSessionType {
   readonly maxMinutes?: number;
   readonly minMinutes?: number;
+  readonly refreshAfterRatio?: number;
 }
 
 export interface ConfigAppUrls {

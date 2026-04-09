@@ -42,19 +42,22 @@ export interface PersonaActionsOptions {
 
 export interface PersonaApiResultsType {
   readonly personas: {
+    readonly addConnection?: boolean;
     readonly addPersona?: PersonaType;
+    readonly deleteConnection?: boolean;
     readonly deletePersona?: PersonaType;
-    readonly getPersona?: PersonaType;
-    readonly getPersonas?: PersonaType[];
+    readonly getPersonaById?: PersonaType;
+    readonly getPersonaListByIds?: PersonaType[];
     readonly listByTags?: PersonaType[];
     readonly updatePersona?: PersonaType;
   };
 }
 
 export interface PersonaActions {
+  readonly followPersona: (targetPersonaId: string) => Promise<boolean>;
   readonly addPersona: (personaData: Partial<PersonaType>, personaProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PersonaType>;
-  readonly getPersona: (personaId: string, personaProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PersonaType>;
-  readonly getPersonas: (personaIds: string[], personaProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PersonaType[]>;
+  readonly getPersonaById: (personaId: string, personaProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PersonaType>;
+  readonly getPersonaListByIds: (personaIds: string[], personaProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PersonaType[]>;
   readonly listByTags: (
     username: string,
     tags: string[],
@@ -63,6 +66,7 @@ export interface PersonaActions {
     personaProps?: string[],
     requestOptions?: ActionRequestOptions
   ) => Promise<PersonaType[]>;
+  readonly unfollowPersona: (targetPersonaId: string) => Promise<boolean>;
   readonly deletePersona: (personaId: string, personaProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PersonaType>;
   readonly updatePersona: (persona: Partial<PersonaType>, personaProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PersonaType>;
   readonly updatePersonaAdapter: (adapter: (input: unknown, options?: PersonaAdapterOptions) => any) => void;
@@ -121,14 +125,14 @@ export const syncPersonaTagsToSession = async (
   try {
     const data = await appQuery(
       flux,
-      'getPersona',
+      'getPersonaById',
       DATA_TYPE,
       queryVariables,
       PERSONA_TAG_SESSION_FIELDS
     ) as unknown as {
-      personas?: {getPersona?: Partial<PersonaType>};
+      personas?: {getPersonaById?: Partial<PersonaType>};
     };
-    const persona = data?.personas?.getPersona || {};
+    const persona = data?.personas?.getPersonaById || {};
 
     syncPersonaToSession(flux, {
       ...(persona?.personaId ? {personaId: persona.personaId} : {personaId: normalizedPersonaId}),
@@ -169,6 +173,15 @@ export const createPersonaActions = (
     ...(options?.personaAdapterOptions && {adapterOptions: options.personaAdapterOptions})
   });
 
+  const getActivePersonaId = (): string => parseId(String(flux.getState('user.session.personaId') || ''));
+
+  const clearPersonaRelationshipCache = async (personaId: string): Promise<void> => {
+    await clearCachedRequest(flux, `persona.getPersonaById:${personaId}`);
+    await clearCachedRequest(flux, `persona.getPersonaById:${getActivePersonaId()}`);
+    await clearCachedRequest(flux, 'persona.getPersonaListByIds');
+    await clearCachedRequest(flux, 'persona.listByTags');
+  };
+
   // Action implementations
   const addPersona = async (personaData: Partial<PersonaType>, personaProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<PersonaType> => {
     try {
@@ -196,14 +209,14 @@ export const createPersonaActions = (
       flux.dispatch({error, type: PERSONA_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
     } finally {
-      await clearCachedRequest(flux, 'persona.getPersonas');
+      await clearCachedRequest(flux, 'persona.getPersonaListByIds');
       await clearCachedRequest(flux, 'persona.listByTags');
     }
   };
 
-  const getPersona = async (personaId: string, personaProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<PersonaType> => {
+  const getPersonaById = async (personaId: string, personaProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<PersonaType> => {
     try {
-      const cachedResult = getCachedRequest<PersonaType>(flux, `persona.getPersona:${personaId}`, {personaId, personaProps}, requestOptions);
+      const cachedResult = getCachedRequest<PersonaType>(flux, `persona.getPersonaById:${personaId}`, {personaId, personaProps}, requestOptions);
 
       if(cachedResult !== undefined) {
         return cachedResult;
@@ -217,29 +230,29 @@ export const createPersonaActions = (
       };
 
       const onSuccess = (data: PersonaApiResultsType) => {
-        const persona = data?.personas?.getPersona || {};
+        const persona = data?.personas?.getPersonaById || {};
         syncPersonaToSession(flux, persona);
         return flux.dispatch({persona, type: PERSONA_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
       const result = await appQuery<PersonaType>(
         flux,
-        'getPersona',
+        'getPersonaById',
         DATA_TYPE,
         queryVariables,
         [...DEFAULT_PERSONA_PROPS, ...personaProps],
         {onSuccess}
       );
-      return await setCachedRequest(flux, `persona.getPersona:${personaId}`, {personaId, personaProps}, result, requestOptions);
+      return await setCachedRequest(flux, `persona.getPersonaById:${personaId}`, {personaId, personaProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: PERSONA_CONSTANTS.GET_ITEM_ERROR});
       throw error;
     }
   };
 
-  const getPersonas = async (personaIds: string[], personaProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<PersonaType[]> => {
+  const getPersonaListByIds = async (personaIds: string[], personaProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<PersonaType[]> => {
     try {
-      const cachedResult = getCachedRequest<PersonaType[]>(flux, 'persona.getPersonas', {personaIds, personaProps}, requestOptions);
+      const cachedResult = getCachedRequest<PersonaType[]>(flux, 'persona.getPersonaListByIds', {personaIds, personaProps}, requestOptions);
 
       if(cachedResult !== undefined) {
         return cachedResult;
@@ -253,19 +266,19 @@ export const createPersonaActions = (
       };
 
       const onSuccess = (data: PersonaApiResultsType) => {
-        const personas = data?.personas?.getPersonas || [];
+        const personas = data?.personas?.getPersonaListByIds || [];
         return flux.dispatch({personas, type: PERSONA_CONSTANTS.GET_LIST_SUCCESS});
       };
 
       const result = await appQuery<PersonaType[]>(
         flux,
-        'getPersonas',
+        'getPersonaListByIds',
         DATA_TYPE,
         queryVariables,
         [...DEFAULT_PERSONA_PROPS, ...personaProps],
         {onSuccess}
       );
-      return await setCachedRequest(flux, 'persona.getPersonas', {personaIds, personaProps}, result, requestOptions);
+      return await setCachedRequest(flux, 'persona.getPersonaListByIds', {personaIds, personaProps}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: PERSONA_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -350,8 +363,8 @@ export const createPersonaActions = (
       flux.dispatch({error, type: PERSONA_CONSTANTS.DELETE_ITEM_ERROR});
       throw error;
     } finally {
-      await clearCachedRequest(flux, `persona.getPersona:${personaId}`);
-      await clearCachedRequest(flux, 'persona.getPersonas');
+      await clearCachedRequest(flux, `persona.getPersonaById:${personaId}`);
+      await clearCachedRequest(flux, 'persona.getPersonaListByIds');
       await clearCachedRequest(flux, 'persona.listByTags');
     }
   };
@@ -383,17 +396,95 @@ export const createPersonaActions = (
       flux.dispatch({error, type: PERSONA_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;
     } finally {
-      await clearCachedRequest(flux, `persona.getPersona:${String(persona?.personaId || '')}`);
-      await clearCachedRequest(flux, 'persona.getPersonas');
+      await clearCachedRequest(flux, `persona.getPersonaById:${String(persona?.personaId || '')}`);
+      await clearCachedRequest(flux, 'persona.getPersonaListByIds');
       await clearCachedRequest(flux, 'persona.listByTags');
     }
   };
 
+  const followPersona = async (targetPersonaId: string): Promise<boolean> => {
+    const personaId = getActivePersonaId();
+
+    if(!personaId) {
+      throw new Error('A current persona is required before following.');
+    }
+
+    try {
+      const queryVariables = {
+        itemId: {
+          type: 'String!',
+          value: parseId(targetPersonaId)
+        },
+        itemType: {
+          type: 'String!',
+          value: DATA_TYPE
+        },
+        personaId: {
+          type: 'String!',
+          value: personaId
+        }
+      };
+
+      const result = await appMutation<boolean>(
+        flux,
+        'addConnection',
+        DATA_TYPE,
+        queryVariables,
+        [],
+        {}
+      );
+
+      return Boolean((result as unknown as PersonaApiResultsType)?.personas?.addConnection ?? result);
+    } finally {
+      await clearPersonaRelationshipCache(parseId(targetPersonaId));
+    }
+  };
+
+  const unfollowPersona = async (targetPersonaId: string): Promise<boolean> => {
+    const personaId = getActivePersonaId();
+
+    if(!personaId) {
+      throw new Error('A current persona is required before unfollowing.');
+    }
+
+    try {
+      const queryVariables = {
+        itemId: {
+          type: 'String!',
+          value: parseId(targetPersonaId)
+        },
+        itemType: {
+          type: 'String!',
+          value: DATA_TYPE
+        },
+        personaId: {
+          type: 'String!',
+          value: personaId
+        }
+      };
+
+      const result = await appMutation<boolean>(
+        flux,
+        'deleteConnection',
+        DATA_TYPE,
+        queryVariables,
+        [],
+        {}
+      );
+
+      return Boolean((result as unknown as PersonaApiResultsType)?.personas?.deleteConnection ?? result);
+    } finally {
+      await clearPersonaRelationshipCache(parseId(targetPersonaId));
+    }
+  };
+
   return {
+    followPersona,
     addPersona,
-    getPersona,
-    getPersonas,
+    getPersonaById,
+    getPersonaListByIds,
     listByTags,
+    unfollowPersona,
     deletePersona,
     updatePersona,
     updatePersonaAdapter: personaBase.updateAdapter,

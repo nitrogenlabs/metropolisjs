@@ -10,8 +10,10 @@ import {
   clearPersistedSession,
   hydrateSessionFromStorage,
   isLoggedIn as isLoggedInWithStorage,
-  normalizeSession
+  normalizeSession,
+  storeSession
 } from '../../utils/session.js';
+import {getConfigFromFlux} from '../../utils/configUtils.js';
 import {clearCachedRequest, getCachedRequest, setCachedRequest} from '../../utils/requestCache.js';
 import {syncPersonaTagsToSession} from '../personaActions/personaActions.js';
 
@@ -35,15 +37,9 @@ const INVALID_FIELD_REGEX = /Cannot query field "([^"]+)"/g;
 const hasSessionIdentity = (user?: Partial<User> | null): boolean =>
   !!(user && ((user as any)._id || (user as any).userId || (user as any).username || (user as any).email));
 
-const syncStoredSession = (flux: FluxFramework, sessionPatch: Record<string, unknown> = {}): SessionType => {
+const syncStoredSession = async (flux: FluxFramework, sessionPatch: Record<string, unknown> = {}): Promise<SessionType> => {
   const currentSession = (flux.getState('user.session', {}) || {}) as Record<string, unknown>;
-  const mergedSession = normalizeSession({...currentSession, ...sessionPatch}) as SessionType;
-
-  if(Object.keys(mergedSession).length > 0) {
-    void flux.setState('user.session', mergedSession);
-  }
-
-  return mergedSession;
+  return await storeSession(flux, {...currentSession, ...sessionPatch});
 };
 
 const getSessionPayload = (payload: unknown): Record<string, unknown> => {
@@ -61,10 +57,10 @@ const ensureSessionPersona = async (
   const existingPersonaId = String((sessionData as any)?.personaId || '').trim();
 
   if(existingPersonaId) {
-    return syncStoredSession(flux, sessionData as Record<string, unknown>);
+    return await syncStoredSession(flux, sessionData as Record<string, unknown>);
   }
 
-  return syncStoredSession(flux, sessionData as Record<string, unknown>);
+  return await syncStoredSession(flux, sessionData as Record<string, unknown>);
 };
 
 const getFieldRoot = (field: string): string => {
@@ -740,14 +736,14 @@ export const createUserActions = (
 
   const currentUser = async (requestOptions: ActionRequestOptions = {}): Promise<User> => currentAuthenticatedUser(requestOptions);
 
-  const refreshSessionAction = async (token?: string, expires: number = 15, requestOptions: ActionRequestOptions = {}): Promise<SessionType> => {
+  const refreshSessionAction = async (token?: string, expires?: number, requestOptions: ActionRequestOptions = {}): Promise<SessionType> => {
     const result = await refreshSession(flux, token, expires);
     return (result?.refreshSession || {}) as SessionType;
   };
 
   const signIn = async (
     user: Partial<User>,
-    expires: number = 15,
+    expires?: number,
     requestOptions: ActionRequestOptions = {}
   ): Promise<SessionType> => {
     const {email, phone, username, password} = user;
@@ -773,10 +769,12 @@ export const createUserActions = (
       throw new Error('Username, email, or phone number and password are required to sign in');
     }
 
+    const config = getConfigFromFlux(flux);
+    const requestedExpires = Math.max(1, Number(expires || config.app?.session?.maxMinutes || 15));
     const queryVariablesWithUserInput = {
       expires: {
         type: 'Int',
-        value: expires
+        value: requestedExpires
       },
       user: {
         type: 'UserInput!',
@@ -787,12 +785,10 @@ export const createUserActions = (
     const onSuccess = (data: ApiResultsType = {}): Promise<FluxAction> => {
       const users = (data as any)?.users;
       const sessionData = normalizeSession(users?.signIn || {});
-      syncStoredSession(flux, sessionData);
-
-      return flux.dispatch({
-        session: sessionData,
+      return syncStoredSession(flux, sessionData).then((storedSession) => flux.dispatch({
+        session: storedSession,
         type: USER_CONSTANTS.SIGN_IN_SUCCESS
-      });
+      }));
     };
 
     const performSignIn = async (queryVariables: any): Promise<SessionType> => {
@@ -804,17 +800,17 @@ export const createUserActions = (
         ['expires', 'issued', 'token', 'userId', 'username'],
         {onSuccess}
       );
-      const baseSession = syncStoredSession(flux, getSessionPayload(sessionResult));
+      const baseSession = await syncStoredSession(flux, getSessionPayload(sessionResult));
 
       try {
         const hydratedSession = await session(['personaId', 'userAccess', 'username'], requestOptions);
         await syncPersonaTagsToSession(flux, String((hydratedSession as any)?.personaId || ''));
       } catch(error) {
-        syncStoredSession(flux, baseSession as Record<string, unknown>);
+        await syncStoredSession(flux, baseSession as Record<string, unknown>);
         return baseSession;
       }
 
-      const finalSession = syncStoredSession(
+      const finalSession = await syncStoredSession(
         flux,
         (flux.getState('user.session', baseSession) || baseSession) as Record<string, unknown>
       );

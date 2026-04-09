@@ -2,9 +2,11 @@ import {describe, expect, it, vi} from 'vitest';
 
 import {
   clearPersistedSession,
+  getRefreshWindowMinutes,
   hydrateSessionFromStorage,
   isLoggedIn,
-  readStoredSession
+  readStoredSession,
+  storeSession
 } from './session.js';
 
 const tokenPayload = {
@@ -35,6 +37,16 @@ const createMockFlux = (initialSession: Record<string, unknown> = {}) => {
 };
 
 describe('session helpers', () => {
+  it('hydrates a valid flux session back into state', async () => {
+    const flux = createMockFlux({token, userId: 'user-storage'});
+
+    const session = await hydrateSessionFromStorage(flux as any, 'phantaze');
+
+    expect(session).toEqual(expect.objectContaining({token, userId: 'user-storage'}));
+    expect(flux.setState).toHaveBeenCalledWith('user.session', expect.objectContaining({token, userId: 'user-storage'}));
+    expect(isLoggedIn(flux as any, 'phantaze')).toBe(true);
+  });
+
   it('reads the normalized session from flux state', async () => {
     const flux = createMockFlux();
     flux.state['user.session'] = {token, userId: 'user-2'};
@@ -61,9 +73,22 @@ describe('session helpers', () => {
 
     expect(isLoggedIn(flux as any)).toBe(true);
 
-    await clearPersistedSession(flux as any);
+    await clearPersistedSession(flux as any, 'phantaze');
 
     expect(flux.setState).toHaveBeenCalledWith('user.session', {});
-    expect(isLoggedIn(flux as any)).toBe(false);
+    expect(isLoggedIn(flux as any, 'phantaze')).toBe(false);
+  });
+
+  it('stores a normalized session in flux state', () => {
+    const flux = createMockFlux();
+
+    return storeSession(flux as any, {token, userId: 'user-6'}, 'phantaze').then((session) => {
+      expect(session).toEqual(expect.objectContaining({token, userId: 'user-6'}));
+      expect(flux.setState).toHaveBeenCalledWith('user.session', expect.objectContaining({token, userId: 'user-6'}));
+    });
+  });
+
+  it('calculates refresh window from refreshAfterRatio when configured', () => {
+    expect(getRefreshWindowMinutes(180, {minMinutes: 15, refreshAfterRatio: 2 / 3})).toBe(60);
   });
 });

@@ -15,21 +15,35 @@ export const MESSAGE_CONSTANTS = {
   GET_LIST_SUCCESS: 'MESSAGE_GET_LIST_SUCCESS',
   REMOVE_ITEM_ERROR: 'MESSAGE_REMOVE_ITEM_ERROR',
   REMOVE_ITEM_SUCCESS: 'MESSAGE_REMOVE_ITEM_SUCCESS',
+  TYPING_STATUS_UPDATE: 'MESSAGE_TYPING_STATUS_UPDATE',
   UPDATE_ITEM_ERROR: 'MESSAGE_UPDATE_ITEM_ERROR',
   UPDATE_ITEM_SUCCESS: 'MESSAGE_UPDATE_ITEM_SUCCESS'
 } as const;
 
-interface MessageState {
-  conversations: Record<string, MessageType[]>;
+export interface MessageTypingStatus {
+  readonly conversationId?: string;
+  readonly isTyping?: boolean;
+  readonly name?: string;
+  readonly updatedAt?: number;
+  readonly userId?: string;
+  readonly username?: string;
+}
+
+export interface MessageState {
+  readonly conversations: Record<string, MessageType[]>;
+  readonly typingByConversation: Record<string, Record<string, MessageTypingStatus>>;
 }
 
 export const defaultValues: MessageState = {
-  conversations: {}
+  conversations: {},
+  typingByConversation: {}
 };
 
 export const messageStore = (type: string, data: {
+  message?: MessageType;
   list?: MessageType[];
   conversationId?: string;
+  typing?: MessageTypingStatus;
 }, state = defaultValues): MessageState => {
   switch(type) {
     case MESSAGE_CONSTANTS.GET_CONVO_LIST_SUCCESS: {
@@ -41,6 +55,95 @@ export const messageStore = (type: string, data: {
 
       const {conversations} = state;
       return {...state, conversations: {...conversations, [conversationId]: list || []}};
+    }
+    case MESSAGE_CONSTANTS.GET_LIST_SUCCESS: {
+      const {conversationId, list = []} = data;
+
+      if(!conversationId) {
+        return state;
+      }
+
+      return {
+        ...state,
+        conversations: {
+          ...state.conversations,
+          [conversationId]: list
+        }
+      };
+    }
+    case MESSAGE_CONSTANTS.ADD_ITEM_SUCCESS: {
+      const {message} = data;
+      const conversationId = String(message?.conversationId || '');
+
+      if(!conversationId || !message) {
+        return state;
+      }
+
+      const existingMessages = state.conversations?.[conversationId] || [];
+      const nextMessageId = String(message.messageId || message.id || message._key || '');
+      const hasExistingMessage = existingMessages.some((item) => (
+        String(item.messageId || item.id || item._key || '') === nextMessageId
+      ));
+
+      if(hasExistingMessage && nextMessageId) {
+        return state;
+      }
+
+      return {
+        ...state,
+        conversations: {
+          ...state.conversations,
+          [conversationId]: [...existingMessages, message]
+        }
+      };
+    }
+    case MESSAGE_CONSTANTS.TYPING_STATUS_UPDATE: {
+      const typing = data?.typing || {};
+      const conversationId = String(typing?.conversationId || '');
+      const userId = String(typing?.userId || '');
+
+      if(!conversationId || !userId) {
+        return state;
+      }
+
+      const currentConversationTyping = {...(state.typingByConversation?.[conversationId] || {})};
+
+      if(!typing?.isTyping) {
+        delete currentConversationTyping[userId];
+
+        if(!Object.keys(currentConversationTyping).length) {
+          const {[conversationId]: removed, ...restTypingByConversation} = state.typingByConversation || {};
+          return {
+            ...state,
+            typingByConversation: restTypingByConversation
+          };
+        }
+
+        return {
+          ...state,
+          typingByConversation: {
+            ...state.typingByConversation,
+            [conversationId]: currentConversationTyping
+          }
+        };
+      }
+
+      return {
+        ...state,
+        typingByConversation: {
+          ...state.typingByConversation,
+          [conversationId]: {
+            ...currentConversationTyping,
+            [userId]: {
+              ...typing,
+              conversationId,
+              isTyping: true,
+              updatedAt: Number(typing?.updatedAt || Date.now()),
+              userId
+            }
+          }
+        }
+      };
     }
 
     default: {

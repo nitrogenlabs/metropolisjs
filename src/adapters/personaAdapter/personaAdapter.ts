@@ -21,6 +21,9 @@ export interface PersonaType {
   imageCount?: number;
   imageId?: string;
   imageUrl?: string;
+  isFollowedBy?: boolean;
+  isFollowing?: boolean;
+  isFriend?: boolean;
   latitude?: number;
   location?: string;
   longitude?: number;
@@ -57,6 +60,9 @@ const PersonaInputSchema = z.object({
   imageCount: z.number().optional(),
   imageId: z.string().optional(),
   imageUrl: z.string().optional(),
+  isFollowedBy: z.boolean().optional(),
+  isFollowing: z.boolean().optional(),
+  isFriend: z.boolean().optional(),
   latitude: z.number().optional(),
   location: z.string().optional(),
   longitude: z.number().optional(),
@@ -109,6 +115,9 @@ const performPersonaTransformation = (persona: PersonaType): PersonaType => {
     imageCount,
     imageId,
     imageUrl,
+    isFollowedBy,
+    isFollowing,
+    isFriend,
     latitude,
     location,
     longitude,
@@ -132,6 +141,9 @@ const performPersonaTransformation = (persona: PersonaType): PersonaType => {
     ...(imageCount !== undefined && {imageCount: parseNum(imageCount)}),
     ...(imageId && {imageId: parseId(imageId)}),
     ...(imageUrl && {imageUrl}),
+    ...(isFollowedBy !== undefined && {isFollowedBy: parseBoolean(isFollowedBy)}),
+    ...(isFollowing !== undefined && {isFollowing: parseBoolean(isFollowing)}),
+    ...(isFriend !== undefined && {isFriend: parseBoolean(isFriend)}),
     ...(latitude !== undefined && {latitude: parseNum(latitude, 12)}),
     ...(location && {location: parseString(location, 160)}),
     ...(longitude !== undefined && {longitude: parseNum(longitude, 12)}),

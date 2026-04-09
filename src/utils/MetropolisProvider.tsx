@@ -20,6 +20,7 @@ import { parseUser } from '../adapters/userAdapter/userAdapter.js';
 import type { FluxFramework } from '@nlabs/arkhamjs';
 import type { MessageType } from '../adapters/index.js';
 import type { MetropolisEnvironmentConfiguration } from '../config/index.js';
+import type {NotificationType} from '../stores/notificationStore.js';
 import type { SessionType } from './api.js';
 
 export interface MetropolisAdapters {
@@ -42,10 +43,10 @@ export interface MetropolisProviderProps {
   readonly adapters?: MetropolisAdapters;
   readonly isAuth?: () => boolean;
   readonly messages?: MessageType[];
-  readonly notifications?: Notification[];
+  readonly notifications?: NotificationType[];
   readonly session?: SessionType;
   readonly updateMessage: (message: MessageType) => void;
-  readonly updateNotification: (notification: Notification) => void;
+  readonly updateNotification: (notification: NotificationType) => void;
 }
 
 export interface MetropolisContextValue {
@@ -54,10 +55,10 @@ export interface MetropolisContextValue {
   readonly flux?: FluxFramework;
   readonly isAuth: () => boolean;
   readonly messages: MessageType[];
-  readonly notifications: Notification[];
+  readonly notifications: NotificationType[];
   readonly session: SessionType;
   readonly updateMessage: (message: MessageType) => void;
-  readonly updateNotification: (notification: Notification) => void;
+  readonly updateNotification: (notification: NotificationType) => void;
 }
 
 const defaultContext: MetropolisContextValue = {
@@ -69,7 +70,7 @@ const defaultContext: MetropolisContextValue = {
   notifications: [],
   session: {},
   updateMessage: (message: MessageType) => message,
-  updateNotification: (notification: Notification) => notification
+  updateNotification: (notification: NotificationType) => notification
 };
 
 export const MetropolisContext = createContext<MetropolisContextValue>(defaultContext);

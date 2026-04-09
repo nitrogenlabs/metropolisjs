@@ -6,6 +6,7 @@ const publicMutationMock = vi.fn();
 const refreshSessionMock = vi.fn();
 const clearPersistedSessionMock = vi.fn();
 const hydrateSessionFromStorageMock = vi.fn();
+const storeSessionMock = vi.fn(async (_flux, session = {}) => session);
 
 vi.mock('../../utils/api.js', () => ({
   appMutation: appMutationMock,
@@ -18,7 +19,8 @@ vi.mock('../../utils/session.js', () => ({
   clearPersistedSession: clearPersistedSessionMock,
   hydrateSessionFromStorage: hydrateSessionFromStorageMock,
   isLoggedIn: vi.fn(() => false),
-  normalizeSession: vi.fn((session = {}) => session)
+  normalizeSession: vi.fn((session = {}) => session),
+  storeSession: storeSessionMock
 }));
 
 vi.mock('../personaActions/personaActions.js', () => ({
@@ -114,6 +116,7 @@ describe('createUserActions request cache', () => {
     refreshSessionMock.mockReset();
     clearPersistedSessionMock.mockReset();
     hydrateSessionFromStorageMock.mockReset();
+    storeSessionMock.mockReset();
     hydrateSessionFromStorageMock.mockResolvedValue({});
   });
 

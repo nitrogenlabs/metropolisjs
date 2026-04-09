@@ -3,6 +3,7 @@
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
 
+import {parseId} from '@nlabs/utils';
 import { validateMessageInput } from '../../adapters/messageAdapter/messageAdapter.js';
 import { MESSAGE_CONSTANTS } from '../../stores/messageStore.js';
 import { appMutation, appQuery } from '../../utils/api.js';
@@ -29,10 +30,14 @@ export interface MessageActionsOptions {
 }
 
 export type MessageApiResultsType = {
-  sendMessage: MessageType;
-  getDirectConversation: ConversationType;
-  getMessages: MessageType[];
-  getConversations: ConversationType[];
+  messages?: {
+    addMessage?: MessageType;
+    conversations?: ConversationType[];
+    directConversation?: ConversationType;
+    getMessage?: MessageType;
+    getMessages?: MessageType[];
+    getConversations?: ConversationType[];
+  };
 };
 
 export interface MessageActions {
@@ -83,32 +88,43 @@ export const createMessageActions = (
     messageAdapterOptions = {...messageAdapterOptions, ...options};
     validateMessage = createMessageValidator(customMessageAdapter, messageAdapterOptions);
   };
+
+  const getActivePersonaId = (): string => parseId(String(flux.getState('user.session.personaId') || ''));
+  const getActiveUserId = (): string => parseId(String(flux.getState('user.session.userId') || ''));
+
   const sendMessage = async (
     message: Partial<MessageType>,
     messageProps: string[] = [],
     requestOptions: ActionRequestOptions = {}
   ): Promise<MessageType> => {
     try {
+      const nextMessage = validateMessage(message, messageAdapterOptions);
+      const personaId = parseId(String(nextMessage.personaId || getActivePersonaId() || ''));
+      const userId = parseId(String(nextMessage.userId || getActiveUserId() || ''));
       const queryVariables = {
         message: {
           type: 'MessageInput!',
-          value: validateMessage(message, messageAdapterOptions)
+          value: {
+            ...nextMessage,
+            ...(personaId && {personaId}),
+            ...(userId && {userId})
+          }
         }
       };
 
       const onSuccess = (data: ApiResultsType = {}) => {
-        const message = data?.sendMessage || {};
+        const message = (data as MessageApiResultsType)?.messages?.addMessage || {};
         return flux.dispatch({message, type: MESSAGE_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
-      return await appMutation<MessageType>(
+      return await appMutation<MessageApiResultsType>(
         flux,
-        'sendMessage',
+        'addMessage',
         DATA_TYPE,
         queryVariables,
-        ['added', 'content', 'modified', 'messageId', 'user { userId, username }', ...messageProps],
+        ['added', 'content', 'modified', 'messageId', 'user { userId, personaId, name, username, thumbUrl, imageUrl }', ...messageProps],
         {onSuccess}
-      );
+      ).then((result) => ((result as MessageApiResultsType)?.messages?.addMessage || {}) as MessageType);
     } catch(error) {
       flux.dispatch({error, type: MESSAGE_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
@@ -137,20 +153,25 @@ export const createMessageActions = (
       };
 
       const onSuccess = (data: ApiResultsType = {}) => {
-        const conversation = data?.directConversation || {};
+        const conversation = (data as MessageApiResultsType)?.messages?.directConversation || {};
         return flux.dispatch({conversation, type: MESSAGE_CONSTANTS.GET_CONVO_LIST_SUCCESS});
       };
 
-      const result = await appQuery<ConversationType>(
+      const result = await appQuery<MessageApiResultsType>(
         flux,
         'directConversation',
         DATA_TYPE,
         queryVariables,
-        ['added', 'conversationId', 'modified', 'name', 'users { userId, username }'],
+        ['added', 'conversationId', 'modified', 'name', 'users { userId, personaId, name, username, thumbUrl, imageUrl }'],
         {onSuccess}
       );
 
-      return await setCachedRequest(flux, `message.getDirectConversation:${userId}`, {userId}, result, requestOptions);
+      const conversation = (
+        (result as unknown as {conversation?: ConversationType})?.conversation
+        || result?.messages?.directConversation
+        || {}
+      );
+      return await setCachedRequest(flux, `message.getDirectConversation:${userId}`, {userId}, conversation as ConversationType, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: MESSAGE_CONSTANTS.GET_CONVO_LIST_ERROR});
       throw error;
@@ -176,14 +197,14 @@ export const createMessageActions = (
 
       const queryVariables = {
         conversationId: {
-          type: 'ID!',
+          type: 'String',
           value: conversationId
         }
       };
 
       const onSuccess = (data: ApiResultsType = {}) => {
-        const messages = Array.isArray((data as {messages?: MessageType[]})?.messages)
-          ? (data as {messages?: MessageType[]}).messages || []
+        const messages = Array.isArray((data as MessageApiResultsType)?.messages?.getMessages)
+          ? (data as MessageApiResultsType).messages?.getMessages || []
           : [];
 
         return flux.dispatch({
@@ -193,16 +214,17 @@ export const createMessageActions = (
         });
       };
 
-      const result = await appQuery<MessageType[]>(
+      const result = await appQuery<MessageApiResultsType>(
         flux,
-        'messages',
+        'getMessages',
         DATA_TYPE,
         queryVariables,
-        ['added', 'content', 'modified', 'messageId', 'user { userId, username }', ...messageProps],
+        ['added', 'content', 'modified', 'messageId', 'user { userId, personaId, name, username, thumbUrl, imageUrl }', ...messageProps],
         {onSuccess}
       );
 
-      return await setCachedRequest(flux, `message.getMessages:${conversationId}`, {conversationId, messageProps}, result, requestOptions);
+      const messages = result?.messages?.getMessages || [];
+      return await setCachedRequest(flux, `message.getMessages:${conversationId}`, {conversationId, messageProps}, messages as MessageType[], requestOptions);
     } catch(error) {
       flux.dispatch({error, type: MESSAGE_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -233,22 +255,23 @@ export const createMessageActions = (
       };
 
       const onSuccess = (data: ApiResultsType = {}) => {
-        const conversations = Array.isArray((data as {conversations?: ConversationType[]})?.conversations)
-          ? (data as {conversations?: ConversationType[]}).conversations || []
+        const conversations = Array.isArray((data as MessageApiResultsType)?.messages?.getConversations)
+          ? (data as MessageApiResultsType).messages?.getConversations || []
           : [];
         return flux.dispatch({conversations, type: MESSAGE_CONSTANTS.GET_CONVO_LIST_SUCCESS});
       };
 
-      const result = await appQuery<ConversationType[]>(
+      const result = await appQuery<MessageApiResultsType>(
         flux,
-        'conversations',
+        'getConversations',
         DATA_TYPE,
         queryVariables,
-        ['added', 'content', 'conversationId', 'modified', 'name', 'thumbUrl', 'users { userId, username }'],
+        ['added', 'conversationId', 'direct', 'modified', 'name', 'users { userId, personaId, name, username, thumbUrl, imageUrl }'],
         {onSuccess}
       );
 
-      return await setCachedRequest(flux, 'message.getConversations', {from, to}, result, requestOptions);
+      const conversations = result?.messages?.getConversations || [];
+      return await setCachedRequest(flux, 'message.getConversations', {from, to}, conversations as ConversationType[], requestOptions);
     } catch(error) {
       flux.dispatch({error, type: MESSAGE_CONSTANTS.GET_CONVO_LIST_ERROR});
       throw error;

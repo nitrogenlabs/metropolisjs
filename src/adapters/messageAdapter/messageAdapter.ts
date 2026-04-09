@@ -1,28 +1,31 @@
-import { parseArangoId, parseId } from '@nlabs/utils';
-import { z } from 'zod';
+import {parseArangoId, parseId} from '@nlabs/utils';
+import {z} from 'zod';
 
-import { parseDocument, removeEmptyKeys } from '../arangoAdapter/arangoAdapter.js';
-import { parseFile } from '../fileAdapter/fileAdapter.js';
-import { parseImage } from '../imageAdapter/imageAdapter.js';
+import {User} from '../../adapters/userAdapter/userAdapter.js';
+import {parseDocument, removeEmptyKeys} from '../arangoAdapter/arangoAdapter.js';
+import {parseFile} from '../fileAdapter/fileAdapter.js';
+import {parseImage} from '../imageAdapter/imageAdapter.js';
 
 export interface MessageType {
-  _id?: string;
-  _key?: string;
-  _rev?: string;
-  _oldRev?: string;
-  _from?: string;
-  _to?: string;
-  content?: string;
-  conversationId?: string;
-  files?: any[];
-  id?: string;
-  images?: any[];
-  itemId?: string;
-  itemType?: string;
-  messageId?: string;
-  read?: boolean;
-  saved?: boolean;
-  userId?: string;
+  readonly _id?: string;
+  readonly _key?: string;
+  readonly _rev?: string;
+  readonly _oldRev?: string;
+  readonly _from?: string;
+  readonly _to?: string;
+  readonly content?: string;
+  readonly conversationId?: string;
+  readonly files?: any[];
+  readonly id?: string;
+  readonly images?: any[];
+  readonly itemId?: string;
+  readonly itemType?: string;
+  readonly messageId?: string;
+  readonly personaId?: string;
+  readonly read?: boolean;
+  readonly saved?: boolean;
+  readonly user?: User;
+  readonly userId?: string;
   [key: string]: any;
 }
 
@@ -41,6 +44,7 @@ const MessageInputSchema = z.object({
   itemId: z.string().optional(),
   itemType: z.string().optional(),
   messageId: z.string().optional(),
+  personaId: z.string().optional(),
   read: z.boolean().optional(),
   saved: z.boolean().optional(),
   userId: z.string().optional(),

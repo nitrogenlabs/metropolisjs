@@ -10,6 +10,7 @@ export {GROUP_CONSTANTS, groups} from './groupStore.js';
 export {IMAGE_CONSTANTS, images} from './imageStore.js';
 export {LOCATION_CONSTANTS, locations} from './locationStore.js';
 export {MESSAGE_CONSTANTS, messages} from './messageStore.js';
+export {NOTIFICATION_CONSTANTS, notifications} from './notificationStore.js';
 export {PERMISSION_CONSTANTS, permissions} from './permissionStore.js';
 export {POST_CONSTANTS, posts} from './postStore.js';
 export {PERSONA_CONSTANTS, personas} from './personaStore.js';
@@ -19,4 +20,3 @@ export {TRANSLATION_CONSTANTS, translations} from './translationStore.js';
 export {USER_CONSTANTS, users} from './userStore.js';
 export {video, VIDEO_CONSTANTS} from './videoStore.js';
 export {websocket, WEBSOCKET_CONSTANTS} from './websocketStore.js';
-

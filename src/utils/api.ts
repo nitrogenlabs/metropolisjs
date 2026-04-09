@@ -5,7 +5,7 @@ import {DateTime} from 'luxon';
 import {APP_CONSTANTS} from '../stores/appStore.js';
 import {USER_CONSTANTS} from '../stores/userStore.js';
 import {getConfigFromFlux} from './configUtils.js';
-import {hydrateSessionFromStorage, normalizeSession} from './session.js';
+import {getRefreshWindowMinutes, hydrateSessionFromStorage, storeSession} from './session.js';
 
 import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {HunterOptionsType, HunterQueryType} from '@nlabs/rip-hunter';
@@ -103,8 +103,11 @@ export const getGraphql = async (
     const nowDate: DateTime = DateTime.local();
     const expiresDate: DateTime = DateTime.fromMillis(authExpires);
     const minutesUntilExpiry = Math.round(expiresDate.diff(nowDate, 'minutes').toObject().minutes);
-    const refreshWindowMinutes = Math.max(1, Number(config.app?.session?.minMinutes || DEFAULT_REFRESH_WINDOW_MINUTES));
     const sessionLifetimeMinutes = Math.round((authExpires - authIssued) / (1000 * 60));
+    const refreshWindowMinutes = getRefreshWindowMinutes(
+      sessionLifetimeMinutes || DEFAULT_SESSION_MAX_MINUTES,
+      config.app?.session || {}
+    );
     const refreshExpiresMinutes = Math.max(
       1,
       Number(config.app?.session?.maxMinutes || sessionLifetimeMinutes || DEFAULT_SESSION_MAX_MINUTES)
@@ -137,7 +140,7 @@ export const getGraphql = async (
       if(onSuccess && errors.includes('network_error')) {
         await flux.dispatch({retry, type: APP_CONSTANTS.API_NETWORK_ERROR});
         return Promise.reject(error);
-      } else if(errors.includes('invalid_session')) {
+      } else if(errors.includes('invalid_session') || errors.includes('expired_session')) {
         await flux.clearAppData();
         return Promise.resolve({});
       }
@@ -287,7 +290,7 @@ export const uploadImage = (
 export const refreshSession = async (
   flux: FluxFramework,
   token?: string,
-  expires: number = 15
+  expires?: number
 ): Promise<FluxAction | null> => {
   const refreshToken = isEmpty(token) ? flux.getState('user.session.token') : token;
 
@@ -296,10 +299,15 @@ export const refreshSession = async (
   }
 
   try {
+    const config = getConfigFromFlux(flux);
+    const requestedExpires = Math.max(
+      1,
+      Number(expires || config.app?.session?.maxMinutes || DEFAULT_SESSION_MAX_MINUTES)
+    );
     const queryVariables = {
       expires: {
         type: 'Int',
-        value: expires
+        value: requestedExpires
       },
       token: {
         type: 'String!',
@@ -312,8 +320,7 @@ export const refreshSession = async (
         ? rawSessionData as Record<string, unknown>
         : {};
       const currentSession = (flux.getState('user.session', {}) || {}) as Record<string, unknown>;
-      const mergedSession = normalizeSession({...currentSession, ...sessionData});
-      await flux.setState('user.session', mergedSession);
+      const mergedSession = await storeSession(flux, {...currentSession, ...sessionData});
       return flux.dispatch({session: mergedSession, type: USER_CONSTANTS.UPDATE_SESSION_SUCCESS});
     };
 
@@ -321,6 +328,12 @@ export const refreshSession = async (
       onSuccess
     });
   } catch(error) {
+    const errorMessage = error instanceof Error ? error.message : '';
+
+    if(errorMessage === 'invalid_session' || errorMessage === 'expired_session') {
+      await flux.clearAppData();
+    }
+
     flux.dispatch({error, type: USER_CONSTANTS.GET_SESSION_ERROR});
     return null;
   }
