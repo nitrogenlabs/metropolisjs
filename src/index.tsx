@@ -301,6 +301,11 @@ export {
   useUserActions,
   useWebsocketActions
 } from './utils/useMetropolis.js';
+export {useConversationTyping} from './utils/useConversationTyping.js';
+export type {
+  ConversationTypingOptions,
+  UseConversationTypingOptions
+} from './utils/useConversationTyping.js';
 export {
   createValidatorFactory,
   createValidatorManager

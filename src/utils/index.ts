@@ -52,6 +52,7 @@ export {
   type UsePermissionsReturn
 } from './permissionUtils.js';
 export {useMetropolis} from './useMetropolis.js';
+export {useConversationTyping, type ConversationTypingOptions, type UseConversationTypingOptions} from './useConversationTyping.js';
 export {useTranslations} from './useTranslations.js';
 
 // Export utility functions
@@ -61,5 +62,4 @@ export * from './file.js';
 export * from './i18n.js';
 export * from './location.js';
 export * from './session.js';
-
 
