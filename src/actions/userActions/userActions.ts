@@ -782,13 +782,14 @@ export const createUserActions = (
       }
     };
 
-    const onSuccess = (data: ApiResultsType = {}): Promise<FluxAction> => {
+    const onSuccess = async (data: ApiResultsType = {}): Promise<FluxAction> => {
       const users = (data as any)?.users;
       const sessionData = normalizeSession(users?.signIn || {});
-      return syncStoredSession(flux, sessionData).then((storedSession) => flux.dispatch({
+      const storedSession = await syncStoredSession(flux, sessionData);
+      return {
         session: storedSession,
         type: USER_CONSTANTS.SIGN_IN_SUCCESS
-      }));
+      } as FluxAction;
     };
 
     const performSignIn = async (queryVariables: any): Promise<SessionType> => {
@@ -806,14 +807,22 @@ export const createUserActions = (
         const hydratedSession = await session(['personaId', 'userAccess', 'username'], requestOptions);
         await syncPersonaTagsToSession(flux, String((hydratedSession as any)?.personaId || ''));
       } catch(error) {
-        await syncStoredSession(flux, baseSession as Record<string, unknown>);
-        return baseSession;
+        const fallbackSession = await syncStoredSession(flux, baseSession as Record<string, unknown>);
+        await flux.dispatch({
+          session: fallbackSession,
+          type: USER_CONSTANTS.SIGN_IN_SUCCESS
+        });
+        return fallbackSession;
       }
 
       const finalSession = await syncStoredSession(
         flux,
         (flux.getState('user.session', baseSession) || baseSession) as Record<string, unknown>
       );
+      await flux.dispatch({
+        session: finalSession,
+        type: USER_CONSTANTS.SIGN_IN_SUCCESS
+      });
       return finalSession;
     };
 
