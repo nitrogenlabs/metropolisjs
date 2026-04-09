@@ -40,9 +40,18 @@ export interface WebsocketActions {
   readonly wsInit: (token?: string, personaId?: string) => Sockette | null;
 }
 
+const WEBSOCKET_CLIENT_ID_KEY = 'metropolis.websocket.clientId';
+const createWebsocketClientId = (): string => {
+  if(typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  return `ws-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
 
 export const createWebsocketActions = (flux: FluxFramework): WebsocketActions => {
   let ws: Sockette | null = null;
+  let activeClientId = '';
   let activeToken = '';
   let activePersonaId = '';
   let socketIsOpen = false;
@@ -52,6 +61,47 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
   const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
   const createNotificationId = () => `notification-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   const getTypingIdentity = (typing?: MessageTypingStatus | Record<string, unknown>) => String((typing as any)?.personaId || (typing as any)?.userId || '');
+  const getClientId = (): string => {
+    if(activeClientId) {
+      return activeClientId;
+    }
+
+    if(typeof window === 'undefined') {
+      activeClientId = createWebsocketClientId();
+      return activeClientId;
+    }
+
+    try {
+      const storedClientId = window.sessionStorage.getItem(WEBSOCKET_CLIENT_ID_KEY);
+
+      if(storedClientId) {
+        activeClientId = storedClientId;
+        return activeClientId;
+      }
+
+      activeClientId = createWebsocketClientId();
+      window.sessionStorage.setItem(WEBSOCKET_CLIENT_ID_KEY, activeClientId);
+      return activeClientId;
+    } catch(error) {
+      activeClientId = createWebsocketClientId();
+      return activeClientId;
+    }
+  };
+  const sendRegistration = () => {
+    if(!ws || !socketIsOpen) {
+      return;
+    }
+
+    ws.json({
+      action: 'websocketConnect',
+      data: {
+        clientId: getClientId(),
+        personaId: String(activePersonaId || flux.getState('user.session.personaId') || ''),
+        token: String(activeToken || flux.getState('user.session.token') || ''),
+        userId: String(flux.getState('user.session.userId') || '')
+      }
+    });
+  };
 
   const flushPendingMessages = () => {
     if(!ws || !pendingMessages.length) {
@@ -131,6 +181,7 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
 
       closeRequested = true;
       ws = null;
+      activeClientId = '';
       activePersonaId = '';
       activeToken = '';
       previousSocket.close(1000, 'metropolis_close');
@@ -296,6 +347,7 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
     socketIsOpen = true;
     socketIsConnecting = false;
     closeRequested = false;
+    sendRegistration();
     flushPendingMessages();
     flux.dispatch({timestamp, type: WEBSOCKET_CONSTANTS.OPEN});
   };
@@ -303,6 +355,7 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
   const wsInit = (token?: string, personaId?: string): Sockette | null => {
     const config = getConfigFromFlux(flux);
     const websocketUrl = config.app?.urls?.websocket || '';
+    const sessionClientId = getClientId();
     const sessionToken = String(token || flux.getState('user.session.token') || '');
     const sessionPersonaId = String(personaId || flux.getState('user.session.personaId') || '');
 
@@ -315,24 +368,29 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
       return null;
     }
 
-    if(ws && activeToken === sessionToken && activePersonaId === sessionPersonaId) {
+    if(ws && activeToken === sessionToken && activePersonaId === sessionPersonaId && activeClientId === sessionClientId) {
       console.log('websockets::wsInit::reuse', {
+        activeClientId,
         activePersonaId,
         activeToken,
+        sessionClientId,
         sessionPersonaId
       });
       return ws;
     }
 
-    if(ws && (activeToken !== sessionToken || activePersonaId !== sessionPersonaId)) {
+    if(ws && (activeToken !== sessionToken || activePersonaId !== sessionPersonaId || activeClientId !== sessionClientId)) {
       console.log('websockets::wsInit::reconnect', {
+        activeClientId,
         activePersonaId,
         activeToken,
+        sessionClientId,
         sessionPersonaId
       });
       wsClose();
     }
 
+    activeClientId = sessionClientId;
     activeToken = sessionToken;
     activePersonaId = sessionPersonaId;
     socketIsOpen = false;
@@ -343,8 +401,12 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
     if(sessionPersonaId) {
       websocketParams.set('personaId', sessionPersonaId);
     }
+    if(sessionClientId) {
+      websocketParams.set('clientId', sessionClientId);
+    }
 
     console.log('websockets::wsInit::connect', {
+      sessionClientId,
       sessionPersonaId,
       sessionToken,
       url: `${websocketUrl}?${websocketParams.toString()}`
