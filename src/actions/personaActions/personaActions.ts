@@ -54,6 +54,7 @@ export interface PersonaApiResultsType {
 }
 
 export interface PersonaActions {
+  readonly blockPersona: (targetPersonaId: string) => Promise<boolean>;
   readonly followPersona: (targetPersonaId: string) => Promise<boolean>;
   readonly addPersona: (personaData: Partial<PersonaType>, personaProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PersonaType>;
   readonly getPersonaById: (personaId: string, personaProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PersonaType>;
@@ -67,6 +68,7 @@ export interface PersonaActions {
     requestOptions?: ActionRequestOptions
   ) => Promise<PersonaType[]>;
   readonly unfollowPersona: (targetPersonaId: string) => Promise<boolean>;
+  readonly unblockPersona: (targetPersonaId: string) => Promise<boolean>;
   readonly deletePersona: (personaId: string, personaProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PersonaType>;
   readonly updatePersona: (persona: Partial<PersonaType>, personaProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PersonaType>;
   readonly updatePersonaAdapter: (adapter: (input: unknown, options?: PersonaAdapterOptions) => any) => void;
@@ -420,8 +422,12 @@ export const createPersonaActions = (
           value: DATA_TYPE
         },
         personaId: {
-          type: 'String!',
+          type: 'ID!',
           value: personaId
+        },
+        type: {
+          type: 'String',
+          value: 'follow'
         }
       };
 
@@ -458,8 +464,96 @@ export const createPersonaActions = (
           value: DATA_TYPE
         },
         personaId: {
-          type: 'String!',
+          type: 'ID!',
           value: personaId
+        },
+        type: {
+          type: 'String',
+          value: 'follow'
+        }
+      };
+
+      const result = await appMutation<boolean>(
+        flux,
+        'deleteConnection',
+        DATA_TYPE,
+        queryVariables,
+        [],
+        {}
+      );
+
+      return Boolean((result as unknown as PersonaApiResultsType)?.personas?.deleteConnection ?? result);
+    } finally {
+      await clearPersonaRelationshipCache(parseId(targetPersonaId));
+    }
+  };
+
+  const blockPersona = async (targetPersonaId: string): Promise<boolean> => {
+    const personaId = getActivePersonaId();
+
+    if(!personaId) {
+      throw new Error('A current persona is required before blocking.');
+    }
+
+    try {
+      const queryVariables = {
+        itemId: {
+          type: 'String!',
+          value: parseId(targetPersonaId)
+        },
+        itemType: {
+          type: 'String!',
+          value: DATA_TYPE
+        },
+        personaId: {
+          type: 'ID!',
+          value: personaId
+        },
+        type: {
+          type: 'String',
+          value: 'block'
+        }
+      };
+
+      const result = await appMutation<boolean>(
+        flux,
+        'addConnection',
+        DATA_TYPE,
+        queryVariables,
+        [],
+        {}
+      );
+
+      return Boolean((result as unknown as PersonaApiResultsType)?.personas?.addConnection ?? result);
+    } finally {
+      await clearPersonaRelationshipCache(parseId(targetPersonaId));
+    }
+  };
+
+  const unblockPersona = async (targetPersonaId: string): Promise<boolean> => {
+    const personaId = getActivePersonaId();
+
+    if(!personaId) {
+      throw new Error('A current persona is required before unblocking.');
+    }
+
+    try {
+      const queryVariables = {
+        itemId: {
+          type: 'String!',
+          value: parseId(targetPersonaId)
+        },
+        itemType: {
+          type: 'String!',
+          value: DATA_TYPE
+        },
+        personaId: {
+          type: 'ID!',
+          value: personaId
+        },
+        type: {
+          type: 'String',
+          value: 'block'
         }
       };
 
@@ -479,12 +573,14 @@ export const createPersonaActions = (
   };
 
   return {
+    blockPersona,
     followPersona,
     addPersona,
     getPersonaById,
     getPersonaListByIds,
     listByTags,
     unfollowPersona,
+    unblockPersona,
     deletePersona,
     updatePersona,
     updatePersonaAdapter: personaBase.updateAdapter,

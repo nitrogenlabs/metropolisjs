@@ -11,10 +11,38 @@ import { clearCachedRequest, getCachedRequest, setCachedRequest } from '../../ut
 
 import type { FluxFramework } from '@nlabs/arkhamjs';
 import type { EventType } from '../../adapters/eventAdapter/eventAdapter.js';
-import type { PostApiResultsType } from '../postActions/postActions.js';
 import type { ActionRequestOptions } from '../../utils/requestCache.js';
 
 const DATA_TYPE = 'posts';
+
+const DEFAULT_EVENT_PROPS = [
+  'added',
+  'content',
+  'endDate',
+  'hasRsvp',
+  'location',
+  'latitude',
+  'longitude',
+  'modified',
+  'name',
+  'postId',
+  'startDate',
+  'rsvpCount',
+  'tags {name, tagId}',
+  'user { imageUrl, userId, username }',
+  'viewCount'
+];
+
+type EventApiResultsType = {
+  posts?: {
+    addPost?: EventType;
+    deletePost?: EventType;
+    getPostById?: EventType;
+    getPostListByReaction?: EventType[];
+    getPostListByTags?: EventType[];
+    updatePost?: EventType;
+  };
+};
 
 export interface EventAdapterOptions {
   readonly strict?: boolean;
@@ -123,12 +151,12 @@ export const createEventActions = (
         }
       };
 
-      const onSuccess = (data: PostApiResultsType) => {
+      const onSuccess = (data: EventApiResultsType) => {
         const addPost = data?.posts?.addPost || {};
         return flux.dispatch({event: addPost, type: EVENT_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
-      return await appMutation<EventType>(flux, 'addEvent', DATA_TYPE, queryVariables, ['eventId', ...eventProps], {onSuccess});
+      return await appMutation<EventType>(flux, 'addPost', DATA_TYPE, queryVariables, ['postId', ...eventProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
@@ -152,38 +180,22 @@ export const createEventActions = (
 
       const queryVariables = {
         postId: {
-          type: 'ID!',
+          type: 'ID',
           value: parseId(eventId)
         }
       };
 
-      const onSuccess = (data: PostApiResultsType) => {
-        const event = data?.posts?.getPost || {};
+      const onSuccess = (data: EventApiResultsType) => {
+        const event = data?.posts?.getPostById || {};
         return flux.dispatch({event, type: EVENT_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
       const result = await appQuery<EventType>(
         flux,
-        'event',
+        'getPostById',
         DATA_TYPE,
         queryVariables,
-        [
-          'address',
-          'added',
-          'content',
-          'endDate',
-          'hasRsvp',
-          'images(from: 0 to: 10) { id, imageId, imageUrl, thumbUrl }',
-          'modified',
-          'name',
-          'eventId',
-          'startDate',
-          'rsvpCount',
-          'tags {name, tagId}',
-          'user { imageUrl, userId, username }',
-          'viewCount',
-          ...eventProps
-        ],
+        [...DEFAULT_EVENT_PROPS, ...eventProps],
         {onSuccess}
       );
 
@@ -225,13 +237,13 @@ export const createEventActions = (
           value: parseNum(longitude)
         },
         tags: {
-          type: 'TagInput!',
-          value: formatTags
+          type: '[TagInput!]',
+          value: formatTags.map((name) => ({name}))
         }
       };
 
-      const onSuccess = (data: PostApiResultsType) => {
-        const eventsByTags = data?.posts?.getPostsByTags || [];
+      const onSuccess = (data: EventApiResultsType) => {
+        const eventsByTags = data?.posts?.getPostListByTags || [];
         return flux.dispatch({
           list: eventsByTags,
           type: EVENT_CONSTANTS.GET_LIST_SUCCESS
@@ -240,26 +252,10 @@ export const createEventActions = (
 
       const result = await appQuery<EventType[]>(
         flux,
-        'eventsByTags',
+        'getPostListByTags',
         DATA_TYPE,
         queryVariables,
-        [
-          'address',
-          'added',
-          'content',
-          'endDate',
-          'hasRsvp',
-          'images(from: 0 to: 10) { id, imageId, imageUrl, thumbUrl }',
-          'modified',
-          'name',
-          'eventId',
-          'startDate',
-          'rsvpCount',
-          'tags {name, tagId}',
-          'user { imageUrl, userId, username }',
-          'viewCount',
-          ...eventProps
-        ],
+        [...DEFAULT_EVENT_PROPS, ...eventProps],
         {onSuccess}
       );
 
@@ -299,13 +295,13 @@ export const createEventActions = (
           value: parseNum(longitude)
         },
         reactions: {
-          type: 'ReactionInput!',
-          value: reactions
+          type: '[ReactionInput!]',
+          value: reactions.map((value) => ({value}))
         }
       };
 
-      const onSuccess = (data: PostApiResultsType) => {
-        const eventsByReactions = data?.posts?.getPostsByReactions || [];
+      const onSuccess = (data: EventApiResultsType) => {
+        const eventsByReactions = data?.posts?.getPostListByReaction || [];
         return flux.dispatch({
           list: eventsByReactions,
           type: EVENT_CONSTANTS.GET_LIST_SUCCESS
@@ -314,26 +310,10 @@ export const createEventActions = (
 
       const result = await appQuery<EventType[]>(
         flux,
-        'eventsByReactions',
+        'getPostListByReaction',
         DATA_TYPE,
         queryVariables,
-        [
-          'address',
-          'added',
-          'content',
-          'endDate',
-          'hasRsvp',
-          'images(from: 0 to: 10) { id, imageId, imageUrl, thumbUrl }',
-          'modified',
-          'name',
-          'eventId',
-          'startDate',
-          'rsvpCount',
-          'tags {name, tagId}',
-          'user { imageUrl, userId, username }',
-          'viewCount',
-          ...eventProps
-        ],
+        [...DEFAULT_EVENT_PROPS, ...eventProps],
         {onSuccess}
       );
 
@@ -352,17 +332,17 @@ export const createEventActions = (
     try {
       const queryVariables = {
         postId: {
-          type: 'ID!',
+          type: 'ID',
           value: parseId(eventId)
         }
       };
 
-      const onSuccess = (data: PostApiResultsType) => {
+      const onSuccess = (data: EventApiResultsType) => {
         const event = data?.posts?.deletePost || {};
         return flux.dispatch({event, type: EVENT_CONSTANTS.REMOVE_ITEM_SUCCESS});
       };
 
-      return await appMutation<EventType>(flux, 'deleteEvent', DATA_TYPE, queryVariables, ['eventId', ...eventProps], {onSuccess});
+      return await appMutation<EventType>(flux, 'deletePost', DATA_TYPE, queryVariables, ['postId', ...eventProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
@@ -381,17 +361,17 @@ export const createEventActions = (
     try {
       const queryVariables = {
         event: {
-          type: 'PostUpdateInput!',
+          type: 'PostInput!',
           value: validateEvent(event, eventAdapterOptions)
         }
       };
 
-      const onSuccess = (data: PostApiResultsType) => {
+      const onSuccess = (data: EventApiResultsType) => {
         const updatedEvent = data?.posts?.updatePost || {};
         return flux.dispatch({event: updatedEvent, type: EVENT_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 
-      return await appMutation<EventType>(flux, 'updateEvent', DATA_TYPE, queryVariables, ['eventId', ...eventProps], {onSuccess});
+      return await appMutation<EventType>(flux, 'updatePost', DATA_TYPE, queryVariables, ['postId', ...eventProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;

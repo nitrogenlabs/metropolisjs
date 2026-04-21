@@ -26,13 +26,14 @@ import {
   tags,
   USER_CONSTANTS,
   users,
+  video,
   websocket
 } from './stores/index.js';
 import {refreshSession} from './utils/api.js';
 import {getConfigFromFlux} from './utils/configUtils.js';
 import {initI18n} from './utils/i18n.js';
 import {MetropolisContext} from './utils/MetropolisProvider.js';
-import {getRefreshWindowMinutes, hydrateSessionFromStorage} from './utils/session.js';
+import {getRefreshWindowMinutes, hydrateSessionFromStorage, parseJwtExpiryMs} from './utils/session.js';
 import {createAction} from './utils/actionFactory.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
@@ -57,6 +58,7 @@ export const onInit = async (flux: FluxFramework) => {
       posts,
       tags,
       users,
+      video,
       websocket
     ]);
     flux.on(USER_CONSTANTS.SIGN_OUT_SUCCESS, () => {
@@ -122,6 +124,7 @@ export const onInit = async (flux: FluxFramework) => {
   if(token) {
     const session = (flux.getState('user.session', {}) || {}) as {expires?: number; issued?: number; token?: string};
     const config = getConfigFromFlux(flux);
+    const tokenExpiresAt = parseJwtExpiryMs(token);
     const sessionLifetimeMinutes = Math.round((Number(session.expires || 0) - Number(session.issued || 0)) / (1000 * 60));
     const refreshWindowMinutes = getRefreshWindowMinutes(
       sessionLifetimeMinutes || 15,
@@ -130,12 +133,14 @@ export const onInit = async (flux: FluxFramework) => {
     const refreshExpiresMinutes = Math.max(1, Number(config.app?.session?.maxMinutes || sessionLifetimeMinutes || 15));
     const expiresAt = Number(session.expires || 0);
 
-    if(!expiresAt) {
+    if(tokenExpiresAt > 0 && Date.now() >= tokenExpiresAt) {
+      await refreshSession(flux, token, refreshExpiresMinutes);
+    } else if(!expiresAt) {
       await refreshSession(flux, token, refreshExpiresMinutes);
     } else {
       const minutesUntilExpiry = Math.round(DateTime.fromMillis(expiresAt).diff(DateTime.local(), 'minutes').toObject().minutes || 0);
 
-      if(minutesUntilExpiry > 0 && minutesUntilExpiry <= refreshWindowMinutes) {
+      if(minutesUntilExpiry <= 0 || minutesUntilExpiry <= refreshWindowMinutes) {
         await refreshSession(flux, token as string, refreshExpiresMinutes);
       }
     }

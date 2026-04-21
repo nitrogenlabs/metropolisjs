@@ -16,6 +16,7 @@ import { parseReaction } from '../adapters/reactionAdapter/reactionAdapter.js';
 import { parseTag } from '../adapters/tagAdapter/tagAdapter.js';
 import { parseTranslation } from '../adapters/translationAdapter/translationAdapter.js';
 import { parseUser } from '../adapters/userAdapter/userAdapter.js';
+import { parseVideo } from '../adapters/videoAdapter/videoAdapter.js';
 
 import type { FluxFramework } from '@nlabs/arkhamjs';
 import type { MessageType } from '../adapters/index.js';
@@ -36,6 +37,7 @@ export interface MetropolisAdapters {
   readonly Tag?: typeof parseTag;
   readonly Translation?: typeof parseTranslation;
   readonly User?: typeof parseUser;
+  readonly Video?: typeof parseVideo;
 }
 
 export interface MetropolisProviderProps {

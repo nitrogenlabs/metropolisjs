@@ -206,4 +206,19 @@ describe('api utilities', () => {
       {token: 'test-token'}
     );
   });
+
+  it('clears auth state and dispatches sign out when graphql returns an expired session error', async () => {
+    const flux = createMockFlux();
+    graphqlQueryMock.mockRejectedValue({errors: ['expired_session']});
+
+    const result = await appQuery(flux as any, 'getItem', 'users', {}, ['userId']);
+
+    expect(result).toEqual({});
+    expect(flux.setState).toHaveBeenCalledWith('user.session', {});
+    expect(flux.clearAppData).toHaveBeenCalledTimes(1);
+    expect(flux.dispatch).toHaveBeenCalledWith({
+      session: {},
+      type: 'USER_SIGN_OUT_SUCCESS'
+    });
+  });
 });

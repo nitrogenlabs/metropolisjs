@@ -267,9 +267,6 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
           added: Number(message?.added || Date.now()),
           content: String(message?.content || ''),
           conversationId: String(message?.conversationId || ''),
-          lastMessage: {
-            content: String(message?.content || '')
-          },
           modified: Number(message?.modified || message?.added || Date.now())
         }
         : undefined);

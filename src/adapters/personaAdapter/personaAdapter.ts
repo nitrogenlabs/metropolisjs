@@ -13,6 +13,7 @@ export interface PersonaType {
   _from?: string;
   _to?: string;
   active?: boolean;
+  afterglow?: number;
   gender?: string;
   hasLike?: boolean;
   hasView?: boolean;
@@ -21,6 +22,7 @@ export interface PersonaType {
   imageCount?: number;
   imageId?: string;
   imageUrl?: string;
+  isBlocked?: boolean;
   isFollowedBy?: boolean;
   isFollowing?: boolean;
   isFriend?: boolean;
@@ -52,6 +54,7 @@ const PersonaInputSchema = z.object({
   _from: z.string().optional(),
   _to: z.string().optional(),
   active: z.boolean().optional(),
+  afterglow: z.number().optional(),
   gender: z.string().max(1).optional(),
   hasLike: z.boolean().optional(),
   hasView: z.boolean().optional(),
@@ -60,6 +63,7 @@ const PersonaInputSchema = z.object({
   imageCount: z.number().optional(),
   imageId: z.string().optional(),
   imageUrl: z.string().optional(),
+  isBlocked: z.boolean().optional(),
   isFollowedBy: z.boolean().optional(),
   isFollowing: z.boolean().optional(),
   isFriend: z.boolean().optional(),
@@ -107,6 +111,7 @@ const performPersonaTransformation = (persona: PersonaType): PersonaType => {
     _id,
     _key,
     active,
+    afterglow,
     gender,
     hasLike,
     hasView,
@@ -115,6 +120,7 @@ const performPersonaTransformation = (persona: PersonaType): PersonaType => {
     imageCount,
     imageId,
     imageUrl,
+    isBlocked,
     isFollowedBy,
     isFollowing,
     isFriend,
@@ -133,6 +139,7 @@ const performPersonaTransformation = (persona: PersonaType): PersonaType => {
   const transformed = removeEmptyKeys({
     ...parseDocument(persona),
     ...(active !== undefined && {active: parseBoolean(active)}),
+    ...(afterglow !== undefined && {afterglow: parseNum(afterglow)}),
     ...(gender && {gender: parseChar(gender, 1)}),
     ...(hasLike !== undefined && {hasLike: parseBoolean(hasLike)}),
     ...(hasView !== undefined && {hasView: parseBoolean(hasView)}),
@@ -141,6 +148,7 @@ const performPersonaTransformation = (persona: PersonaType): PersonaType => {
     ...(imageCount !== undefined && {imageCount: parseNum(imageCount)}),
     ...(imageId && {imageId: parseId(imageId)}),
     ...(imageUrl && {imageUrl}),
+    ...(isBlocked !== undefined && {isBlocked: parseBoolean(isBlocked)}),
     ...(isFollowedBy !== undefined && {isFollowedBy: parseBoolean(isFollowedBy)}),
     ...(isFollowing !== undefined && {isFollowing: parseBoolean(isFollowing)}),
     ...(isFriend !== undefined && {isFriend: parseBoolean(isFriend)}),

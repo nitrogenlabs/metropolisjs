@@ -80,6 +80,7 @@ describe('file utilities', () => {
       width: 0,
       height: 0,
       getContext: vi.fn(() => ({
+        clearRect: vi.fn(),
         drawImage: vi.fn()
       })),
       toDataURL: vi.fn(() => 'data:image/jpeg;base64,mockdata')
@@ -147,6 +148,26 @@ describe('file utilities', () => {
 
       expect(result).toBeDefined();
       expect(result.startsWith('data:image/jpeg;base64,')).toBe(true);
+    });
+
+    it('should reduce output when base64 exceeds maxBytes', async () => {
+      const file = createMockImageFile(1200, 1200, 'test.jpg');
+      mockImage.width = 1200;
+      mockImage.height = 1200;
+
+      const oversizedDataUrl = `data:image/jpeg;base64,${'a'.repeat(2_000_000)}`;
+      const resizedDataUrl = 'data:image/jpeg;base64,small-enough';
+      const mockCanvas = global.document.createElement('canvas') as any;
+
+      mockCanvas.toDataURL
+        .mockImplementationOnce(() => oversizedDataUrl)
+        .mockImplementationOnce(() => oversizedDataUrl)
+        .mockImplementation(() => resizedDataUrl);
+
+      const result = await convertFileToBase64(file, 1200, 100_000);
+
+      expect(result).toBe(resizedDataUrl);
+      expect(mockCanvas.toDataURL).toHaveBeenCalledTimes(3);
     });
 
     it('should reject on file read error', async () => {

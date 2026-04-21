@@ -2,7 +2,7 @@ import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {SessionType} from './api.js';
 import type {ConfigAppSessionType} from '../config/index.js';
 
-const parseJwtExpiryMs = (token: string): number => {
+export const parseJwtExpiryMs = (token: string): number => {
   try {
     if(!token) {
       return 0;
@@ -23,7 +23,7 @@ const parseJwtExpiryMs = (token: string): number => {
   }
 };
 
-const parseJwtIssuedMs = (token: string): number => {
+export const parseJwtIssuedMs = (token: string): number => {
   try {
     if(!token) {
       return 0;

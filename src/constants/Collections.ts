@@ -23,6 +23,7 @@ export const EDGES = {
   HAS_CONNECTION: 'hasConnection',
   HAS_CONVERSATION: 'hasConversation',
   HAS_FILE: 'hasFile',
+  HAS_MEDIA: 'hasMedia',
   HAS_REACTION: 'hasReaction',
   IS_TAGGED: 'isTagged'
 } as const;

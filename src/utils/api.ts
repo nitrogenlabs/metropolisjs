@@ -5,7 +5,7 @@ import {DateTime} from 'luxon';
 import {APP_CONSTANTS} from '../stores/appStore.js';
 import {USER_CONSTANTS} from '../stores/userStore.js';
 import {getConfigFromFlux} from './configUtils.js';
-import {getRefreshWindowMinutes, hydrateSessionFromStorage, storeSession} from './session.js';
+import {clearPersistedSession, getRefreshWindowMinutes, hydrateSessionFromStorage, parseJwtExpiryMs, storeSession} from './session.js';
 
 import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {HunterOptionsType, HunterQueryType} from '@nlabs/rip-hunter';
@@ -66,6 +66,12 @@ export interface SessionType {
 const DEFAULT_REFRESH_WINDOW_MINUTES = 5;
 const DEFAULT_SESSION_MAX_MINUTES = 15;
 
+const clearInvalidSessionState = async (flux: FluxFramework): Promise<void> => {
+  await clearPersistedSession(flux);
+  await flux.clearAppData();
+  await flux.dispatch({session: {}, type: USER_CONSTANTS.SIGN_OUT_SUCCESS});
+};
+
 export const getGraphql = async (
   flux: FluxFramework,
   url: string,
@@ -73,80 +79,98 @@ export const getGraphql = async (
   query: HunterQueryType | HunterQueryType[],
   options: ApiOptions
 ): Promise<ApiResultsType> => {
-  const {onSuccess} = options;
-  const retry: RetryType = {query, responseMethod: onSuccess || (() => {})};
-  const networkType: string = flux.getState('app.networkType') as string;
+  try {
+    const {onSuccess} = options;
+    const retry: RetryType = {query, responseMethod: onSuccess || (() => {})};
+    const networkType: string = flux.getState('app.networkType') as string;
 
-  if(networkType === 'none') {
-    return flux.dispatch({retry, type: APP_CONSTANTS.API_NETWORK_ERROR});
-  }
-
-  const now: number = Date.now();
-  const stateSession: SessionType = (flux.getState('user.session') || {}) as SessionType;
-  const {expires = now, issued = now, token: currentToken}: SessionType = stateSession;
-  let token: string | undefined;
-
-  if(authenticate) {
-    const hydratedSession: SessionType = currentToken ? stateSession : await hydrateSessionFromStorage(flux);
-    const {
-      expires: authExpires = expires,
-      issued: authIssued = issued,
-      token: hydratedToken
-    }: SessionType = hydratedSession || {};
-    token = hydratedToken || currentToken;
-
-    if(!token) {
-      throw new ApiError(['invalid_session'], 'invalid_session');
+    if(networkType === 'none') {
+      return flux.dispatch({retry, type: APP_CONSTANTS.API_NETWORK_ERROR});
     }
 
-    const config = getConfigFromFlux(flux);
-    const nowDate: DateTime = DateTime.local();
-    const expiresDate: DateTime = DateTime.fromMillis(authExpires);
-    const minutesUntilExpiry = Math.round(expiresDate.diff(nowDate, 'minutes').toObject().minutes);
-    const sessionLifetimeMinutes = Math.round((authExpires - authIssued) / (1000 * 60));
-    const refreshWindowMinutes = getRefreshWindowMinutes(
-      sessionLifetimeMinutes || DEFAULT_SESSION_MAX_MINUTES,
-      config.app?.session || {}
-    );
-    const refreshExpiresMinutes = Math.max(
-      1,
-      Number(config.app?.session?.maxMinutes || sessionLifetimeMinutes || DEFAULT_SESSION_MAX_MINUTES)
-    );
+    const now: number = Date.now();
+    const stateSession: SessionType = (flux.getState('user.session') || {}) as SessionType;
+    const {expires = now, issued = now, token: currentToken}: SessionType = stateSession;
+    let token: string | undefined;
 
-    if(minutesUntilExpiry > 0 && minutesUntilExpiry <= refreshWindowMinutes) {
+    if(authenticate) {
+      const hydratedSession: SessionType = currentToken ? stateSession : await hydrateSessionFromStorage(flux);
       const {
-        session: updatedSession = {}
-      }: ApiResultsType = (await refreshSession(flux, token, refreshExpiresMinutes)) || {};
-      const {token: newToken}: SessionType = (updatedSession || {});
+        expires: authExpires = expires,
+        issued: authIssued = issued,
+        token: hydratedToken
+      }: SessionType = hydratedSession || {};
+      token = hydratedToken || currentToken;
 
-      if(!newToken) {
+      if(!token) {
         throw new ApiError(['invalid_session'], 'invalid_session');
       }
 
-      token = newToken;
-    }
-  }
+      const tokenExpiresAt = parseJwtExpiryMs(token);
 
-  return graphqlQuery(url, query, {token: token || ''})
-    .then(async (results) => {
-      await flux.dispatch({type: APP_CONSTANTS.API_NETWORK_SUCCESS});
-
-      return results;
-    })
-    .then((data) => (onSuccess ? onSuccess(data) : data))
-    .catch(async (error) => {
-      const {errors = []} = error;
-
-      if(onSuccess && errors.includes('network_error')) {
-        await flux.dispatch({retry, type: APP_CONSTANTS.API_NETWORK_ERROR});
-        return Promise.reject(error);
-      } else if(errors.includes('invalid_session') || errors.includes('expired_session')) {
-        await flux.clearAppData();
-        return Promise.resolve({});
+      if(tokenExpiresAt > 0 && Date.now() >= tokenExpiresAt) {
+        throw new ApiError(['expired_session'], 'expired_session');
       }
 
-      return Promise.reject(error);
-    });
+      const config = getConfigFromFlux(flux);
+      const nowDate: DateTime = DateTime.local();
+      const expiresDate: DateTime = DateTime.fromMillis(authExpires);
+      const minutesUntilExpiry = Math.round(expiresDate.diff(nowDate, 'minutes').toObject().minutes);
+      const sessionLifetimeMinutes = Math.round((authExpires - authIssued) / (1000 * 60));
+      const refreshWindowMinutes = getRefreshWindowMinutes(
+        sessionLifetimeMinutes || DEFAULT_SESSION_MAX_MINUTES,
+        config.app?.session || {}
+      );
+      const refreshExpiresMinutes = Math.max(
+        1,
+        Number(config.app?.session?.maxMinutes || sessionLifetimeMinutes || DEFAULT_SESSION_MAX_MINUTES)
+      );
+
+      if(minutesUntilExpiry > 0 && minutesUntilExpiry <= refreshWindowMinutes) {
+        const {
+          session: updatedSession = {}
+        }: ApiResultsType = (await refreshSession(flux, token, refreshExpiresMinutes)) || {};
+        const {token: newToken}: SessionType = (updatedSession || {});
+
+        if(!newToken) {
+          throw new ApiError(['invalid_session'], 'invalid_session');
+        }
+
+        token = newToken;
+      }
+    }
+
+    return graphqlQuery(url, query, {token: token || ''})
+      .then(async (results) => {
+        await flux.dispatch({type: APP_CONSTANTS.API_NETWORK_SUCCESS});
+
+        return results;
+      })
+      .then((data) => (onSuccess ? onSuccess(data) : data))
+      .catch(async (error) => {
+        const {errors = []} = error;
+
+        if(onSuccess && errors.includes('network_error')) {
+          await flux.dispatch({retry, type: APP_CONSTANTS.API_NETWORK_ERROR});
+          return Promise.reject(error);
+        } else if(errors.includes('invalid_session') || errors.includes('expired_session')) {
+          await clearInvalidSessionState(flux);
+          return Promise.resolve({});
+        }
+
+        return Promise.reject(error);
+      });
+  } catch(error) {
+    const errors = error instanceof ApiError ? error.errors : [];
+    const message = error instanceof Error ? error.message : '';
+
+    if(errors.includes('invalid_session') || errors.includes('expired_session') || message === 'invalid_session' || message === 'expired_session') {
+      await clearInvalidSessionState(flux);
+      return {};
+    }
+
+    throw error;
+  }
 };
 
 export const createQuery = (
@@ -298,6 +322,15 @@ export const refreshSession = async (
     return null;
   }
 
+  const tokenExpiresAt = parseJwtExpiryMs(String(refreshToken));
+
+  if(tokenExpiresAt > 0 && Date.now() >= tokenExpiresAt) {
+    const error = new Error('expired_session');
+    await clearInvalidSessionState(flux);
+    flux.dispatch({error, type: USER_CONSTANTS.GET_SESSION_ERROR});
+    return null;
+  }
+
   try {
     const config = getConfigFromFlux(flux);
     const requestedExpires = Math.max(
@@ -331,7 +364,7 @@ export const refreshSession = async (
     const errorMessage = error instanceof Error ? error.message : '';
 
     if(errorMessage === 'invalid_session' || errorMessage === 'expired_session') {
-      await flux.clearAppData();
+      await clearInvalidSessionState(flux);
     }
 
     flux.dispatch({error, type: USER_CONSTANTS.GET_SESSION_ERROR});

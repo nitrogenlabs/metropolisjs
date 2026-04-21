@@ -16,6 +16,7 @@ import {createSSEActions} from '../actions/sseActions/sseActions.js';
 import {createTagActions} from '../actions/tagActions/tagActions.js';
 import {createTranslationActions} from '../actions/translationActions/translationActions.js';
 import {createUserActions} from '../actions/userActions/userActions.js';
+import {createVideoActions} from '../actions/videoActions/videoActions.js';
 import {createWebsocketActions} from '../actions/websocketActions/websocketActions.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
@@ -33,6 +34,7 @@ import type {SSEActionsOptions} from '../actions/sseActions/sseActions.js';
 import type {TagActionsOptions} from '../actions/tagActions/tagActions.js';
 import type {TranslationActionsOptions} from '../actions/translationActions/translationActions.js';
 import type {UserActionsOptions} from '../actions/userActions/userActions.js';
+import type {VideoActionsOptions} from '../actions/videoActions/videoActions.js';
 
 const websocketActionCache = new WeakMap<FluxFramework, ReturnType<typeof createWebsocketActions>>();
 
@@ -51,6 +53,7 @@ export type ActionType =
   | 'tag'
   | 'translation'
   | 'user'
+  | 'video'
   | 'websocket';
 
 export type ActionOptions =
@@ -68,6 +71,7 @@ export type ActionOptions =
   | TagActionsOptions
   | TranslationActionsOptions
   | UserActionsOptions
+  | VideoActionsOptions
   | undefined;
 
 export const createAction = <T extends ActionType>(
@@ -118,6 +122,9 @@ export const createAction = <T extends ActionType>(
     case 'user':
       return createUserActions(flux, options as UserActionsOptions);
 
+    case 'video':
+      return createVideoActions(flux, options as VideoActionsOptions);
+
     case 'websocket':
       if(!websocketActionCache.has(flux)) {
         websocketActionCache.set(flux, createWebsocketActions(flux));
@@ -163,6 +170,7 @@ export const createAllActions = (
     'tag',
     'translation',
     'user',
+    'video',
     'websocket'
   ];
 

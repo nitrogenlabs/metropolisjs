@@ -161,7 +161,7 @@ export const createTagActions = (
       const requestedTagProps = sanitizeTagProps(tagProps);
       const queryVariables = {
         itemDocId: {
-          type: 'String!',
+          type: 'ID!',
           value: itemDocId
         },
         tagId: {
@@ -240,7 +240,7 @@ export const createTagActions = (
     try {
       const queryVariables = {
         itemDocId: {
-          type: 'String!',
+          type: 'ID!',
           value: itemDocId
         },
         tagId: {
@@ -336,7 +336,7 @@ export const createTagActions = (
       );
       return await setCachedRequest(flux, 'tag.getTags', {searchQuery, tagProps: requestedTagProps}, result, options);
     } catch(error) {
-      flux.dispatch({error, type: TAG_CONSTANTS.GET_LIST_SUCCESS});
+      flux.dispatch({error, type: TAG_CONSTANTS.GET_LIST_ERROR});
       throw error;
     }
   };
@@ -361,7 +361,7 @@ export const createTagActions = (
 
       const queryVariables = {
         itemDocId: {
-          type: 'String!',
+          type: 'ID!',
           value: itemDocId
         }
       };

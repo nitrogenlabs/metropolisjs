@@ -119,7 +119,7 @@ export const createConnectionActions = (flux: FluxFramework): ConnectionActions 
 
       const queryVariables: Record<string, {type: string; value: unknown}> = {
         fromId: {
-          type: 'String!',
+          type: 'ID!',
           value: parseId(fromId)
         },
         fromType: {
@@ -183,7 +183,7 @@ export const createConnectionActions = (flux: FluxFramework): ConnectionActions 
     try {
       const queryVariables = {
         fromId: {
-          type: 'String!',
+          type: 'ID!',
           value: parseId(fromId)
         },
         fromType: {
@@ -191,7 +191,7 @@ export const createConnectionActions = (flux: FluxFramework): ConnectionActions 
           value: fromType
         },
         toId: {
-          type: 'String!',
+          type: 'ID!',
           value: parseId(toId)
         },
         toType: {

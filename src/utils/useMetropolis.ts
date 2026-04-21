@@ -56,6 +56,9 @@ const buildActionOptions = (
   if (adapters.User) {
     options.user = {userAdapter: adapters.User};
   }
+  if (adapters.Video) {
+    options.video = {videoAdapter: adapters.Video};
+  }
 
   return options;
 };
@@ -104,6 +107,9 @@ const mapActionsToReturnKeys = (actions: Record<string, any>): Record<string, an
   }
   if (actions.user) {
     mapped.userActions = actions.user;
+  }
+  if (actions.video) {
+    mapped.videoActions = actions.video;
   }
   if (actions.websocket) {
     mapped.websocketActions = actions.websocket;
@@ -260,6 +266,11 @@ export const useReactionActions = () => {
 export const useTagActions = () => {
   const {tagActions} = useMetropolis(['tag']);
   return tagActions;
+};
+
+export const useVideoActions = () => {
+  const {videoActions} = useMetropolis(['video']);
+  return videoActions;
 };
 
 export const useTranslationActions = () => {

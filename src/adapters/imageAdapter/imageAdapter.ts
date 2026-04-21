@@ -17,6 +17,7 @@ export interface ImageType {
   height?: number;
   model?: string;
   make?: string;
+  privacy?: string;
   s3Options?: any;
   taken?: number;
   thumb?: string;
@@ -42,6 +43,7 @@ const ImageInputSchema = z.object({
   height: z.number().optional(),
   model: z.string().optional(),
   make: z.string().optional(),
+  privacy: z.string().optional(),
   s3Options: z.any().optional(),
   taken: z.number().optional(),
   thumb: z.string().optional(),
@@ -96,6 +98,7 @@ const performImageTransformation = (image: ImageType): ImageType => {
     height,
     model,
     make,
+    privacy,
     s3Options,
     taken,
     thumb,
@@ -115,6 +118,7 @@ const performImageTransformation = (image: ImageType): ImageType => {
     ...(height !== undefined && {height: parseNum(height)}),
     ...(model && {model: parseString(model, 160)}),
     ...(make && {make: parseString(make, 160)}),
+    ...(privacy && {privacy: parseString(privacy, 32)}),
     ...(s3Options && {s3Options}),
     ...(taken !== undefined && {taken: parseNum(taken)}),
     ...(thumb && {thumb}),

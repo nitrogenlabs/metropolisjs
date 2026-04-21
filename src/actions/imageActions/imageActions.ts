@@ -131,13 +131,14 @@ export const createImageActions = (
   ): Promise<ImageType> => {
     try {
       const validatedImage = validateImage(image, imageAdapterOptions);
-      const {base64, description, itemId} = validatedImage;
+      const {base64, description, itemId, privacy} = validatedImage;
       const formatImage = {
         base64,
         description: description ? parseString(description, 500) : undefined,
         fileType: 'image/jpeg',
         itemId,
-        itemType: type
+        itemType: type,
+        ...(privacy ? {privacy} : {})
       };
 
       const {image: newImage} = await uploadImage(flux, formatImage);
@@ -187,13 +188,14 @@ export const createImageActions = (
   ): Promise<ImageType> => {
     try {
       const validatedImage = validateImage(image, imageAdapterOptions);
-      const {base64, description, itemId} = validatedImage;
+      const {base64, description, itemId, privacy} = validatedImage;
       const formatImage = {
         base64,
         description: description ? parseString(description, 500) : undefined,
         fileType: 'image/jpeg',
         itemId,
-        itemType: type
+        itemType: type,
+        ...(privacy ? {privacy} : {})
       };
 
       const {image: newImage} = await uploadImage(flux, formatImage);
@@ -219,10 +221,23 @@ export const createImageActions = (
       const savedImages = await Promise.all(
         imageFiles.map(async (file: File) => {
           const config = getConfigFromFlux(flux);
-          // Note: app.images.maxImageSize is not part of standard MetropolisEnvironmentConfiguration
-          // Uses default value if not provided in config
-          const maxImageSize = (config as any).app?.images?.maxImageSize || 5242880;
-          const base64 = await convertFileToBase64(file, maxImageSize);
+          const configuredMaxImageSize = Number(
+            (config as any)?.app?.images?.maxImageSize
+            || (config as any)?.maxImageSize
+            || 1200
+          );
+          const configuredMaxImageUploadBytes = Number(
+            (config as any)?.app?.images?.maxImageUploadBytes
+            || (config as any)?.maxImageUploadBytes
+            || 900 * 1024
+          );
+          const maxImageSize = Number.isFinite(configuredMaxImageSize) && configuredMaxImageSize > 0
+            ? configuredMaxImageSize
+            : 1200;
+          const maxImageUploadBytes = Number.isFinite(configuredMaxImageUploadBytes) && configuredMaxImageUploadBytes > 0
+            ? configuredMaxImageUploadBytes
+            : 900 * 1024;
+          const base64 = await convertFileToBase64(file, maxImageSize, maxImageUploadBytes);
           const {type: fileType} = file;
           return add({base64, fileType, itemId}, itemType, requestOptions);
         })
@@ -250,7 +265,7 @@ export const createImageActions = (
 
       const queryVariables = {
         itemId: {
-          type: 'String!',
+          type: 'ID!',
           value: itemId
         }
       };
@@ -325,6 +340,7 @@ export const createImageActions = (
           'imageId',
           'imageUrl',
           'likeCount',
+          'privacy',
           'thumbUrl',
           'width',
           ...imageProps
@@ -359,7 +375,7 @@ export const createImageActions = (
           value: from
         },
         reactions: {
-          type: 'ReactionInput!',
+          type: '[String!]',
           value: reactions
         },
         to: {
@@ -390,6 +406,7 @@ export const createImageActions = (
           'imageId',
           'imageUrl',
           'likeCount',
+          'privacy',
           'thumbUrl',
           'width',
           ...imageProps

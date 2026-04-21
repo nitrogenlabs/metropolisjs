@@ -4,16 +4,16 @@
  */
 
 import {parseId} from '@nlabs/utils';
-import { validateMessageInput } from '../../adapters/messageAdapter/messageAdapter.js';
-import { MESSAGE_CONSTANTS } from '../../stores/messageStore.js';
-import { appMutation, appQuery } from '../../utils/api.js';
-import { clearCachedRequest, getCachedRequest, setCachedRequest } from '../../utils/requestCache.js';
+import {validateMessageInput} from '../../adapters/messageAdapter/messageAdapter.js';
+import {MESSAGE_CONSTANTS} from '../../stores/messageStore.js';
+import {appMutation, appQuery} from '../../utils/api.js';
+import {clearCachedRequest, getCachedRequest, setCachedRequest} from '../../utils/requestCache.js';
 
-import type { FluxFramework } from '@nlabs/arkhamjs';
-import type { ConversationType } from '../../adapters/conversationAdapter/conversationAdapter.js';
-import type { MessageType } from '../../adapters/messageAdapter/messageAdapter.js';
-import type { ApiResultsType } from '../../utils/api.js';
-import type { ActionRequestOptions } from '../../utils/requestCache.js';
+import type {FluxFramework} from '@nlabs/arkhamjs';
+import type {ConversationType} from '../../adapters/conversationAdapter/conversationAdapter.js';
+import type {MessageType} from '../../adapters/messageAdapter/messageAdapter.js';
+import type {ApiResultsType} from '../../utils/api.js';
+import type {ActionRequestOptions} from '../../utils/requestCache.js';
 
 const DATA_TYPE = 'messages';
 
@@ -123,7 +123,7 @@ export const createMessageActions = (
         DATA_TYPE,
         queryVariables,
         ['added', 'content', 'modified', 'messageId', 'user { userId, personaId, name, username, thumbUrl, imageUrl }', ...messageProps],
-        {onSuccess}
+        {}
       ).then((result) => ((result as MessageApiResultsType)?.messages?.addMessage || {}) as MessageType);
     } catch(error) {
       flux.dispatch({error, type: MESSAGE_CONSTANTS.ADD_ITEM_ERROR});
@@ -197,7 +197,7 @@ export const createMessageActions = (
 
       const queryVariables = {
         conversationId: {
-          type: 'String',
+          type: 'ID',
           value: conversationId
         }
       };
@@ -266,7 +266,7 @@ export const createMessageActions = (
         'getConversations',
         DATA_TYPE,
         queryVariables,
-        ['added', 'conversationId', 'direct', 'modified', 'name', 'users { userId, personaId, name, username, thumbUrl, imageUrl }'],
+        ['added', 'content', 'conversationId', 'isDirect', 'modified', 'name', 'users { userId, personaId, name, username, thumbUrl, imageUrl }'],
         {onSuccess}
       );
 
