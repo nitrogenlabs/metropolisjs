@@ -83,7 +83,7 @@ describe('baseActionFactory', () => {
       const mutationAction = actions.createMutationAction(
         'deleteItem',
         'items',
-        {id: {type: 'String!', value: '123'}},
+        {id: { type: 'ID!', value: '123'}},
         [],
         'DELETE_ITEM_SUCCESS',
         'DELETE_ITEM_ERROR',
@@ -158,7 +158,7 @@ describe('baseActionFactory', () => {
       const queryAction = actions.createQueryAction(
         'getItem',
         'items',
-        {id: {type: 'String!', value: '123'}},
+        {id: { type: 'ID!', value: '123'}},
         ['id', 'name'],
         'GET_ITEM_SUCCESS',
         'GET_ITEM_ERROR',
@@ -188,7 +188,7 @@ describe('baseActionFactory', () => {
       const queryAction = actions.createQueryAction(
         'getItem',
         'items',
-        {id: {type: 'String!', value: '123'}},
+        {id: { type: 'ID!', value: '123'}},
         ['id', 'name'],
         'GET_ITEM_SUCCESS',
         'GET_ITEM_ERROR',
@@ -211,7 +211,7 @@ describe('baseActionFactory', () => {
       const queryAction = actions.createQueryAction(
         'getItem',
         'items',
-        {id: {type: 'String!', value: '123'}},
+        {id: { type: 'ID!', value: '123'}},
         ['id', 'name'],
         'GET_ITEM_SUCCESS',
         'GET_ITEM_ERROR',

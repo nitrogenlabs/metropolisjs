@@ -14,6 +14,7 @@ export interface PersonaType {
   _to?: string;
   active?: boolean;
   afterglow?: number;
+  birthdate?: number;
   gender?: string;
   hasLike?: boolean;
   hasView?: boolean;
@@ -55,6 +56,7 @@ const PersonaInputSchema = z.object({
   _to: z.string().optional(),
   active: z.boolean().optional(),
   afterglow: z.number().optional(),
+  birthdate: z.number().optional(),
   gender: z.string().max(1).optional(),
   hasLike: z.boolean().optional(),
   hasView: z.boolean().optional(),
@@ -112,6 +114,7 @@ const performPersonaTransformation = (persona: PersonaType): PersonaType => {
     _key,
     active,
     afterglow,
+    birthdate,
     gender,
     hasLike,
     hasView,
@@ -140,6 +143,7 @@ const performPersonaTransformation = (persona: PersonaType): PersonaType => {
     ...parseDocument(persona),
     ...(active !== undefined && {active: parseBoolean(active)}),
     ...(afterglow !== undefined && {afterglow: parseNum(afterglow)}),
+    ...(birthdate !== undefined && {birthdate: parseNum(birthdate)}),
     ...(gender && {gender: parseChar(gender, 1)}),
     ...(hasLike !== undefined && {hasLike: parseBoolean(hasLike)}),
     ...(hasView !== undefined && {hasView: parseBoolean(hasView)}),

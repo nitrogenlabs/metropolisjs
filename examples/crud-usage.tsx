@@ -584,6 +584,9 @@ export const EventManagerExample = () => {
         [],
         latitude,
         longitude,
+        0,
+        20,
+        new Date().setHours(0, 0, 0, 0),
         ['eventId', 'name', 'content', 'startDate', 'endDate', 'location']
       );
 

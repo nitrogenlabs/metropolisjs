@@ -8,15 +8,38 @@ import { validateImageInput } from '../../adapters/imageAdapter/imageAdapter.js'
 import { getConfigFromFlux } from '../../utils/configUtils.js';
 import { IMAGE_CONSTANTS } from '../../stores/imageStore.js';
 import { appMutation, appQuery, uploadImage } from '../../utils/api.js';
-import { convertFileToBase64 } from '../../utils/file.js';
+import { convertFileToUploadFile } from '../../utils/file.js';
 import { clearCachedRequest, getCachedRequest, setCachedRequest } from '../../utils/requestCache.js';
 
-import type { FluxFramework } from '@nlabs/arkhamjs';
+import type { FluxAction, FluxFramework } from '@nlabs/arkhamjs';
 import type { ImageType } from '../../adapters/imageAdapter/imageAdapter.js';
 import type { ApiResultsType } from '../../utils/api.js';
 import type { ActionRequestOptions } from '../../utils/requestCache.js';
 
 const DATA_TYPE = 'images';
+
+const getImageUploadConfig = (flux: FluxFramework): {maxImageSize: number; maxImageUploadBytes: number} => {
+  const config = getConfigFromFlux(flux);
+  const configuredMaxImageSize = Number(
+    (config as any)?.app?.images?.maxImageSize
+    || (config as any)?.maxImageSize
+    || 1200
+  );
+  const configuredMaxImageUploadBytes = Number(
+    (config as any)?.app?.images?.maxImageUploadBytes
+    || (config as any)?.maxImageUploadBytes
+    || 900 * 1024
+  );
+
+  return {
+    maxImageSize: Number.isFinite(configuredMaxImageSize) && configuredMaxImageSize > 0
+      ? configuredMaxImageSize
+      : 1200,
+    maxImageUploadBytes: Number.isFinite(configuredMaxImageUploadBytes) && configuredMaxImageUploadBytes > 0
+      ? configuredMaxImageUploadBytes
+      : 900 * 1024
+  };
+};
 
 export interface ImageAdapterOptions {
   strict?: boolean;
@@ -131,17 +154,50 @@ export const createImageActions = (
   ): Promise<ImageType> => {
     try {
       const validatedImage = validateImage(image, imageAdapterOptions);
-      const {base64, description, itemId, privacy} = validatedImage;
-      const formatImage = {
-        base64,
-        description: description ? parseString(description, 500) : undefined,
-        fileType: 'image/jpeg',
-        itemId,
-        itemType: type,
-        ...(privacy ? {privacy} : {})
-      };
+      const {base64, description, file, fileType, itemId, name, privacy} = validatedImage;
+      const parsedDescription = description ? parseString(description, 500) : undefined;
+      const parsedItemId = String(itemId || '');
+      let uploadPayload: FormData | Record<string, unknown>;
 
-      const {image: newImage} = await uploadImage(flux, formatImage);
+      if(typeof FormData !== 'undefined' && file instanceof File) {
+        const {maxImageSize, maxImageUploadBytes} = getImageUploadConfig(flux);
+        const uploadFile = await convertFileToUploadFile(file, maxImageSize, maxImageUploadBytes);
+        uploadPayload = new FormData();
+        uploadPayload.set('file', uploadFile);
+        uploadPayload.set('itemType', type);
+
+        if(parsedDescription) {
+          uploadPayload.set('description', parsedDescription);
+        }
+
+        if(parsedItemId) {
+          uploadPayload.set('itemId', parsedItemId);
+        }
+
+        if(uploadFile.type || fileType) {
+          uploadPayload.set('fileType', uploadFile.type || fileType);
+        }
+
+        if(name) {
+          uploadPayload.set('name', name);
+        }
+
+        if(privacy) {
+          uploadPayload.set('privacy', privacy);
+        }
+      } else {
+        uploadPayload = {
+          base64,
+          description: parsedDescription,
+          fileType: fileType || 'image/jpeg',
+          itemId,
+          itemType: type,
+          ...(name ? {name} : {}),
+          ...(privacy ? {privacy} : {})
+        };
+      }
+
+      const {image: newImage} = await uploadImage(flux, uploadPayload);
       await flux.dispatch({image: newImage, type: IMAGE_CONSTANTS.ADD_ITEM_SUCCESS});
       return newImage as ImageType;
     } catch(error) {
@@ -167,9 +223,10 @@ export const createImageActions = (
         }
       };
 
-      const onSuccess = (data: ApiResultsType = {}) => {
-        const deleteImage = data?.deleteImage || {};
-        return flux.dispatch({image: deleteImage, type: IMAGE_CONSTANTS.REMOVE_ITEM_SUCCESS});
+      const onSuccess = async (data: ApiResultsType = {}) => {
+        const deleteImage = (data as {images?: {deleteImage?: ImageType}})?.images?.deleteImage || {};
+        await flux.dispatch({image: deleteImage, type: IMAGE_CONSTANTS.REMOVE_ITEM_SUCCESS});
+        return deleteImage as unknown as FluxAction;
       };
 
       return await appMutation<ImageType>(flux, 'deleteImage', DATA_TYPE, queryVariables, ['id', ...imageProps], {onSuccess});
@@ -188,13 +245,43 @@ export const createImageActions = (
   ): Promise<ImageType> => {
     try {
       const validatedImage = validateImage(image, imageAdapterOptions);
-      const {base64, description, itemId, privacy} = validatedImage;
+      const {base64, description, imageId, itemId, privacy, url} = validatedImage;
+
+      if(imageId && !base64 && !url) {
+        const queryVariables = {
+          image: {
+            type: 'ImagesInput!',
+            value: {
+              imageId,
+              ...(description ? {description: parseString(description, 500)} : {}),
+              ...(privacy ? {privacy} : {})
+            }
+          }
+        };
+
+        const onSuccess = async (data: ApiResultsType = {}) => {
+          const updateImage = (data as {images?: {updateImage?: ImageType}})?.images?.updateImage || {};
+          await flux.dispatch({image: updateImage, type: IMAGE_CONSTANTS.UPDATE_ITEM_SUCCESS});
+          return updateImage as unknown as FluxAction;
+        };
+
+        return await appMutation<ImageType>(
+          flux,
+          'updateImage',
+          DATA_TYPE,
+          queryVariables,
+          ['imageId', 'privacy', 'description', 'thumbUrl', 'imageUrl'],
+          {onSuccess}
+        );
+      }
+
       const formatImage = {
         base64,
         description: description ? parseString(description, 500) : undefined,
         fileType: 'image/jpeg',
         itemId,
         itemType: type,
+        ...(imageId ? {imageId} : {}),
         ...(privacy ? {privacy} : {})
       };
 
@@ -220,26 +307,13 @@ export const createImageActions = (
     try {
       const savedImages = await Promise.all(
         imageFiles.map(async (file: File) => {
-          const config = getConfigFromFlux(flux);
-          const configuredMaxImageSize = Number(
-            (config as any)?.app?.images?.maxImageSize
-            || (config as any)?.maxImageSize
-            || 1200
-          );
-          const configuredMaxImageUploadBytes = Number(
-            (config as any)?.app?.images?.maxImageUploadBytes
-            || (config as any)?.maxImageUploadBytes
-            || 900 * 1024
-          );
-          const maxImageSize = Number.isFinite(configuredMaxImageSize) && configuredMaxImageSize > 0
-            ? configuredMaxImageSize
-            : 1200;
-          const maxImageUploadBytes = Number.isFinite(configuredMaxImageUploadBytes) && configuredMaxImageUploadBytes > 0
-            ? configuredMaxImageUploadBytes
-            : 900 * 1024;
-          const base64 = await convertFileToBase64(file, maxImageSize, maxImageUploadBytes);
           const {type: fileType} = file;
-          return add({base64, fileType, itemId}, itemType, requestOptions);
+          return add({
+            file,
+            fileType,
+            itemId,
+            name: file.name
+          }, itemType, requestOptions);
         })
       );
 
@@ -317,15 +391,17 @@ export const createImageActions = (
         }
       };
 
-      const onSuccess = (data: ApiResultsType = {}) => {
-        const imagesByItem = Array.isArray((data as {imagesByItem?: ImageType[]})?.imagesByItem)
-          ? (data as {imagesByItem?: ImageType[]}).imagesByItem || []
+      const onSuccess = async (data: ApiResultsType = {}) => {
+        const imagesData = (data as {images?: {imagesByItem?: ImageType[]}})?.images || {};
+        const imagesByItem = Array.isArray(imagesData?.imagesByItem)
+          ? imagesData.imagesByItem || []
           : [];
-        return flux.dispatch({
+        await flux.dispatch({
           itemId,
           list: imagesByItem,
           type: IMAGE_CONSTANTS.GET_LIST_SUCCESS
         });
+        return imagesByItem as unknown as FluxAction;
       };
 
       const result = await appQuery<ImageType[]>(

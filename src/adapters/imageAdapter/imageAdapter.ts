@@ -10,11 +10,16 @@ export interface ImageType {
   _oldRev?: string;
   _from?: string;
   _to?: string;
+  base64?: string;
   bucket?: string;
   color?: string;
+  description?: string;
+  file?: File;
   id?: string;
   imageId?: string;
   height?: number;
+  itemId?: string;
+  itemType?: string;
   model?: string;
   make?: string;
   privacy?: string;
@@ -37,10 +42,15 @@ export class ImageValidationError extends Error {
 }
 
 const ImageInputSchema = z.object({
+  base64: z.string().optional(),
   bucket: z.string().optional(),
   color: z.string().optional(),
+  description: z.string().optional(),
+  file: z.any().optional(),
   imageId: z.string().optional(),
   height: z.number().optional(),
+  itemId: z.string().optional(),
+  itemType: z.string().optional(),
   model: z.string().optional(),
   make: z.string().optional(),
   privacy: z.string().optional(),
@@ -91,11 +101,16 @@ const performImageTransformation = (image: ImageType): ImageType => {
   const {
     _id,
     _key,
+    base64,
     bucket,
     color,
+    description,
+    file,
     id,
     imageId,
     height,
+    itemId,
+    itemType,
     model,
     make,
     privacy,
@@ -113,9 +128,14 @@ const performImageTransformation = (image: ImageType): ImageType => {
     ...parseDocument(image),
     ...((_key || imageId) && {imageId: parseId(_key || imageId || '')}),
     ...((_id || id || _key || imageId) && {id: parseArangoId(_id || id || `images/${_key || imageId}`)}),
+    ...(base64 && {base64}),
     ...(bucket && {bucket}),
     ...(color && {color}),
+    ...(description && {description: parseString(description, 500)}),
+    ...(file && {file}),
     ...(height !== undefined && {height: parseNum(height)}),
+    ...(itemId && {itemId: parseId(itemId)}),
+    ...(itemType && {itemType: parseString(itemType, 32)}),
     ...(model && {model: parseString(model, 160)}),
     ...(make && {make: parseString(make, 160)}),
     ...(privacy && {privacy: parseString(privacy, 32)}),

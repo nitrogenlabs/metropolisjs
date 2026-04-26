@@ -65,6 +65,7 @@ export interface PersonaActions {
     from?: number,
     to?: number,
     personaProps?: string[],
+    filters?: Record<string, unknown>,
     requestOptions?: ActionRequestOptions
   ) => Promise<PersonaType[]>;
   readonly unfollowPersona: (targetPersonaId: string) => Promise<boolean>;
@@ -293,13 +294,14 @@ export const createPersonaActions = (
     from: number = 0,
     to: number = 10,
     personaProps: string[] = [],
+    filters: Record<string, unknown> = {},
     requestOptions: ActionRequestOptions = {}
   ): Promise<PersonaType[]> => {
     try {
       const cachedResult = getCachedRequest<PersonaType[]>(
         flux,
         'persona.listByTags',
-        {username, tags, from, to, personaProps},
+        {username, tags, from, to, personaProps, filters},
         requestOptions
       );
 
@@ -308,6 +310,10 @@ export const createPersonaActions = (
       }
 
       const queryVariables = {
+        filters: {
+          type: 'PersonaListFiltersInput',
+          value: filters
+        },
         from: {
           type: 'Int',
           value: from
@@ -339,7 +345,7 @@ export const createPersonaActions = (
         [...DEFAULT_PERSONA_PROPS, ...personaProps],
         {onSuccess}
       );
-      return await setCachedRequest(flux, 'persona.listByTags', {username, tags, from, to, personaProps}, result, requestOptions);
+      return await setCachedRequest(flux, 'persona.listByTags', {username, tags, from, to, personaProps, filters}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: PERSONA_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -414,7 +420,7 @@ export const createPersonaActions = (
     try {
       const queryVariables = {
         itemId: {
-          type: 'String!',
+          type: 'ID!',
           value: parseId(targetPersonaId)
         },
         itemType: {
@@ -456,7 +462,7 @@ export const createPersonaActions = (
     try {
       const queryVariables = {
         itemId: {
-          type: 'String!',
+          type: 'ID!',
           value: parseId(targetPersonaId)
         },
         itemType: {
@@ -498,7 +504,7 @@ export const createPersonaActions = (
     try {
       const queryVariables = {
         itemId: {
-          type: 'String!',
+          type: 'ID!',
           value: parseId(targetPersonaId)
         },
         itemType: {
@@ -540,7 +546,7 @@ export const createPersonaActions = (
     try {
       const queryVariables = {
         itemId: {
-          type: 'String!',
+          type: 'ID!',
           value: parseId(targetPersonaId)
         },
         itemType: {

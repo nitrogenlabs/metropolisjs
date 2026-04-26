@@ -1,12 +1,129 @@
-const getBase64ByteSize = (dataUrl: string): number => {
-  const [, base64 = ''] = dataUrl.split(',');
-  const paddingLength = base64.endsWith('==')
-    ? 2
-    : base64.endsWith('=')
-      ? 1
-      : 0;
+const getUploadPayloadByteSize = (dataUrl: string): number => dataUrl.length;
 
-  return Math.max(0, Math.floor((base64.length * 3) / 4) - paddingLength);
+const getFileNameWithoutExtension = (name: string): string => (
+  name.split('.').slice(0, -1).join('.') || name
+);
+
+const createImageCanvas = (file: File, maxSize: number): Promise<{
+  canvas: HTMLCanvasElement;
+  context: CanvasRenderingContext2D;
+  height: number;
+  width: number;
+}> => new Promise((resolve, reject) => {
+  const image = new Image();
+  const objectUrl = URL.createObjectURL(file);
+
+  image.onload = () => {
+    URL.revokeObjectURL(objectUrl);
+
+    const canvas: HTMLCanvasElement = document.createElement('canvas');
+    const {height, width} = image;
+    let updatedHeight: number = height;
+    let updatedWidth: number = width;
+
+    if(width > height) {
+      if(width > maxSize) {
+        updatedHeight *= maxSize / width;
+        updatedWidth = maxSize;
+      }
+    } else if(height > maxSize) {
+      updatedWidth *= maxSize / height;
+      updatedHeight = maxSize;
+    }
+
+    const context = canvas.getContext('2d');
+
+    if(!context) {
+      reject(new Error('Unable to prepare image upload.'));
+      return;
+    }
+
+    resolve({
+      canvas,
+      context,
+      height: Math.max(1, Math.round(updatedHeight)),
+      width: Math.max(1, Math.round(updatedWidth))
+    });
+  };
+
+  image.onerror = () => {
+    URL.revokeObjectURL(objectUrl);
+    reject(new Error('Unable to prepare image upload.'));
+  };
+
+  image.src = objectUrl;
+});
+
+const renderImageFile = (
+  canvas: HTMLCanvasElement,
+  context: CanvasRenderingContext2D,
+  image: CanvasImageSource,
+  width: number,
+  height: number,
+  quality: number,
+  name: string
+): Promise<File> => new Promise((resolve, reject) => {
+  canvas.width = width;
+  canvas.height = height;
+  context.clearRect(0, 0, width, height);
+  context.drawImage(image, 0, 0, width, height);
+
+  canvas.toBlob((blob) => {
+    if(!blob) {
+      reject(new Error('Unable to prepare image upload.'));
+      return;
+    }
+
+    resolve(new File([blob], `${getFileNameWithoutExtension(name)}.jpg`, {type: 'image/jpeg'}));
+  }, 'image/jpeg', quality);
+});
+
+export const convertFileToUploadFile = async (
+  file: File,
+  maxSize: number,
+  maxBytes: number = 900 * 1024
+): Promise<File> => {
+  if(!file.type.startsWith('image/') || typeof document === 'undefined') {
+    return file;
+  }
+
+  const image = new Image();
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error('Unable to prepare image upload.'));
+      image.src = objectUrl;
+    });
+
+    const {canvas, context, height, width} = await createImageCanvas(file, maxSize);
+    let currentWidth = width;
+    let currentHeight = height;
+    let quality = 0.82;
+    let uploadFile = await renderImageFile(canvas, context, image, currentWidth, currentHeight, quality, file.name);
+
+    while(uploadFile.size > maxBytes && quality > 0.45) {
+      quality = Math.max(0.45, Number((quality - 0.08).toFixed(2)));
+      uploadFile = await renderImageFile(canvas, context, image, currentWidth, currentHeight, quality, file.name);
+    }
+
+    while(uploadFile.size > maxBytes && (currentWidth > 320 || currentHeight > 320)) {
+      currentWidth = Math.max(320, Math.round(currentWidth * 0.85));
+      currentHeight = Math.max(320, Math.round(currentHeight * 0.85));
+      quality = 0.78;
+      uploadFile = await renderImageFile(canvas, context, image, currentWidth, currentHeight, quality, file.name);
+
+      while(uploadFile.size > maxBytes && quality > 0.45) {
+        quality = Math.max(0.45, Number((quality - 0.08).toFixed(2)));
+        uploadFile = await renderImageFile(canvas, context, image, currentWidth, currentHeight, quality, file.name);
+      }
+    }
+
+    return uploadFile;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
 };
 
 export const convertFileToBase64 = (
@@ -55,12 +172,12 @@ export const convertFileToBase64 = (
         renderImage(currentWidth, currentHeight);
 
         let dataUrl: string = canvas.toDataURL('image/jpeg', quality);
-        let byteSize = getBase64ByteSize(dataUrl);
+        let byteSize = getUploadPayloadByteSize(dataUrl);
 
         while(byteSize > maxBytes && quality > 0.45) {
           quality = Math.max(0.45, Number((quality - 0.08).toFixed(2)));
           dataUrl = canvas.toDataURL('image/jpeg', quality);
-          byteSize = getBase64ByteSize(dataUrl);
+          byteSize = getUploadPayloadByteSize(dataUrl);
         }
 
         while(byteSize > maxBytes && (currentWidth > 320 || currentHeight > 320)) {
@@ -69,12 +186,12 @@ export const convertFileToBase64 = (
           quality = 0.78;
           renderImage(currentWidth, currentHeight);
           dataUrl = canvas.toDataURL('image/jpeg', quality);
-          byteSize = getBase64ByteSize(dataUrl);
+          byteSize = getUploadPayloadByteSize(dataUrl);
 
           while(byteSize > maxBytes && quality > 0.45) {
             quality = Math.max(0.45, Number((quality - 0.08).toFixed(2)));
             dataUrl = canvas.toDataURL('image/jpeg', quality);
-            byteSize = getBase64ByteSize(dataUrl);
+            byteSize = getUploadPayloadByteSize(dataUrl);
           }
         }
 

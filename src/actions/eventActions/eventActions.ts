@@ -13,7 +13,7 @@ import type { FluxFramework } from '@nlabs/arkhamjs';
 import type { EventType } from '../../adapters/eventAdapter/eventAdapter.js';
 import type { ActionRequestOptions } from '../../utils/requestCache.js';
 
-const DATA_TYPE = 'posts';
+const DATA_TYPE = 'events';
 
 const DEFAULT_EVENT_PROPS = [
   'added',
@@ -25,7 +25,7 @@ const DEFAULT_EVENT_PROPS = [
   'longitude',
   'modified',
   'name',
-  'postId',
+  'eventId',
   'startDate',
   'rsvpCount',
   'tags {name, tagId}',
@@ -34,13 +34,13 @@ const DEFAULT_EVENT_PROPS = [
 ];
 
 type EventApiResultsType = {
-  posts?: {
-    addPost?: EventType;
-    deletePost?: EventType;
-    getPostById?: EventType;
-    getPostListByReaction?: EventType[];
-    getPostListByTags?: EventType[];
-    updatePost?: EventType;
+  events?: {
+    addEvent?: EventType;
+    deleteEvent?: EventType;
+    getEvent?: EventType;
+    getEventsByReactions?: EventType[];
+    getEventsByTags?: EventType[];
+    updateEvent?: EventType;
   };
 };
 
@@ -59,8 +59,8 @@ export interface EventActionsOptions {
 export interface EventActions {
   readonly addEvent: (eventData: Partial<EventType>, eventProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventType>;
   readonly getEvent: (eventId: string, eventProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventType>;
-  readonly getEventsByTags: (tags: string[], latitude: number, longitude: number, eventProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventType[]>;
-  readonly getEventsByReactions: (reactions: string[], latitude: number, longitude: number, eventProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventType[]>;
+  readonly getEventsByTags: (tags: string[], latitude: number, longitude: number, from?: number, to?: number, startDate?: number, eventProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventType[]>;
+  readonly getEventsByReactions: (reactions: string[], latitude: number, longitude: number, from?: number, to?: number, startDate?: number, eventProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventType[]>;
   readonly deleteEvent: (eventId: string, eventProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventType>;
   readonly updateEvent: (event: Partial<EventType>, eventProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventType>;
   readonly updateEventAdapter: (adapter: (input: unknown, options?: EventAdapterOptions) => any) => void;
@@ -146,17 +146,17 @@ export const createEventActions = (
     try {
       const queryVariables = {
         event: {
-          type: 'PostInput!',
+          type: 'EventInput!',
           value: validateEvent(eventData, eventAdapterOptions)
         }
       };
 
       const onSuccess = (data: EventApiResultsType) => {
-        const addPost = data?.posts?.addPost || {};
-        return flux.dispatch({event: addPost, type: EVENT_CONSTANTS.ADD_ITEM_SUCCESS});
+        const event = data?.events?.addEvent || {};
+        return flux.dispatch({event, type: EVENT_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
-      return await appMutation<EventType>(flux, 'addPost', DATA_TYPE, queryVariables, ['postId', ...eventProps], {onSuccess});
+      return await appMutation<EventType>(flux, 'addEvent', DATA_TYPE, queryVariables, ['eventId', ...eventProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
@@ -179,20 +179,20 @@ export const createEventActions = (
       }
 
       const queryVariables = {
-        postId: {
+        eventId: {
           type: 'ID',
           value: parseId(eventId)
         }
       };
 
       const onSuccess = (data: EventApiResultsType) => {
-        const event = data?.posts?.getPostById || {};
+        const event = data?.events?.getEvent || {};
         return flux.dispatch({event, type: EVENT_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
       const result = await appQuery<EventType>(
         flux,
-        'getPostById',
+        'getEvent',
         DATA_TYPE,
         queryVariables,
         [...DEFAULT_EVENT_PROPS, ...eventProps],
@@ -210,6 +210,9 @@ export const createEventActions = (
     tags: string[],
     latitude: number,
     longitude: number,
+    from = 0,
+    to = 30,
+    startDate = 0,
     eventProps: string[] = [],
     requestOptions: ActionRequestOptions = {}
   ): Promise<EventType[]> => {
@@ -219,7 +222,7 @@ export const createEventActions = (
       const cachedResult = getCachedRequest<EventType[]>(
         flux,
         'event.getEventsByTags',
-        {eventProps, latitude, longitude, tags: formatTags},
+        {eventProps, from, latitude, longitude, startDate, tags: formatTags, to},
         requestOptions
       );
 
@@ -236,14 +239,26 @@ export const createEventActions = (
           type: 'Float',
           value: parseNum(longitude)
         },
+        from: {
+          type: 'Int',
+          value: parseNum(from)
+        },
+        startDate: {
+          type: 'Float',
+          value: parseNum(startDate)
+        },
         tags: {
           type: '[TagInput!]',
           value: formatTags.map((name) => ({name}))
+        },
+        to: {
+          type: 'Int',
+          value: parseNum(to)
         }
       };
 
       const onSuccess = (data: EventApiResultsType) => {
-        const eventsByTags = data?.posts?.getPostListByTags || [];
+        const eventsByTags = data?.events?.getEventsByTags || [];
         return flux.dispatch({
           list: eventsByTags,
           type: EVENT_CONSTANTS.GET_LIST_SUCCESS
@@ -252,14 +267,14 @@ export const createEventActions = (
 
       const result = await appQuery<EventType[]>(
         flux,
-        'getPostListByTags',
+        'getEventsByTags',
         DATA_TYPE,
         queryVariables,
         [...DEFAULT_EVENT_PROPS, ...eventProps],
         {onSuccess}
       );
 
-      return await setCachedRequest(flux, 'event.getEventsByTags', {eventProps, latitude, longitude, tags: formatTags}, result, requestOptions);
+      return await setCachedRequest(flux, 'event.getEventsByTags', {eventProps, from, latitude, longitude, startDate, tags: formatTags, to}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -270,6 +285,9 @@ export const createEventActions = (
     reactions: string[],
     latitude: number,
     longitude: number,
+    from = 0,
+    to = 30,
+    startDate = 0,
     eventProps: string[] = [],
     requestOptions: ActionRequestOptions = {}
   ): Promise<EventType[]> => {
@@ -277,7 +295,7 @@ export const createEventActions = (
       const cachedResult = getCachedRequest<EventType[]>(
         flux,
         'event.getEventsByReactions',
-        {eventProps, latitude, longitude, reactions},
+        {eventProps, from, latitude, longitude, reactions, startDate, to},
         requestOptions
       );
 
@@ -294,14 +312,26 @@ export const createEventActions = (
           type: 'Float',
           value: parseNum(longitude)
         },
+        from: {
+          type: 'Int',
+          value: parseNum(from)
+        },
         reactions: {
           type: '[ReactionInput!]',
           value: reactions.map((value) => ({value}))
+        },
+        startDate: {
+          type: 'Float',
+          value: parseNum(startDate)
+        },
+        to: {
+          type: 'Int',
+          value: parseNum(to)
         }
       };
 
       const onSuccess = (data: EventApiResultsType) => {
-        const eventsByReactions = data?.posts?.getPostListByReaction || [];
+        const eventsByReactions = data?.events?.getEventsByReactions || [];
         return flux.dispatch({
           list: eventsByReactions,
           type: EVENT_CONSTANTS.GET_LIST_SUCCESS
@@ -310,14 +340,14 @@ export const createEventActions = (
 
       const result = await appQuery<EventType[]>(
         flux,
-        'getPostListByReaction',
+        'getEventsByReactions',
         DATA_TYPE,
         queryVariables,
         [...DEFAULT_EVENT_PROPS, ...eventProps],
         {onSuccess}
       );
 
-      return await setCachedRequest(flux, 'event.getEventsByReactions', {eventProps, latitude, longitude, reactions}, result, requestOptions);
+      return await setCachedRequest(flux, 'event.getEventsByReactions', {eventProps, from, latitude, longitude, reactions, startDate, to}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -331,18 +361,18 @@ export const createEventActions = (
   ): Promise<EventType> => {
     try {
       const queryVariables = {
-        postId: {
+        eventId: {
           type: 'ID',
           value: parseId(eventId)
         }
       };
 
       const onSuccess = (data: EventApiResultsType) => {
-        const event = data?.posts?.deletePost || {};
+        const event = data?.events?.deleteEvent || {};
         return flux.dispatch({event, type: EVENT_CONSTANTS.REMOVE_ITEM_SUCCESS});
       };
 
-      return await appMutation<EventType>(flux, 'deletePost', DATA_TYPE, queryVariables, ['postId', ...eventProps], {onSuccess});
+      return await appMutation<EventType>(flux, 'deleteEvent', DATA_TYPE, queryVariables, ['eventId', ...eventProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
@@ -361,17 +391,17 @@ export const createEventActions = (
     try {
       const queryVariables = {
         event: {
-          type: 'PostInput!',
+          type: 'EventInput!',
           value: validateEvent(event, eventAdapterOptions)
         }
       };
 
       const onSuccess = (data: EventApiResultsType) => {
-        const updatedEvent = data?.posts?.updatePost || {};
+        const updatedEvent = data?.events?.updateEvent || {};
         return flux.dispatch({event: updatedEvent, type: EVENT_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 
-      return await appMutation<EventType>(flux, 'updatePost', DATA_TYPE, queryVariables, ['postId', ...eventProps], {onSuccess});
+      return await appMutation<EventType>(flux, 'updateEvent', DATA_TYPE, queryVariables, ['eventId', ...eventProps], {onSuccess});
     } catch(error) {
       flux.dispatch({error, type: EVENT_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;

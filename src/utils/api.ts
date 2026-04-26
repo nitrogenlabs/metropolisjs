@@ -20,6 +20,7 @@ export type ReaktorDbCollection =
   'connections' |
   'contents' |
   'conversations' |
+  'events' |
   'files' |
   'groups' |
   'images' |
@@ -308,6 +309,31 @@ export const uploadImage = (
 
   const headers = new Headers();
   headers.set('Authorization', `Bearer ${token}`);
+
+  if(typeof FormData !== 'undefined' && image instanceof FormData) {
+    headers.set('Accept', 'application/json');
+
+    return fetch(uploadImageUrl, {
+      body: image,
+      headers,
+      method: 'POST'
+    }).then(async (response) => {
+      const responseType = response.headers.get('content-type') || '';
+      const data = responseType.includes('application/json')
+        ? await response.json()
+        : await response.text();
+
+      if(!response.ok) {
+        const message = typeof data === 'object' && data && 'error' in data
+          ? String((data as {error?: string}).error || response.statusText)
+          : String(data || response.statusText);
+        throw new ApiError(['upload_error'], message);
+      }
+
+      return data as ApiResultsType;
+    });
+  }
+
   return post(uploadImageUrl, image, {headers, ...options});
 };
 

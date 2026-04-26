@@ -104,7 +104,7 @@ describe('createTagActions', () => {
       'tags',
       {
         itemDocId: {
-          type: 'String!',
+          type: 'ID!',
           value: 'personas/persona123'
         }
       },
@@ -151,7 +151,7 @@ describe('createTagActions', () => {
       'tags',
       {
         itemDocId: {
-          type: 'String!',
+          type: 'ID!',
           value: 'personas/persona123'
         },
         tagId: {
@@ -178,7 +178,7 @@ describe('createTagActions', () => {
       'tags',
       {
         itemDocId: {
-          type: 'String!',
+          type: 'ID!',
           value: 'personas/persona123'
         },
         tagId: {
