@@ -174,9 +174,11 @@ export interface UserApiResultsType {
     readonly refreshSession?: SessionType;
     readonly remove?: Partial<User>;
     readonly resetPassword?: boolean;
+    readonly saveBillingCard?: Partial<User>;
     readonly session?: Partial<User>;
     readonly signIn?: Partial<User>;
     readonly signUp?: Partial<User>;
+    readonly deleteBillingCard?: Partial<User>;
     readonly update?: Partial<User>;
     readonly updateUser?: Partial<User>;
     readonly updatePassword?: Partial<boolean>;
@@ -202,6 +204,7 @@ export interface userActions {
   list: (userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
   listByConnection: (userId: string, from?: number, to?: number, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
   itemById: (userId: string, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
+  deleteBillingCard: (userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
   listByLatest: (username?: string, from?: number, to?: number, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
   listByReactions: (
     username: string,
@@ -226,6 +229,7 @@ export interface userActions {
   resetPassword: (username: string, password: string, code: string, type: 'email' | 'phone', requestOptions?: ActionRequestOptions) => Promise<boolean>;
   search: (query: string, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
   session: (userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
+  saveBillingCard: (card: Record<string, unknown>, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
   signIn: (user: Partial<User>, expires?: number, requestOptions?: ActionRequestOptions) => Promise<SessionType>;
   signOut: (requestOptions?: ActionRequestOptions) => Promise<boolean>;
   signUp: (userInput: Partial<User>, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
@@ -566,6 +570,98 @@ export const createUserActions = (
     );
 
     return setCachedRequest<User>(flux, `user.itemById:${userId}`, {userId, userProps}, result as User, requestOptions);
+  };
+
+  const saveBillingCard = async (
+    card: Record<string, unknown>,
+    userProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<User> => {
+    const queryVariables = {
+      card: {
+        type: 'CreditCardInput!',
+        value: card
+      }
+    };
+
+    const onSuccess = (data: ApiResultsType = {}) => {
+      const user = ((data as unknown as UserApiResultsType)?.users?.saveBillingCard) || {};
+
+      if((user as any)?.userId && (user as any).userId === flux.getState('user.session.userId')) {
+        syncStoredSession(flux, user as Record<string, unknown>);
+      }
+
+      return flux.dispatch({
+        type: USER_CONSTANTS.UPDATE_ITEM_SUCCESS,
+        user
+      });
+    };
+
+    const returnProps = sanitizeUserProps([
+      'modified',
+      'stripeCardBrand',
+      'stripeCardId',
+      'stripeCardLast4',
+      'userId',
+      'username',
+      ...userProps
+    ]);
+    const sessionUserId = String(flux.getState('user.session.userId') || '');
+
+    try {
+      return await appMutation(
+        flux,
+        'saveBillingCard',
+        DATA_TYPE,
+        queryVariables,
+        returnProps,
+        {onSuccess}
+      );
+    } finally {
+      await clearUserRequestCaches(sessionUserId);
+    }
+  };
+
+  const deleteBillingCard = async (
+    userProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<User> => {
+    const onSuccess = (data: ApiResultsType = {}) => {
+      const user = ((data as unknown as UserApiResultsType)?.users?.deleteBillingCard) || {};
+
+      if((user as any)?.userId && (user as any).userId === flux.getState('user.session.userId')) {
+        syncStoredSession(flux, user as Record<string, unknown>);
+      }
+
+      return flux.dispatch({
+        type: USER_CONSTANTS.UPDATE_ITEM_SUCCESS,
+        user
+      });
+    };
+
+    const returnProps = sanitizeUserProps([
+      'modified',
+      'stripeCardBrand',
+      'stripeCardId',
+      'stripeCardLast4',
+      'userId',
+      'username',
+      ...userProps
+    ]);
+    const sessionUserId = String(flux.getState('user.session.userId') || '');
+
+    try {
+      return await appMutation(
+        flux,
+        'deleteBillingCard',
+        DATA_TYPE,
+        {},
+        returnProps,
+        {onSuccess}
+      );
+    } finally {
+      await clearUserRequestCaches(sessionUserId);
+    }
   };
 
   const list = async (userProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<User[]> => {
@@ -923,6 +1019,7 @@ export const createUserActions = (
     confirmSignUp,
     currentAuthenticatedUser,
     currentUser,
+    deleteBillingCard,
     list,
     forgotPassword,
     isLoggedIn,
@@ -934,14 +1031,15 @@ export const createUserActions = (
     refreshSession: refreshSessionAction,
     remove,
     resetPassword,
+    saveBillingCard,
     search,
     session,
     signIn,
     signOut,
-	    signUp,
-	    updatePassword,
-	    updateUser,
-	    updateUserAdapter: userBase.updateAdapter,
-	    updateUserAdapterOptions: userBase.updateOptions
-	  };
+    signUp,
+    updatePassword,
+    updateUser,
+    updateUserAdapter: userBase.updateAdapter,
+    updateUserAdapterOptions: userBase.updateOptions
+  };
 };

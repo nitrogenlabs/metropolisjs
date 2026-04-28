@@ -15,6 +15,7 @@ export {PERMISSION_CONSTANTS, permissions} from './permissionStore.js';
 export {POST_CONSTANTS, posts} from './postStore.js';
 export {PERSONA_CONSTANTS, personas} from './personaStore.js';
 export {REACTION_CONSTANTS, reactions} from './reactionStore.js';
+export {SUBSCRIPTION_CONSTANTS, subscriptions} from './subscriptionStore.js';
 export {TAG_CONSTANTS, tags} from './tagStore.js';
 export {TRANSLATION_CONSTANTS, translations} from './translationStore.js';
 export {USER_CONSTANTS, users} from './userStore.js';

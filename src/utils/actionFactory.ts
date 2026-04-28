@@ -13,6 +13,7 @@ import {createPostActions} from '../actions/postActions/postActions.js';
 import {createPersonaActions} from '../actions/personaActions/personaActions.js';
 import {createReactionActions} from '../actions/reactionActions/reactionActions.js';
 import {createSSEActions} from '../actions/sseActions/sseActions.js';
+import {createSubscriptionActions} from '../actions/subscriptionActions/subscriptionActions.js';
 import {createTagActions} from '../actions/tagActions/tagActions.js';
 import {createTranslationActions} from '../actions/translationActions/translationActions.js';
 import {createUserActions} from '../actions/userActions/userActions.js';
@@ -50,6 +51,7 @@ export type ActionType =
   | 'persona'
   | 'reaction'
   | 'sse'
+  | 'subscription'
   | 'tag'
   | 'translation'
   | 'user'
@@ -113,6 +115,9 @@ export const createAction = <T extends ActionType>(
     case 'sse':
       return createSSEActions(flux, options as SSEActionsOptions);
 
+    case 'subscription':
+      return createSubscriptionActions(flux);
+
     case 'tag':
       return createTagActions(flux, options as TagActionsOptions);
 
@@ -167,6 +172,7 @@ export const createAllActions = (
     'persona',
     'reaction',
     'sse',
+    'subscription',
     'tag',
     'translation',
     'user',

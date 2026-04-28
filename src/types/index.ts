@@ -8,4 +8,5 @@ export * from './common.types.js';
 export * from './conversations.types.js';
 export * from './edges.types.js';
 export * from './groups.types.js';
+export * from './subscriptions.types.js';
 export * from './videos.types.js';

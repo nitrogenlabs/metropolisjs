@@ -99,6 +99,9 @@ const mapActionsToReturnKeys = (actions: Record<string, any>): Record<string, an
   if (actions.reaction) {
     mapped.reactionActions = actions.reaction;
   }
+  if (actions.subscription) {
+    mapped.subscriptionActions = actions.subscription;
+  }
   if (actions.tag) {
     mapped.tagActions = actions.tag;
   }
@@ -241,6 +244,11 @@ export const useLocationActions = () => {
 export const useMessageActions = () => {
   const {messageActions} = useMetropolis(['message']);
   return messageActions;
+};
+
+export const useSubscriptionActions = () => {
+  const {subscriptionActions} = useMetropolis(['subscription']);
+  return subscriptionActions;
 };
 
 export const usePermissionActions = () => {

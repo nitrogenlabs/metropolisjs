@@ -2,27 +2,27 @@
  * Copyright (c) 2021-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import { createContext } from 'react';
+import {createContext} from 'react';
 
-import { parseContent } from '../adapters/contentAdapter/contentAdapter.js';
-import { parseEvent } from '../adapters/eventAdapter/eventAdapter.js';
-import { parseImage } from '../adapters/imageAdapter/imageAdapter.js';
-import { parseLocation } from '../adapters/locationAdapter/locationAdapter.js';
-import { parseMessage } from '../adapters/messageAdapter/messageAdapter.js';
-import { parsePermission } from '../adapters/permissionAdapter/permissionAdapter.js';
-import { parsePost } from '../adapters/postAdapter/postAdapter.js';
-import { parsePersona } from '../adapters/personaAdapter/personaAdapter.js';
-import { parseReaction } from '../adapters/reactionAdapter/reactionAdapter.js';
-import { parseTag } from '../adapters/tagAdapter/tagAdapter.js';
-import { parseTranslation } from '../adapters/translationAdapter/translationAdapter.js';
-import { parseUser } from '../adapters/userAdapter/userAdapter.js';
-import { parseVideo } from '../adapters/videoAdapter/videoAdapter.js';
+import {parseContent} from '../adapters/contentAdapter/contentAdapter.js';
+import {parseEvent} from '../adapters/eventAdapter/eventAdapter.js';
+import {parseImage} from '../adapters/imageAdapter/imageAdapter.js';
+import {parseLocation} from '../adapters/locationAdapter/locationAdapter.js';
+import {parseMessage} from '../adapters/messageAdapter/messageAdapter.js';
+import {parsePermission} from '../adapters/permissionAdapter/permissionAdapter.js';
+import {parsePersona} from '../adapters/personaAdapter/personaAdapter.js';
+import {parsePost} from '../adapters/postAdapter/postAdapter.js';
+import {parseReaction} from '../adapters/reactionAdapter/reactionAdapter.js';
+import {parseTag} from '../adapters/tagAdapter/tagAdapter.js';
+import {parseTranslation} from '../adapters/translationAdapter/translationAdapter.js';
+import {parseUser} from '../adapters/userAdapter/userAdapter.js';
+import {parseVideo} from '../adapters/videoAdapter/videoAdapter.js';
 
-import type { FluxFramework } from '@nlabs/arkhamjs';
-import type { MessageType } from '../adapters/index.js';
-import type { MetropolisEnvironmentConfiguration } from '../config/index.js';
+import type {FluxFramework} from '@nlabs/arkhamjs';
+import type {MessageType} from '../adapters/index.js';
+import type {MetropolisEnvironmentConfiguration} from '../config/index.js';
 import type {NotificationType} from '../stores/notificationStore.js';
-import type { SessionType } from './api.js';
+import type {SessionType} from './api.js';
 
 export interface MetropolisAdapters {
   readonly Content?: typeof parseContent;
@@ -34,6 +34,7 @@ export interface MetropolisAdapters {
   readonly Post?: typeof parsePost;
   readonly Persona?: typeof parsePersona;
   readonly Reaction?: typeof parseReaction;
+  readonly Subscription?: typeof parseUser;
   readonly Tag?: typeof parseTag;
   readonly Translation?: typeof parseTranslation;
   readonly User?: typeof parseUser;

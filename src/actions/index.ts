@@ -12,9 +12,9 @@ export * from './postActions/postActions.js';
 export * from './personaActions/personaActions.js';
 export * from './reactionActions/reactionActions.js';
 export * from './sseActions/sseActions.js';
+export * from './subscriptionActions/subscriptionActions.js';
 export * from './tagActions/tagActions.js';
 export * from './translationActions/translationActions.js';
 export * from './userActions/userActions.js';
 export * from './videoActions/videoActions.js';
 export * from './websocketActions/websocketActions.js';
-

@@ -35,6 +35,9 @@ export interface User {
   street1?: string;
   street2?: string;
   stripeAccountId?: string;
+  stripeCardBrand?: string;
+  stripeCardId?: string;
+  stripeCardLast4?: string;
   stripeCustomerId?: string;
   timezone?: string;
   thumbUrl?: string;
@@ -88,6 +91,9 @@ const UserInputSchema = z.object({
   street1: z.string().max(160).optional(),
   street2: z.string().max(160).optional(),
   stripeAccountId: z.string().max(160).optional(),
+  stripeCardBrand: z.string().max(160).optional(),
+  stripeCardId: z.string().max(160).optional(),
+  stripeCardLast4: z.string().max(4).optional(),
   stripeCustomerId: z.string().max(160).optional(),
   timezone: z.string().max(160).optional(),
   type: z.string().max(160).optional(),
@@ -209,6 +215,9 @@ const performUserTransformation = (user: User): User => {
     street1,
     street2,
     stripeAccountId,
+    stripeCardBrand,
+    stripeCardId,
+    stripeCardLast4,
     stripeCustomerId,
     timezone,
     type,
@@ -253,6 +262,9 @@ const performUserTransformation = (user: User): User => {
     ...(street1 && {street1: parseVarChar(street1, 160)}),
     ...(street2 && {street2: parseVarChar(street2, 160)}),
     ...(stripeAccountId && {stripeAccountId: parseVarChar(stripeAccountId, 160)}),
+    ...(stripeCardBrand && {stripeCardBrand: parseVarChar(stripeCardBrand, 160)}),
+    ...(stripeCardId && {stripeCardId: parseVarChar(stripeCardId, 160)}),
+    ...(stripeCardLast4 && {stripeCardLast4: parseVarChar(stripeCardLast4, 4)}),
     ...(stripeCustomerId && {stripeCustomerId: parseVarChar(stripeCustomerId, 160)}),
     ...(timezone && {timezone: parseString(timezone, 160)}),
     ...(type && {type: parseReaktorType(type)}),
