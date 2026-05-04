@@ -37,9 +37,42 @@ const INVALID_FIELD_REGEX = /Cannot query field "([^"]+)"/g;
 const hasSessionIdentity = (user?: Partial<User> | null): boolean =>
   !!(user && ((user as any)._id || (user as any).userId || (user as any).username || (user as any).email));
 
+const sanitizeUpdateUserInput = (userInput: Partial<User> = {}, currentSession: Record<string, unknown> = {}): Partial<User> => {
+  const nextUser = Object.entries(userInput).reduce((user: Record<string, unknown>, [field, value]) => {
+    if(value === undefined || value === null) {
+      return user;
+    }
+
+    if(field === 'password') {
+      const password = String(value || '').trim();
+
+      if(password) {
+        user.password = password;
+      }
+
+      return user;
+    }
+
+    if(field === 'userId') {
+      user.userId = value;
+      return user;
+    }
+
+    const currentValue = currentSession[field];
+
+    if(String(value) !== String(currentValue ?? '')) {
+      user[field] = value;
+    }
+
+    return user;
+  }, {});
+
+  return nextUser as Partial<User>;
+};
+
 const syncStoredSession = async (flux: FluxFramework, sessionPatch: Record<string, unknown> = {}): Promise<SessionType> => {
   const currentSession = (flux.getState('user.session', {}) || {}) as Record<string, unknown>;
-  return await storeSession(flux, {...currentSession, ...sessionPatch});
+  return storeSession(flux, {...currentSession, ...sessionPatch});
 };
 
 const getSessionPayload = (payload: unknown): Record<string, unknown> => {
@@ -48,19 +81,6 @@ const getSessionPayload = (payload: unknown): Record<string, unknown> => {
   }
 
   return (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>;
-};
-
-const ensureSessionPersona = async (
-  flux: FluxFramework,
-  sessionData: Partial<User> = {}
-): Promise<SessionType> => {
-  const existingPersonaId = String((sessionData as any)?.personaId || '').trim();
-
-  if(existingPersonaId) {
-    return await syncStoredSession(flux, sessionData as Record<string, unknown>);
-  }
-
-  return await syncStoredSession(flux, sessionData as Record<string, unknown>);
 };
 
 const getFieldRoot = (field: string): string => {
@@ -182,6 +202,7 @@ export interface UserApiResultsType {
     readonly update?: Partial<User>;
     readonly updateUser?: Partial<User>;
     readonly updatePassword?: Partial<boolean>;
+    readonly updatePlan?: Partial<User>;
   };
 }
 
@@ -235,6 +256,7 @@ export interface userActions {
   signUp: (userInput: Partial<User>, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
   updatePassword: (password: string, newPassword: string, requestOptions?: ActionRequestOptions) => Promise<boolean>;
   updateUser: (userInput: Partial<User>, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
+  updatePlan: (planId: string, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
   updateUserAdapter: (adapter: (input: unknown, options?: UserAdapterOptions) => any) => void;
   updateUserAdapterOptions: (options: UserAdapterOptions) => void;
 }
@@ -374,6 +396,7 @@ export const createUserActions = (
     userProps: string[] = [],
     requestOptions: ActionRequestOptions = {}
   ): Promise<User> => {
+    const updateInput = sanitizeUpdateUserInput(userInput, (flux.getState('user.session', {}) || {}) as Record<string, unknown>);
     const {
       birthdate,
       dob,
@@ -386,7 +409,7 @@ export const createUserActions = (
       phone,
       userId,
       username
-    } = userInput;
+    } = updateInput;
     const queryVariables = {
       user: {
         type: 'UserInput!',
@@ -522,16 +545,14 @@ export const createUserActions = (
 
       if(!hasSessionIdentity(sessionData)) {
         await clearPersistedSession(flux);
-        flux.setState('user.session', {});
-        flux.dispatch({type: USER_CONSTANTS.GET_SESSION_ERROR});
+        await flux.dispatch({type: USER_CONSTANTS.GET_SESSION_ERROR});
         throw new Error('invalid_session');
       }
 
-      const nextSession = await ensureSessionPersona(flux, sessionData);
+      const nextSession = await syncStoredSession(flux, sessionData as Record<string, unknown>);
       await flux.dispatch({session: nextSession, type: USER_CONSTANTS.GET_SESSION_SUCCESS});
       await syncPersonaTagsToSession(flux, String((nextSession as any)?.personaId || ''));
-      syncStoredSession(flux, (flux.getState('user.session', {}) || {}) as Record<string, unknown>);
-      return (flux.getState('user.session', nextSession) || nextSession) as User;
+      return await syncStoredSession(flux, (flux.getState('user.session', nextSession) || nextSession) as Record<string, unknown>) as User;
     },
     userProps,
     DEFAULT_USER_QUERY_FIELDS
@@ -656,6 +677,67 @@ export const createUserActions = (
         'deleteBillingCard',
         DATA_TYPE,
         {},
+        returnProps,
+        {onSuccess}
+      );
+    } finally {
+      await clearUserRequestCaches(sessionUserId);
+    }
+  };
+
+  const updatePlan = async (
+    planId: string,
+    userProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<User> => {
+    const nextPlanId = String(planId || '').trim();
+
+    if(!nextPlanId) {
+      throw new Error('A subscription planId is required to update a user plan');
+    }
+
+    const queryVariables = {
+      planId: {
+        type: 'ID!',
+        value: nextPlanId
+      }
+    };
+
+    const onSuccess = (data: ApiResultsType = {}) => {
+      const user = ((data as unknown as UserApiResultsType)?.users?.updatePlan) || {};
+
+      if((user as any)?.userId && (user as any).userId === flux.getState('user.session.userId')) {
+        syncStoredSession(flux, user as Record<string, unknown>);
+      }
+
+      return flux.dispatch({
+        type: USER_CONSTANTS.UPDATE_ITEM_SUCCESS,
+        user
+      });
+    };
+
+    const returnProps = sanitizeUserProps([
+      'modified',
+      'planExpires',
+      'planId',
+      'planStatus',
+      'planSubscriptionId',
+      'stripeCardBrand',
+      'stripeCardId',
+      'stripeCardLast4',
+      'userAccess',
+      'userId',
+      'username',
+      ...userProps
+    ]);
+    const sessionUserId = String(flux.getState('user.session.userId') || '');
+
+    try {
+      return await appMutation(
+        flux,
+        'updatePlan',
+        DATA_TYPE,
+        queryVariables,
         returnProps,
         {onSuccess}
       );
@@ -934,7 +1016,6 @@ export const createUserActions = (
 
   const signOut = async (requestOptions: ActionRequestOptions = {}): Promise<boolean> => {
     await clearPersistedSession(flux);
-    flux.setState('user.session', {});
     await flux.dispatch({session: {}, type: USER_CONSTANTS.SIGN_OUT_SUCCESS});
     await clearUserRequestCaches();
     return true;
@@ -1039,6 +1120,7 @@ export const createUserActions = (
     signUp,
     updatePassword,
     updateUser,
+    updatePlan,
     updateUserAdapter: userBase.updateAdapter,
     updateUserAdapterOptions: userBase.updateOptions
   };

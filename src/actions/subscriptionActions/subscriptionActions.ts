@@ -44,7 +44,7 @@ export type SubscriptionApiResultsType = {
     deleteSubscription?: boolean;
     getPlanByItem?: PaymentPlanType;
     getSubscription?: PaymentSubscriptionType;
-    getSubscriptionList?: PaymentSubscriptionType[];
+    getSubscriptionListByUser?: PaymentSubscriptionType[];
     getSubscriptionByItem?: PaymentSubscriptionType;
   };
 };
@@ -54,7 +54,7 @@ export interface SubscriptionActions {
   addSubscription: (subscription: Partial<PaymentSubscriptionType>, subscriptionProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PaymentSubscriptionType>;
   deleteSubscription: (itemId: string, itemType?: string, requestOptions?: ActionRequestOptions) => Promise<boolean>;
   getPlanByItem: (itemId: string, itemType?: string, planProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PaymentPlanType>;
-  getSubscriptionList: (from?: number, to?: number, subscriptionProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PaymentSubscriptionType[]>;
+  getSubscriptionListByUser: (userId: string, from?: number, to?: number, subscriptionProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PaymentSubscriptionType[]>;
   getSubscriptionByItem: (itemId: string, itemType?: string, subscriptionProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PaymentSubscriptionType>;
 }
 
@@ -215,14 +215,21 @@ export const createSubscriptionActions = (
     }
   };
 
-  const getSubscriptionList = async (
+  const getSubscriptionListByUser = async (
+    userId: string,
     from: number = 0,
     to: number = 30,
     subscriptionProps: string[] = [],
     requestOptions: ActionRequestOptions = {}
   ): Promise<PaymentSubscriptionType[]> => {
-    const cacheKey = `subscription.getSubscriptionList:${from}:${to}`;
-    const cachedResult = getCachedRequest<PaymentSubscriptionType[]>(flux, cacheKey, {from, to, subscriptionProps}, requestOptions);
+    const normalizedUserId = parseId(userId);
+    const cacheKey = `subscription.getSubscriptionListByUser:${normalizedUserId}:${from}:${to}`;
+    const cachedResult = getCachedRequest<PaymentSubscriptionType[]>(flux, cacheKey, {
+      from,
+      subscriptionProps,
+      to,
+      userId: normalizedUserId
+    }, requestOptions);
 
     if(cachedResult !== undefined) {
       return cachedResult;
@@ -230,25 +237,31 @@ export const createSubscriptionActions = (
 
     try {
       const queryVariables = {
+        userId: {type: 'ID!', value: normalizedUserId},
         from: {type: 'Int', value: from},
         to: {type: 'Int', value: to}
       };
 
       const onSuccess = (data: SubscriptionApiResultsType) => {
-        const list = data?.subscriptions?.getSubscriptionList || [];
+        const list = data?.subscriptions?.getSubscriptionListByUser || [];
         return flux.dispatch({list, type: SUBSCRIPTION_CONSTANTS.GET_SUBSCRIPTION_LIST_SUCCESS});
       };
 
       const result = await appQuery<PaymentSubscriptionType[]>(
         flux,
-        'getSubscriptionList',
+        'getSubscriptionListByUser',
         DATA_TYPE,
         queryVariables,
         [...DEFAULT_SUBSCRIPTION_FIELDS, ...subscriptionProps],
         {onSuccess}
       );
 
-      return await setCachedRequest(flux, cacheKey, {from, to, subscriptionProps}, result, requestOptions);
+      return await setCachedRequest(flux, cacheKey, {
+        from,
+        subscriptionProps,
+        to,
+        userId: normalizedUserId
+      }, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: SUBSCRIPTION_CONSTANTS.GET_SUBSCRIPTION_LIST_ERROR});
       throw error;
@@ -299,7 +312,7 @@ export const createSubscriptionActions = (
     addSubscription,
     deleteSubscription,
     getPlanByItem,
-    getSubscriptionList,
+    getSubscriptionListByUser,
     getSubscriptionByItem
   };
 };

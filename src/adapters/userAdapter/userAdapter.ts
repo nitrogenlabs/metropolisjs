@@ -30,6 +30,10 @@ export interface User {
   name?: string;
   password?: string;
   phone?: string;
+  planExpires?: number;
+  planId?: string;
+  planStatus?: string;
+  planSubscriptionId?: string;
   salt?: string;
   state?: string;
   street1?: string;
@@ -86,6 +90,10 @@ const UserInputSchema = z.object({
   name: z.string().max(160).optional(),
   password: z.string().max(160).optional(),
   phone: z.string().max(20).optional(),
+  planExpires: z.number().optional(),
+  planId: z.string().max(160).optional(),
+  planStatus: z.string().max(160).optional(),
+  planSubscriptionId: z.string().max(160).optional(),
   salt: z.string().max(160).optional(),
   state: z.string().length(2).optional(),
   street1: z.string().max(160).optional(),
@@ -210,6 +218,10 @@ const performUserTransformation = (user: User): User => {
     name,
     password,
     phone,
+    planExpires,
+    planId,
+    planStatus,
+    planSubscriptionId,
     salt,
     state,
     street1,
@@ -257,6 +269,10 @@ const performUserTransformation = (user: User): User => {
     ...(name && {name: parseReaktorName(name)}),
     ...(password && {password: parseVarChar(password, 160)}),
     ...(phone && {phone: validatePhone(phone)}),
+    ...(planExpires !== undefined && {planExpires: parseReaktorDate(planExpires)}),
+    ...(planId && {planId: parseVarChar(planId, 160)}),
+    ...(planStatus && {planStatus: parseVarChar(planStatus, 160)}),
+    ...(planSubscriptionId && {planSubscriptionId: parseVarChar(planSubscriptionId, 160)}),
     ...(salt && {salt: parseVarChar(salt, 160)}),
     ...(state && {state: validateState(state)}),
     ...(street1 && {street1: parseVarChar(street1, 160)}),

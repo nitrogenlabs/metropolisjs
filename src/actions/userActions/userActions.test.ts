@@ -149,6 +149,7 @@ describe('createUserActions', () => {
     expect(actions.signOut).toBeTypeOf('function');
     expect(actions.signUp).toBeTypeOf('function');
     expect(actions.updatePassword).toBeTypeOf('function');
+    expect(actions.updatePlan).toBeTypeOf('function');
     expect(actions.updateUser).toBeTypeOf('function');
     expect(actions.updateUserAdapter).toBeTypeOf('function');
     expect(actions.updateUserAdapterOptions).toBeTypeOf('function');
@@ -269,11 +270,67 @@ describe('createUserActions', () => {
     await expect(actions.signOut()).resolves.toBe(true);
 
     expect(clearPersistedSessionMock).toHaveBeenCalledWith(flux);
-    expect(flux.setState).toHaveBeenCalledWith('user.session', {});
     expect(flux.dispatch).toHaveBeenCalledWith({
       session: {},
       type: 'USER_SIGN_OUT_SUCCESS'
     });
+  });
+
+  it('updates the subscription plan with the canonical planId variable', async () => {
+    const flux = createMockFlux();
+    const actions = createUserActions(flux as any);
+
+    appMutationMock.mockImplementation(async (_flux, _name, _type, _variables, _props, options) => {
+      await options?.onSuccess?.({
+        users: {
+          updatePlan: {
+            planId: 'plus',
+            planStatus: 'active',
+            userId: 'user-1',
+            username: 'alpha'
+          }
+        }
+      });
+
+      return {
+        planId: 'plus',
+        planStatus: 'active',
+        userId: 'user-1',
+        username: 'alpha'
+      };
+    });
+
+    await expect(actions.updatePlan('plus')).resolves.toEqual(expect.objectContaining({
+      planId: 'plus',
+      planStatus: 'active'
+    }));
+    expect(appMutationMock).toHaveBeenCalledWith(
+      flux,
+      'updatePlan',
+      'users',
+      {
+        planId: {
+          type: 'ID!',
+          value: 'plus'
+        }
+      },
+      expect.arrayContaining(['planId', 'planStatus', 'planSubscriptionId']),
+      expect.any(Object)
+    );
+    expect(flux.dispatch).toHaveBeenCalledWith({
+      type: 'USER_UPDATE_ITEM_SUCCESS',
+      user: expect.objectContaining({
+        planId: 'plus',
+        planStatus: 'active'
+      })
+    });
+  });
+
+  it('requires a subscription planId before updating the plan', async () => {
+    const actions = createUserActions(createMockFlux() as any);
+
+    await expect(actions.updatePlan('')).rejects.toThrow('A subscription planId is required to update a user plan');
+    expect(appMutationMock).not.toHaveBeenCalled();
   });
 
   it('supports adapter updates', () => {
