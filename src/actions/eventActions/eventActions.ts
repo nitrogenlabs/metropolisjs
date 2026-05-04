@@ -23,12 +23,14 @@ const DEFAULT_EVENT_PROPS = [
   'location',
   'latitude',
   'longitude',
+  'maxGuestsPerPersona',
   'modified',
   'name',
   'eventId',
   'startDate',
   'rsvpCount',
   'tags {name, tagId}',
+  'ticketCostCents',
   'user { imageUrl, userId, username }',
   'viewCount'
 ];
@@ -40,9 +42,29 @@ type EventApiResultsType = {
     getEvent?: EventType;
     getEventsByReactions?: EventType[];
     getEventsByTags?: EventType[];
+    rsvpEvent?: EventRsvpType;
     updateEvent?: EventType;
   };
 };
+
+export interface EventRsvpType {
+  readonly added?: number;
+  readonly eventId?: string;
+  readonly feeCents?: number;
+  readonly numberOfGuests?: number;
+  readonly paymentId?: string;
+  readonly subtotalCents?: number;
+  readonly taxCents?: number;
+  readonly ticketCostCents?: number;
+  readonly totalCents?: number;
+  readonly type?: string;
+}
+
+export interface EventRsvpInput {
+  readonly eventId: string;
+  readonly numberOfGuests?: number;
+  readonly paymentType?: string;
+}
 
 export interface EventAdapterOptions {
   readonly strict?: boolean;
@@ -61,6 +83,7 @@ export interface EventActions {
   readonly getEvent: (eventId: string, eventProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventType>;
   readonly getEventsByTags: (tags: string[], latitude: number, longitude: number, from?: number, to?: number, startDate?: number, eventProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventType[]>;
   readonly getEventsByReactions: (reactions: string[], latitude: number, longitude: number, from?: number, to?: number, startDate?: number, eventProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventType[]>;
+  readonly rsvpEvent: (rsvp: EventRsvpInput, rsvpProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventRsvpType>;
   readonly deleteEvent: (eventId: string, eventProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventType>;
   readonly updateEvent: (event: Partial<EventType>, eventProps?: string[], requestOptions?: ActionRequestOptions) => Promise<EventType>;
   readonly updateEventAdapter: (adapter: (input: unknown, options?: EventAdapterOptions) => any) => void;
@@ -383,6 +406,58 @@ export const createEventActions = (
     }
   };
 
+  const rsvpEvent = async (
+    rsvp: EventRsvpInput,
+    rsvpProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<EventRsvpType> => {
+    try {
+      const queryVariables = {
+        rsvp: {
+          type: 'EventRsvpInput!',
+          value: {
+            eventId: parseId(rsvp.eventId),
+            ...(rsvp.numberOfGuests !== undefined ? {numberOfGuests: parseNum(rsvp.numberOfGuests)} : {}),
+            ...(rsvp.paymentType ? {paymentType: rsvp.paymentType} : {})
+          }
+        }
+      };
+
+      const onSuccess = (data: EventApiResultsType) => {
+        const eventRsvp = data?.events?.rsvpEvent || {};
+        return flux.dispatch({eventRsvp, type: EVENT_CONSTANTS.RSVP_ITEM_SUCCESS});
+      };
+
+      return await appMutation<EventRsvpType>(
+        flux,
+        'rsvpEvent',
+        DATA_TYPE,
+        queryVariables,
+        [
+          'added',
+          'eventId',
+          'feeCents',
+          'numberOfGuests',
+          'paymentId',
+          'subtotalCents',
+          'taxCents',
+          'ticketCostCents',
+          'totalCents',
+          'type',
+          ...rsvpProps
+        ],
+        {onSuccess}
+      );
+    } catch(error) {
+      flux.dispatch({error, type: EVENT_CONSTANTS.RSVP_ITEM_ERROR});
+      throw error;
+    } finally {
+      await clearCachedRequest(flux, `event.getEvent:${String(rsvp?.eventId || '')}`);
+      await clearCachedRequest(flux, 'event.getEventsByTags');
+      await clearCachedRequest(flux, 'event.getEventsByReactions');
+    }
+  };
+
   const updateEvent = async (
     event: Partial<EventType>,
     eventProps: string[] = [],
@@ -418,6 +493,7 @@ export const createEventActions = (
     getEvent,
     getEventsByTags,
     getEventsByReactions,
+    rsvpEvent,
     deleteEvent,
     updateEvent,
     updateEventAdapter,

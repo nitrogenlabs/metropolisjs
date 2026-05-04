@@ -29,11 +29,13 @@ export interface EventType {
   mentions?: any[];
   modified?: number;
   name?: string;
+  maxGuestsPerPersona?: number;
   postId?: string;
   reactions?: string[];
   rsvpCount?: number;
   startDate?: number;
   tags?: any[];
+  ticketCostCents?: number;
   type?: string;
   user?: any;
   viewCount?: number;
@@ -73,11 +75,13 @@ const EventInputSchema = z.object({
   mentions: z.array(z.any()).optional(),
   modified: z.number().optional(),
   name: z.string().optional(),
+  maxGuestsPerPersona: z.number().optional(),
   postId: z.string().optional(),
   reactions: z.array(z.string()).optional(),
   rsvpCount: z.number().optional(),
   startDate: z.number().optional(),
   tags: z.array(z.any()).optional(),
+  ticketCostCents: z.number().optional(),
   type: z.string().optional(),
   user: z.any().optional(),
   viewCount: z.number().optional()
@@ -128,11 +132,13 @@ const performEventTransformation = (event: EventType): EventType => {
     longitude,
     mentions,
     name,
+    maxGuestsPerPersona,
     postId,
     reactions,
     rsvpCount,
     startDate,
     tags,
+    ticketCostCents,
     type,
     user,
     viewCount
@@ -153,11 +159,13 @@ const performEventTransformation = (event: EventType): EventType => {
     ...(longitude !== undefined && {longitude: parseNum(longitude, 15)}),
     ...(mentions?.length && {mentions: mentions.map((mention) => parseUser(mention))}),
     ...(name && {name: parseString(name, 160)}),
+    ...(maxGuestsPerPersona !== undefined && {maxGuestsPerPersona: parseNum(maxGuestsPerPersona)}),
     ...(postId && {postId: parseId(postId)}),
     ...(reactions?.length && {reactions}),
     ...(rsvpCount !== undefined && {rsvpCount: parseNum(rsvpCount)}),
     ...(startDate !== undefined && {startDate: parseReaktorDate(startDate)}),
     ...(tags?.length && {tags: tags.map((tag) => parseTag(tag))}),
+    ...(ticketCostCents !== undefined && {ticketCostCents: parseNum(ticketCostCents)}),
     ...(type && {type: parseReaktorType(type)}),
     ...(user && {user: parseUser(user)}),
     ...(viewCount !== undefined && {viewCount: parseNum(viewCount)})
