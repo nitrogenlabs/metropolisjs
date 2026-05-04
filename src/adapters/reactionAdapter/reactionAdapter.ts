@@ -2,6 +2,7 @@ import { parseArangoId, parseId, parseVarChar } from '@nlabs/utils';
 import { z } from 'zod';
 
 import { parseDocument, removeEmptyKeys } from '../arangoAdapter/arangoAdapter.js';
+import {COLLECTIONS, type CollectionType} from '../../constants/Collections.js';
 
 export interface ReactionType {
   _id?: string;
@@ -13,6 +14,7 @@ export interface ReactionType {
   id?: string;
   name?: string;
   reactionId?: string;
+  type?: CollectionType;
   value?: string;
   [key: string]: any;
 }
@@ -34,7 +36,19 @@ const ReactionInputSchema = z.object({
   id: z.string().optional(),
   name: z.string().max(32).optional(),
   reactionId: z.string().optional(),
-  type: z.string(),
+  type: z.enum([
+    COLLECTIONS.APPS,
+    COLLECTIONS.CONVERSATIONS,
+    COLLECTIONS.FILES,
+    COLLECTIONS.GROUPS,
+    COLLECTIONS.IMAGES,
+    COLLECTIONS.MESSAGES,
+    COLLECTIONS.POSTS,
+    COLLECTIONS.PERSONAS,
+    COLLECTIONS.TAGS,
+    COLLECTIONS.USERS,
+    COLLECTIONS.VIDEOS
+  ]),
   value: z.string().max(32).optional()
 }).loose();
 

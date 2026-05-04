@@ -210,10 +210,10 @@ export const createReactionActions = (
 
       const result = await appQuery<number>(
         flux,
-        'reactionCount',
+        'getReactionCount',
         DATA_TYPE,
         queryVariables,
-        ['count'],
+        [],
         {onSuccess}
       );
 

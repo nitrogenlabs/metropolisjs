@@ -5,7 +5,7 @@ describe('reactionAdapter', () => {
     it('should validate valid reaction input', () => {
       const validReaction = {
         reactionId: 'reaction1',
-        type: 'like',
+        type: 'images',
         userId: 'user1',
         itemId: 'post1',
         itemType: 'post'
@@ -18,7 +18,7 @@ describe('reactionAdapter', () => {
     it('should handle minimal reaction input', () => {
       const minimalReaction = {
         reactionId: 'reaction1',
-        type: 'like'
+        type: 'images'
       };
 
       const result = validateReactionInput(minimalReaction);
@@ -36,7 +36,7 @@ describe('reactionAdapter', () => {
     it('should handle additional properties', () => {
       const reactionWithExtra = {
         reactionId: 'react123',
-        type: 'like',
+        type: 'images',
         customField: 'value'
       };
 
@@ -51,7 +51,7 @@ describe('reactionAdapter', () => {
         _id: 'reactions/reaction1',
         _key: 'reaction1',
         reactionId: 'reaction1',
-        type: 'like',
+        type: 'images',
         userId: 'user1',
         user: {userId: 'user1', username: 'reactor'},
         postId: 'post1',
@@ -64,7 +64,7 @@ describe('reactionAdapter', () => {
 
       const result = parseReaction(reaction);
       expect(result.reactionId).toBe('reaction1');
-      expect(result.type).toBe('like');
+      expect(result.type).toBe('images');
       expect(result.userId).toBe('user1');
       expect(result.user).toBeDefined();
       expect(result.postId).toBe('post1');
@@ -78,12 +78,12 @@ describe('reactionAdapter', () => {
     it('should handle reaction with minimal fields', () => {
       const minimalReaction = {
         reactionId: 'reaction1',
-        type: 'like'
+        type: 'images'
       };
 
       const result = parseReaction(minimalReaction);
       expect(result.reactionId).toBe('reaction1');
-      expect(result.type).toBe('like');
+      expect(result.type).toBe('images');
       expect(result.userId).toBeUndefined();
       expect(result.itemId).toBeUndefined();
     });
@@ -93,7 +93,7 @@ describe('reactionAdapter', () => {
         _id: 'reactions/reaction1',
         _key: 'reaction1',
         reactionId: 'reaction1',
-        type: 'like'
+        type: 'images'
       };
 
       const result = parseReaction(reaction);
@@ -104,7 +104,7 @@ describe('reactionAdapter', () => {
     it('should handle numeric fields', () => {
       const reaction = {
         reactionId: 'reaction1',
-        type: 'like',
+        type: 'images',
         cached: 1234567890,
         modified: 1234567890
       };
