@@ -57,20 +57,22 @@ export type ImageApiResultsType = {
   addImage: ImageType;
   deleteImage: ImageType;
   image: ImageType;
+  getImageById: ImageType;
+  getImageListByItem: ImageType[];
+  getImageListByReactions: ImageType[];
   updateImage: ImageType;
   uploadFileImages: ImageType[];
   getImageCount: number;
-  getImagesByItem: ImageType[];
-  getImagesByReactions: ImageType[];
 };
 
 export interface ImageActions {
   add: (image: Partial<ImageType>, type?: string, requestOptions?: ActionRequestOptions) => Promise<ImageType>;
   delete: (imageId: string, imageProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ImageType>;
+  getImageById: (imageId: string, imageProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ImageType>;
   update: (image: Partial<ImageType>, type?: string, requestOptions?: ActionRequestOptions) => Promise<ImageType>;
   upload: (imageFiles: File[], itemId: string, itemType?: string, requestOptions?: ActionRequestOptions) => Promise<ImageType[]>;
   countByItem: (itemId: string, requestOptions?: ActionRequestOptions) => Promise<number>;
-  listByItem: (itemId: string, from?: number, to?: number, imageProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ImageType[]>;
+  listByItem: (itemId: string, itemType?: string, from?: number, to?: number, imageProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ImageType[]>;
   listByReactions: (reactions: string[], from?: number, to?: number, imageProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ImageType[]>;
   updateImageAdapter: (adapter: (input: unknown, options?: ImageAdapterOptions) => any) => void;
   updateImageAdapterOptions: (options: ImageAdapterOptions) => void;
@@ -234,6 +236,7 @@ export const createImageActions = (
       flux.dispatch({error, type: IMAGE_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
     } finally {
+      await clearCachedRequest(flux, `image.getImageById:${imageId}`);
       await clearCachedRequest(flux, 'image.listByReactions');
     }
   };
@@ -292,6 +295,7 @@ export const createImageActions = (
       flux.dispatch({error, type: IMAGE_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
     } finally {
+      await clearCachedRequest(flux, `image.getImageById:${String(image?.imageId || '')}`);
       await clearCachedRequest(flux, `image.countByItem:${String(image?.itemId || '')}`);
       await clearCachedRequest(flux, `image.listByItem:${String(image?.itemId || '')}`);
       await clearCachedRequest(flux, 'image.listByReactions');
@@ -357,8 +361,71 @@ export const createImageActions = (
     }
   };
 
+  const getImageById = async (
+    imageId: string,
+    imageProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<ImageType> => {
+    try {
+      const cachedResult = getCachedRequest<ImageType>(
+        flux,
+        `image.getImageById:${imageId}`,
+        {imageId, imageProps},
+        requestOptions
+      );
+
+      if(cachedResult !== undefined) {
+        return cachedResult;
+      }
+
+      const queryVariables = {
+        imageId: {
+          type: 'ID!',
+          value: imageId
+        }
+      };
+
+      const onSuccess = async (data: ApiResultsType = {}) => {
+        const imagesData = (data as {images?: {getImageById?: ImageType}})?.images || {};
+        const image = imagesData?.getImageById || {};
+        await flux.dispatch({
+          image,
+          type: IMAGE_CONSTANTS.GET_ITEM_SUCCESS
+        });
+        return image as unknown as FluxAction;
+      };
+
+      const result = await appQuery<ImageType>(
+        flux,
+        'getImageById',
+        DATA_TYPE,
+        queryVariables,
+        [
+          'color',
+          'description',
+          'height',
+          'imageId',
+          'imageUrl',
+          'itemId',
+          'likeCount',
+          'privacy',
+          'thumbUrl',
+          'width',
+          ...imageProps
+        ],
+        {onSuccess}
+      );
+
+      return await setCachedRequest(flux, `image.getImageById:${imageId}`, {imageId, imageProps}, result, requestOptions);
+    } catch(error) {
+      flux.dispatch({error, type: IMAGE_CONSTANTS.GET_ITEM_ERROR});
+      throw error;
+    }
+  };
+
   const listByItem = async (
     itemId: string,
+    itemType: string = 'users',
     from: number = 0,
     to: number = 10,
     imageProps: string[] = [],
@@ -368,7 +435,7 @@ export const createImageActions = (
       const cachedResult = getCachedRequest<ImageType[]>(
         flux,
         `image.listByItem:${itemId}`,
-        {from, imageProps, itemId, to},
+        {from, imageProps, itemId, itemType, to},
         requestOptions
       );
 
@@ -385,6 +452,10 @@ export const createImageActions = (
           type: 'ID!',
           value: itemId
         },
+        itemType: {
+          type: 'String',
+          value: itemType
+        },
         to: {
           type: 'Int',
           value: to
@@ -392,9 +463,9 @@ export const createImageActions = (
       };
 
       const onSuccess = async (data: ApiResultsType = {}) => {
-        const imagesData = (data as {images?: {imagesByItem?: ImageType[]}})?.images || {};
-        const imagesByItem = Array.isArray(imagesData?.imagesByItem)
-          ? imagesData.imagesByItem || []
+        const imagesData = (data as {images?: {getImageListByItem?: ImageType[]}})?.images || {};
+        const imagesByItem = Array.isArray(imagesData?.getImageListByItem)
+          ? imagesData.getImageListByItem || []
           : [];
         await flux.dispatch({
           itemId,
@@ -406,7 +477,7 @@ export const createImageActions = (
 
       const result = await appQuery<ImageType[]>(
         flux,
-        'imagesByItem',
+        'getImageListByItem',
         DATA_TYPE,
         queryVariables,
         [
@@ -424,7 +495,7 @@ export const createImageActions = (
         {onSuccess}
       );
 
-      return await setCachedRequest(flux, `image.listByItem:${itemId}`, {from, imageProps, itemId, to}, result, requestOptions);
+      return await setCachedRequest(flux, `image.listByItem:${itemId}`, {from, imageProps, itemId, itemType, to}, result, requestOptions);
     } catch(error) {
       flux.dispatch({error, type: IMAGE_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -461,8 +532,9 @@ export const createImageActions = (
       };
 
       const onSuccess = (data: ApiResultsType = {}) => {
-        const imagesByReactions = Array.isArray((data as {imagesByReactions?: ImageType[]})?.imagesByReactions)
-          ? (data as {imagesByReactions?: ImageType[]}).imagesByReactions || []
+        const imagesData = (data as {images?: {imagesByReactions?: ImageType[]}})?.images || {};
+        const imagesByReactions = Array.isArray(imagesData?.imagesByReactions)
+          ? imagesData.imagesByReactions || []
           : [];
         return flux.dispatch({
           list: imagesByReactions,
@@ -500,6 +572,7 @@ export const createImageActions = (
   return {
     add,
     delete: deleteImage,
+    getImageById,
     update,
     upload,
     countByItem,
