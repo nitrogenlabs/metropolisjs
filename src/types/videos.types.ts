@@ -17,6 +17,7 @@ export interface VideoType extends BaseDocument, ExtensibleFields {
   itemType?: string;
   mimeType?: string;
   name?: string;
+  privacy?: string;
   provider?: string;
   size?: number;
   thumbUrl?: string;
