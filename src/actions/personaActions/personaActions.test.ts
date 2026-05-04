@@ -43,8 +43,8 @@ describe('personaActions', () => {
   it('should create personaActions with all required methods', () => {
     expect(personaActions.addPersona).toBeDefined();
     expect(personaActions.deletePersona).toBeDefined();
-    expect(personaActions.getPersona).toBeDefined();
-    expect(personaActions.getPersonas).toBeDefined();
+    expect(personaActions.getPersonaById).toBeDefined();
+    expect(personaActions.getPersonaListByIds).toBeDefined();
     expect(personaActions.updatePersona).toBeDefined();
     expect(personaActions.updatePersonaAdapter).toBeDefined();
     expect(personaActions.updatePersonaAdapterOptions).toBeDefined();
@@ -53,8 +53,8 @@ describe('personaActions', () => {
   it('should have correct method types', () => {
     expect(typeof personaActions.addPersona).toBe('function');
     expect(typeof personaActions.deletePersona).toBe('function');
-    expect(typeof personaActions.getPersona).toBe('function');
-    expect(typeof personaActions.getPersonas).toBe('function');
+    expect(typeof personaActions.getPersonaById).toBe('function');
+    expect(typeof personaActions.getPersonaListByIds).toBe('function');
     expect(typeof personaActions.updatePersona).toBe('function');
     expect(typeof personaActions.updatePersonaAdapter).toBe('function');
     expect(typeof personaActions.updatePersonaAdapterOptions).toBe('function');
@@ -88,9 +88,9 @@ describe('personaActions', () => {
     }
   });
 
-  it('should validate getPersona method returns expected structure', async () => {
+  it('should validate getPersonaById method returns expected structure', async () => {
     try {
-      const result = await personaActions.getPersona('test-id');
+      const result = await personaActions.getPersonaById('test-id');
 
       expect(result).toBeDefined();
       expect(typeof result).toBe('object');
@@ -100,9 +100,9 @@ describe('personaActions', () => {
     }
   });
 
-  it('should validate getPersonas method returns expected structure', async () => {
+  it('should validate getPersonaListByIds method returns expected structure', async () => {
     try {
-      const result = await personaActions.getPersonas(['test-id-1', 'test-id-2']);
+      const result = await personaActions.getPersonaListByIds(['test-id-1', 'test-id-2']);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result) || typeof result === 'object').toBe(true);
@@ -187,19 +187,19 @@ describe('personaActions', () => {
     }
   });
 
-  it('should handle getPersona with various IDs', async () => {
+  it('should handle getPersonaById with various IDs', async () => {
     const testIds = ['persona-id-1', 'persona-id-2', 'persona-id-3'];
 
     for(const id of testIds) {
       try {
-        await personaActions.getPersona(id);
+        await personaActions.getPersonaById(id);
       } catch(error) {
         expect(error).toBeDefined();
       }
     }
   });
 
-  it('should handle getPersonas with various ID arrays', async () => {
+  it('should handle getPersonaListByIds with various ID arrays', async () => {
     const testIdArrays = [
       ['persona-1'],
       ['persona-1', 'persona-2'],
@@ -208,7 +208,7 @@ describe('personaActions', () => {
 
     for(const ids of testIdArrays) {
       try {
-        await personaActions.getPersonas(ids);
+        await personaActions.getPersonaListByIds(ids);
       } catch(error) {
         expect(error).toBeDefined();
       }
@@ -238,21 +238,21 @@ describe('personaActions', () => {
     }
   });
 
-  it('should handle getPersona with personaProps', async () => {
+  it('should handle getPersonaById with personaProps', async () => {
     const personaProps = ['bio', 'email'];
 
     try {
-      await personaActions.getPersona('test-id', personaProps);
+      await personaActions.getPersonaById('test-id', personaProps);
     } catch(error) {
       expect(error).toBeDefined();
     }
   });
 
-  it('should handle getPersonas with personaProps', async () => {
+  it('should handle getPersonaListByIds with personaProps', async () => {
     const personaProps = ['bio', 'email'];
 
     try {
-      await personaActions.getPersonas(['test-id-1', 'test-id-2'], personaProps);
+      await personaActions.getPersonaListByIds(['test-id-1', 'test-id-2'], personaProps);
     } catch(error) {
       expect(error).toBeDefined();
     }
