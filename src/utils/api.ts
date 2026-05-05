@@ -1,6 +1,5 @@
 import {ApiError, graphqlQuery, post} from '@nlabs/rip-hunter';
 import {camelCase, isEmpty, upperFirst} from '@nlabs/utils';
-import {DateTime} from 'luxon';
 
 import {APP_CONSTANTS} from '../stores/appStore.js';
 import {USER_CONSTANTS} from '../stores/userStore.js';
@@ -67,6 +66,9 @@ export interface SessionType {
 const DEFAULT_REFRESH_WINDOW_MINUTES = 5;
 const DEFAULT_SESSION_MAX_MINUTES = 15;
 
+const getMinutesUntil = (expiresAt: number): number =>
+  Math.round((expiresAt - Date.now()) / (1000 * 60));
+
 const clearInvalidSessionState = async (flux: FluxFramework): Promise<void> => {
   await clearPersistedSession(flux);
   await flux.clearAppData();
@@ -89,19 +91,17 @@ export const getGraphql = async (
       return flux.dispatch({retry, type: APP_CONSTANTS.API_NETWORK_ERROR});
     }
 
-    const now: number = Date.now();
     const stateSession: SessionType = (flux.getState('user.session') || {}) as SessionType;
-    const {expires = now, issued = now, token: currentToken}: SessionType = stateSession;
     let token: string | undefined;
 
     if(authenticate) {
-      const hydratedSession: SessionType = currentToken ? stateSession : await hydrateSessionFromStorage(flux);
+      const hydratedSession: SessionType = stateSession.token ? stateSession : await hydrateSessionFromStorage(flux);
       const {
-        expires: authExpires = expires,
-        issued: authIssued = issued,
+        expires: authExpires = 0,
+        issued: authIssued = 0,
         token: hydratedToken
       }: SessionType = hydratedSession || {};
-      token = hydratedToken || currentToken;
+      token = hydratedToken || stateSession.token;
 
       if(!token) {
         throw new ApiError(['invalid_session'], 'invalid_session');
@@ -114,9 +114,7 @@ export const getGraphql = async (
       }
 
       const config = getConfigFromFlux(flux);
-      const nowDate: DateTime = DateTime.local();
-      const expiresDate: DateTime = DateTime.fromMillis(authExpires);
-      const minutesUntilExpiry = Math.round(expiresDate.diff(nowDate, 'minutes').toObject().minutes);
+      const minutesUntilExpiry = getMinutesUntil(Number(authExpires || 0));
       const sessionLifetimeMinutes = Math.round((authExpires - authIssued) / (1000 * 60));
       const refreshWindowMinutes = getRefreshWindowMinutes(
         sessionLifetimeMinutes || DEFAULT_SESSION_MAX_MINUTES,

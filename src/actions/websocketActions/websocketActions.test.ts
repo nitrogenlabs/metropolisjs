@@ -58,6 +58,9 @@ describe('createWebsocketActions', () => {
 
     actions.wsInit('token-1');
     const notification = actions.sendNotification({content: 'hello'});
+    const onOpen = socketteInstances[0]?.options?.onopen as (event: {timeStamp: number}) => void;
+
+    onOpen?.({timeStamp: 1});
 
     expect(notification).toEqual(expect.objectContaining({content: 'hello'}));
     expect(flux.dispatch).toHaveBeenCalledWith({
@@ -121,6 +124,8 @@ describe('createWebsocketActions', () => {
     expect(firstSocket).not.toBeNull();
     expect(socketteInstances[0]?.close).toHaveBeenCalledWith(1000, 'metropolis_close');
     expect(secondSocket).not.toBe(firstSocket);
-    expect(socketteInstances[1]?.url).toBe('wss://example.com/socket?token=token-2');
+    expect(socketteInstances[1]?.url).toContain('wss://example.com/socket?');
+    expect(socketteInstances[1]?.url).toContain('token=token-2');
+    expect(socketteInstances[1]?.url).toContain('clientId=');
   });
 });

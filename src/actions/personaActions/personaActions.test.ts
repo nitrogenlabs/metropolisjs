@@ -37,7 +37,7 @@ describe('personaActions', () => {
   let personaActions;
 
   beforeEach(() => {
-    personaActions = createPersonaActions(mockFlux);
+    personaActions = createPersonaActions(mockFlux as any);
   });
 
   it('should create personaActions with all required methods', () => {

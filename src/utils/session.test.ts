@@ -5,6 +5,7 @@ import {
   getRefreshWindowMinutes,
   hydrateSessionFromStorage,
   isLoggedIn,
+  normalizeSession,
   readStoredSession,
   storeSession
 } from './session.js';
@@ -40,11 +41,11 @@ describe('session helpers', () => {
   it('hydrates a valid flux session back into state', async () => {
     const flux = createMockFlux({token, userId: 'user-storage'});
 
-    const session = await hydrateSessionFromStorage(flux as any, 'phantaze');
+    const session = await hydrateSessionFromStorage(flux as any);
 
     expect(session).toEqual(expect.objectContaining({token, userId: 'user-storage'}));
     expect(flux.setState).toHaveBeenCalledWith('user.session', expect.objectContaining({token, userId: 'user-storage'}));
-    expect(isLoggedIn(flux as any, 'phantaze')).toBe(true);
+    expect(isLoggedIn(flux as any)).toBe(true);
   });
 
   it('reads the normalized session from flux state', async () => {
@@ -54,6 +55,28 @@ describe('session helpers', () => {
     const session = await readStoredSession(flux as any);
 
     expect(session).toEqual(expect.objectContaining({token, userId: 'user-2'}));
+  });
+
+  it('normalizes token wrappers and session timestamps into milliseconds', () => {
+    const normalized = normalizeSession({
+      expires: tokenPayload.exp,
+      idToken: {jwtToken: token},
+      issued: tokenPayload.iat,
+      userId: 'user-7'
+    });
+
+    expect(normalized).toEqual(expect.objectContaining({
+      expires: tokenPayload.exp * 1000,
+      issued: tokenPayload.iat * 1000,
+      token,
+      userId: 'user-7'
+    }));
+    expect(normalized.accessToken).toEqual({jwtToken: token});
+    expect(normalized.idToken).toEqual({jwtToken: token});
+  });
+
+  it('returns an empty object when there is no session token', () => {
+    expect(normalizeSession({userId: 'user-8'})).toEqual({});
   });
 
   it('hydrates an existing valid flux session and clears an invalid one', async () => {
@@ -73,16 +96,16 @@ describe('session helpers', () => {
 
     expect(isLoggedIn(flux as any)).toBe(true);
 
-    await clearPersistedSession(flux as any, 'phantaze');
+    await clearPersistedSession(flux as any);
 
     expect(flux.setState).toHaveBeenCalledWith('user.session', {});
-    expect(isLoggedIn(flux as any, 'phantaze')).toBe(false);
+    expect(isLoggedIn(flux as any)).toBe(false);
   });
 
   it('stores a normalized session in flux state', () => {
     const flux = createMockFlux();
 
-    return storeSession(flux as any, {token, userId: 'user-6'}, 'phantaze').then((session) => {
+    return storeSession(flux as any, {token, userId: 'user-6'}).then((session) => {
       expect(session).toEqual(expect.objectContaining({token, userId: 'user-6'}));
       expect(flux.setState).toHaveBeenCalledWith('user.session', expect.objectContaining({token, userId: 'user-6'}));
     });

@@ -146,12 +146,17 @@ describe('api utilities', () => {
 
   it('refreshes the session and stores the merged session', async () => {
     const flux = createMockFlux();
+    const refreshPayload = {
+      exp: Math.floor(Date.now() / 1000) + 7200,
+      iat: Math.floor(Date.now() / 1000)
+    };
+    const refreshToken = `header.${Buffer.from(JSON.stringify(refreshPayload)).toString('base64url')}.signature`;
     graphqlQueryMock.mockResolvedValue({
       users: {
         refreshSession: {
-          expires: 999,
-          issued: 111,
-          token: 'new-token'
+          expires: refreshPayload.exp,
+          issued: refreshPayload.iat,
+          token: refreshToken
         }
       }
     });
@@ -160,18 +165,18 @@ describe('api utilities', () => {
 
     expect(result).toEqual({
       session: expect.objectContaining({
-        expires: 999,
-        issued: 111,
-        token: 'new-token',
+        expires: refreshPayload.exp * 1000,
+        issued: refreshPayload.iat * 1000,
+        token: refreshToken,
         userId: 'user-1',
         username: 'alpha'
       }),
       type: 'USER_UPDATE_SESSION_SUCCESS'
     });
     expect(flux.setState).toHaveBeenCalledWith('user.session', expect.objectContaining({
-      expires: 999,
-      issued: 111,
-      token: 'new-token',
+      expires: refreshPayload.exp * 1000,
+      issued: refreshPayload.iat * 1000,
+      token: refreshToken,
       userId: 'user-1',
       username: 'alpha'
     }));
