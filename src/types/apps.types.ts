@@ -5,13 +5,13 @@
 import type {BaseDocument, ExtensibleFields} from './common.types.js';
 
 export interface AppType extends BaseDocument, ExtensibleFields {
-  apiKey?: string;
-  appId?: string;
-  description?: string;
-  imageUrl?: string;
-  isActive?: boolean;
-  name?: string;
-  settings?: Record<string, any>;
-  url?: string;
-  userId?: string;
+  readonly apiKey?: string;
+  readonly appId?: string;
+  readonly description?: string;
+  readonly imageUrl?: string;
+  readonly isActive?: boolean;
+  readonly name?: string;
+  readonly settings?: Record<string, any>;
+  readonly url?: string;
+  readonly userId?: string;
 }

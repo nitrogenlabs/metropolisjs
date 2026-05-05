@@ -5,15 +5,15 @@
 import type {BaseDocument, ExtensibleFields} from './common.types.js';
 
 export interface GroupType extends BaseDocument, ExtensibleFields {
-  description?: string;
-  groupId?: string;
-  imageUrl?: string;
-  isPrivate?: boolean;
-  memberCount?: number;
-  name?: string;
-  ownerId?: string;
-  settings?: Record<string, any>;
-  tags?: any[];
-  thumbUrl?: string;
-  userId?: string;
+  readonly description?: string;
+  readonly groupId?: string;
+  readonly imageUrl?: string;
+  readonly isPrivate?: boolean;
+  readonly memberCount?: number;
+  readonly name?: string;
+  readonly ownerId?: string;
+  readonly settings?: Record<string, any>;
+  readonly tags?: any[];
+  readonly thumbUrl?: string;
+  readonly userId?: string;
 }

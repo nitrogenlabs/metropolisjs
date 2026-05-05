@@ -4,31 +4,31 @@
  */
 
 export interface BaseDocument {
-  _id?: string;
-  _key?: string;
-  _rev?: string;
-  added?: number;
-  id?: string;
-  modified?: number;
-  type?: string;
-  updated?: number;
+  readonly _id?: string;
+  readonly _key?: string;
+  readonly _rev?: string;
+  readonly added?: number;
+  readonly id?: string;
+  readonly modified?: number;
+  readonly type?: string;
+  readonly updated?: number;
 }
 
 export interface ExtensibleFields {
-  [key: string]: any;
+  readonly [key: string]: any;
 }
 
 export interface ListFilters {
-  from?: number;
-  to?: number;
-  sort?: string;
-  order?: 'asc' | 'desc';
-  [key: string]: any;
+  readonly from?: number;
+  readonly to?: number;
+  readonly sort?: string;
+  readonly order?: 'asc' | 'desc';
+  readonly [key: string]: any;
 }
 
 export interface ListOptions {
-  fields?: string[];
-  limit?: number;
-  offset?: number;
-  [key: string]: any;
+  readonly fields?: string[];
+  readonly limit?: number;
+  readonly offset?: number;
+  readonly [key: string]: any;
 }

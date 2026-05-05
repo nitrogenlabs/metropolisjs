@@ -2,42 +2,42 @@
  * Copyright (c) 2024-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
+import type {CollectionType, ConnectionType, ReactionType} from '../constants/Collections.js';
 import type {BaseDocument, ExtensibleFields} from './common.types.js';
-import type {CollectionType, ConnectionType, EdgeType, ReactionType} from '../constants/Collections.js';
 
 export interface EdgeDocument extends BaseDocument, ExtensibleFields {
-  _from?: string;
-  _to?: string;
-  fromType?: CollectionType;
-  fromId?: string;
-  toType?: CollectionType;
-  toId?: string;
+  readonly _from?: string;
+  readonly _to?: string;
+  readonly fromType?: CollectionType;
+  readonly fromId?: string;
+  readonly toType?: CollectionType;
+  readonly toId?: string;
 }
 
 export interface ConnectionEdge extends EdgeDocument {
-  connectionType?: ConnectionType;
-  status?: string;
-  metadata?: Record<string, any>;
+  readonly connectionType?: ConnectionType;
+  readonly status?: string;
+  readonly metadata?: Record<string, any>;
 }
 
 export interface ReactionEdge extends EdgeDocument {
-  reactionType?: ReactionType;
-  value?: string | number;
+  readonly reactionType?: ReactionType;
+  readonly value?: string | number;
 }
 
 export interface TagEdge extends EdgeDocument {
-  tagId?: string;
-  tagName?: string;
+  readonly tagId?: string;
+  readonly tagName?: string;
 }
 
 export interface ConversationEdge extends EdgeDocument {
-  conversationId?: string;
-  role?: string;
-  lastRead?: number;
+  readonly conversationId?: string;
+  readonly role?: string;
+  readonly lastRead?: number;
 }
 
 export interface FileEdge extends EdgeDocument {
-  fileId?: string;
-  fileType?: string;
-  order?: number;
+  readonly fileId?: string;
+  readonly fileType?: string;
+  readonly order?: number;
 }

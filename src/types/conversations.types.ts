@@ -5,13 +5,13 @@
 import type {BaseDocument, ExtensibleFields} from './common.types.js';
 
 export interface ConversationType extends BaseDocument, ExtensibleFields {
-  conversationId?: string;
-  isGroup?: boolean;
-  lastMessageAt?: number;
-  memberCount?: number;
-  members?: string[];
-  name?: string;
-  ownerId?: string;
-  settings?: Record<string, any>;
-  userId?: string;
+  readonly conversationId?: string;
+  readonly isGroup?: boolean;
+  readonly lastMessageAt?: number;
+  readonly memberCount?: number;
+  readonly members?: string[];
+  readonly name?: string;
+  readonly ownerId?: string;
+  readonly settings?: Record<string, any>;
+  readonly userId?: string;
 }

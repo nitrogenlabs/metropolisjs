@@ -5,29 +5,29 @@
 import type {BaseDocument, ExtensibleFields} from './common.types.js';
 
 export interface PaymentPlanType extends BaseDocument, ExtensibleFields {
-  amount?: number;
-  currency?: string;
-  description?: string;
-  interval?: string;
-  intervalCount?: number;
-  isActive?: boolean;
-  itemId?: string;
-  itemType?: string;
-  name?: string;
-  planId?: string;
-  userId?: string;
+  readonly amount?: number;
+  readonly currency?: string;
+  readonly description?: string;
+  readonly interval?: string;
+  readonly intervalCount?: number;
+  readonly isActive?: boolean;
+  readonly itemId?: string;
+  readonly itemType?: string;
+  readonly name?: string;
+  readonly planId?: string;
+  readonly userId?: string;
 }
 
 export interface PaymentSubscriptionType extends BaseDocument, ExtensibleFields {
-  cancelDate?: number;
-  expires?: number;
-  itemId?: string;
-  itemType?: string;
-  plan?: PaymentPlanType;
-  planId?: string;
-  status?: string;
-  subscriptionId?: string;
-  transactionId?: string;
-  trialEnd?: number;
-  userId?: string;
+  readonly cancelDate?: number;
+  readonly expires?: number;
+  readonly itemId?: string;
+  readonly itemType?: string;
+  readonly plan?: PaymentPlanType;
+  readonly planId?: string;
+  readonly status?: string;
+  readonly subscriptionId?: string;
+  readonly transactionId?: string;
+  readonly trialEnd?: number;
+  readonly userId?: string;
 }
