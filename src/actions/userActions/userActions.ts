@@ -982,7 +982,7 @@ export const createUserActions = (
       const baseSession = await syncStoredSession(flux, getSessionPayload(sessionResult));
 
       try {
-        const hydratedSession = await session(['personaId', 'userAccess', 'username'], requestOptions);
+        const hydratedSession = await session(['userId', 'personaId', 'userAccess', 'username'], requestOptions);
         await syncPersonaTagsToSession(flux, String((hydratedSession as any)?.personaId || ''));
       } catch(error) {
         const fallbackSession = await syncStoredSession(flux, baseSession as Record<string, unknown>);
