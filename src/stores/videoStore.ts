@@ -12,6 +12,7 @@ export const VIDEO_CONSTANTS = {
   GET_LIST_SUCCESS: 'VIDEO_GET_LIST_SUCCESS',
   REMOVE_ITEM_ERROR: 'VIDEO_REMOVE_ITEM_ERROR',
   REMOVE_ITEM_SUCCESS: 'VIDEO_REMOVE_ITEM_SUCCESS',
+  PROCESSING_COMPLETE: 'VIDEO_PROCESSING_COMPLETE',
   UPDATE_ITEM_ERROR: 'VIDEO_UPDATE_ITEM_ERROR',
   UPDATE_ITEM_SUCCESS: 'VIDEO_UPDATE_ITEM_SUCCESS'
 } as const;
@@ -67,6 +68,13 @@ export const videoStore = (
     }
 
     case VIDEO_CONSTANTS.UPDATE_ITEM_SUCCESS: {
+      const {video = {}} = data;
+      const {videoId = ''} = video;
+      const updatedVideos = {...state.videos, [videoId]: video};
+      return {...state, item: video, videos: updatedVideos};
+    }
+
+    case VIDEO_CONSTANTS.PROCESSING_COMPLETE: {
       const {video = {}} = data;
       const {videoId = ''} = video;
       const updatedVideos = {...state.videos, [videoId]: video};

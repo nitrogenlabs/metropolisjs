@@ -6,6 +6,7 @@ import Sockette from 'sockette';
 
 import {MESSAGE_CONSTANTS} from '../../stores/messageStore.js';
 import {NOTIFICATION_CONSTANTS} from '../../stores/notificationStore.js';
+import {VIDEO_CONSTANTS} from '../../stores/videoStore.js';
 import {WEBSOCKET_CONSTANTS} from '../../stores/websocketStore.js';
 import {getConfigFromFlux} from '../../utils/configUtils.js';
 
@@ -319,6 +320,15 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
           notification: notification as NotificationType,
           type: NOTIFICATION_CONSTANTS.ADD_ITEM_SUCCESS
         });
+      }
+    }
+
+    if(String(data?.action || '') === 'video.processing.completed') {
+      const video = data?.data?.video;
+
+      if(video && typeof video === 'object') {
+        flux.dispatch({type: VIDEO_CONSTANTS.UPDATE_ITEM_SUCCESS, video});
+        flux.dispatch({type: VIDEO_CONSTANTS.PROCESSING_COMPLETE, video});
       }
     }
   };
