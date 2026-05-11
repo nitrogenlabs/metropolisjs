@@ -45,6 +45,7 @@ describe('imageActions', () => {
     expect(imageActions.countByItem).toBeDefined();
     expect(imageActions.delete).toBeDefined();
     expect(imageActions.listByItem).toBeDefined();
+    expect(imageActions.listByPersonaReactions).toBeDefined();
     expect(imageActions.listByReactions).toBeDefined();
     expect(imageActions.update).toBeDefined();
     expect(imageActions.updateImageAdapter).toBeDefined();
@@ -57,6 +58,7 @@ describe('imageActions', () => {
     expect(typeof imageActions.countByItem).toBe('function');
     expect(typeof imageActions.delete).toBe('function');
     expect(typeof imageActions.listByItem).toBe('function');
+    expect(typeof imageActions.listByPersonaReactions).toBe('function');
     expect(typeof imageActions.listByReactions).toBe('function');
     expect(typeof imageActions.update).toBe('function');
     expect(typeof imageActions.updateImageAdapter).toBe('function');
@@ -111,6 +113,14 @@ describe('imageActions', () => {
   it('should handle listByReactions method', async () => {
     try {
       await imageActions.listByReactions(['like', 'love']);
+    } catch(error) {
+      expect(error).toBeDefined();
+    }
+  });
+
+  it('should handle listByPersonaReactions method', async () => {
+    try {
+      await imageActions.listByPersonaReactions('persona-id', ['saved']);
     } catch(error) {
       expect(error).toBeDefined();
     }

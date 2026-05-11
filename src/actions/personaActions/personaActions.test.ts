@@ -45,6 +45,7 @@ describe('personaActions', () => {
     expect(personaActions.deletePersona).toBeDefined();
     expect(personaActions.getPersonaById).toBeDefined();
     expect(personaActions.getPersonaListByIds).toBeDefined();
+    expect(personaActions.listByRelation).toBeDefined();
     expect(personaActions.updatePersona).toBeDefined();
     expect(personaActions.updatePersonaAdapter).toBeDefined();
     expect(personaActions.updatePersonaAdapterOptions).toBeDefined();
@@ -55,6 +56,7 @@ describe('personaActions', () => {
     expect(typeof personaActions.deletePersona).toBe('function');
     expect(typeof personaActions.getPersonaById).toBe('function');
     expect(typeof personaActions.getPersonaListByIds).toBe('function');
+    expect(typeof personaActions.listByRelation).toBe('function');
     expect(typeof personaActions.updatePersona).toBe('function');
     expect(typeof personaActions.updatePersonaAdapter).toBe('function');
     expect(typeof personaActions.updatePersonaAdapterOptions).toBe('function');

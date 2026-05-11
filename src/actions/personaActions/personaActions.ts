@@ -48,10 +48,13 @@ export interface PersonaApiResultsType {
     readonly deletePersona?: PersonaType;
     readonly getPersonaById?: PersonaType;
     readonly getPersonaListByIds?: PersonaType[];
+    readonly listByRelation?: PersonaType[];
     readonly listByTags?: PersonaType[];
     readonly updatePersona?: PersonaType;
   };
 }
+
+export type PersonaRelationFilter = 'followers' | 'following' | 'friends';
 
 export interface PersonaActions {
   readonly blockPersona: (targetPersonaId: string) => Promise<boolean>;
@@ -59,6 +62,14 @@ export interface PersonaActions {
   readonly addPersona: (personaData: Partial<PersonaType>, personaProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PersonaType>;
   readonly getPersonaById: (personaId: string, personaProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PersonaType>;
   readonly getPersonaListByIds: (personaIds: string[], personaProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PersonaType[]>;
+  readonly listByRelation: (
+    relation: PersonaRelationFilter,
+    personaId?: string,
+    from?: number,
+    to?: number,
+    personaProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<PersonaType[]>;
   readonly listByTags: (
     username: string,
     tags: string[],
@@ -182,6 +193,7 @@ export const createPersonaActions = (
     await clearCachedRequest(flux, `persona.getPersonaById:${personaId}`);
     await clearCachedRequest(flux, `persona.getPersonaById:${getActivePersonaId()}`);
     await clearCachedRequest(flux, 'persona.getPersonaListByIds');
+    await clearCachedRequest(flux, 'persona.listByRelation');
     await clearCachedRequest(flux, 'persona.listByTags');
   };
 
@@ -213,6 +225,7 @@ export const createPersonaActions = (
       throw error;
     } finally {
       await clearCachedRequest(flux, 'persona.getPersonaListByIds');
+      await clearCachedRequest(flux, 'persona.listByRelation');
       await clearCachedRequest(flux, 'persona.listByTags');
     }
   };
@@ -352,6 +365,76 @@ export const createPersonaActions = (
     }
   };
 
+  const listByRelation = async (
+    relation: PersonaRelationFilter,
+    personaId: string = '',
+    from: number = 0,
+    to: number = 24,
+    personaProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<PersonaType[]> => {
+    const normalizedRelation = relation === 'followers' || relation === 'friends' ? relation : 'following';
+
+    try {
+      const normalizedPersonaId = parseId(personaId) || getActivePersonaId();
+      const cachedResult = getCachedRequest<PersonaType[]>(
+        flux,
+        'persona.listByRelation',
+        {relation: normalizedRelation, personaId: normalizedPersonaId, from, to, personaProps},
+        requestOptions
+      );
+
+      if(cachedResult !== undefined) {
+        await flux.dispatch({personas: cachedResult, relation: normalizedRelation, type: PERSONA_CONSTANTS.GET_LIST_SUCCESS});
+        return cachedResult;
+      }
+
+      const queryVariables = {
+        from: {
+          type: 'Int',
+          value: from
+        },
+        personaId: {
+          type: 'ID',
+          value: normalizedPersonaId
+        },
+        relation: {
+          type: 'String',
+          value: normalizedRelation
+        },
+        to: {
+          type: 'Int',
+          value: to
+        }
+      };
+
+      const onSuccess = (data: PersonaApiResultsType) => {
+        const personas = data?.personas?.listByRelation || [];
+        return flux.dispatch({personas, relation: normalizedRelation, type: PERSONA_CONSTANTS.GET_LIST_SUCCESS});
+      };
+
+      const result = await appQuery<PersonaType[]>(
+        flux,
+        'listByRelation',
+        DATA_TYPE,
+        queryVariables,
+        [...DEFAULT_PERSONA_PROPS, ...personaProps],
+        {onSuccess}
+      );
+
+      return await setCachedRequest(
+        flux,
+        'persona.listByRelation',
+        {relation: normalizedRelation, personaId: normalizedPersonaId, from, to, personaProps},
+        result,
+        requestOptions
+      );
+    } catch(error) {
+      flux.dispatch({error, relation: normalizedRelation, type: PERSONA_CONSTANTS.GET_LIST_ERROR});
+      throw error;
+    }
+  };
+
   const deletePersona = async (personaId: string, personaProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<PersonaType> => {
     try {
       const queryVariables = {
@@ -373,6 +456,7 @@ export const createPersonaActions = (
     } finally {
       await clearCachedRequest(flux, `persona.getPersonaById:${personaId}`);
       await clearCachedRequest(flux, 'persona.getPersonaListByIds');
+      await clearCachedRequest(flux, 'persona.listByRelation');
       await clearCachedRequest(flux, 'persona.listByTags');
     }
   };
@@ -406,6 +490,7 @@ export const createPersonaActions = (
     } finally {
       await clearCachedRequest(flux, `persona.getPersonaById:${String(persona?.personaId || '')}`);
       await clearCachedRequest(flux, 'persona.getPersonaListByIds');
+      await clearCachedRequest(flux, 'persona.listByRelation');
       await clearCachedRequest(flux, 'persona.listByTags');
     }
   };
@@ -584,6 +669,7 @@ export const createPersonaActions = (
     addPersona,
     getPersonaById,
     getPersonaListByIds,
+    listByRelation,
     listByTags,
     unfollowPersona,
     unblockPersona,

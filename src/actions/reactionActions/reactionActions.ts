@@ -29,17 +29,23 @@ export interface ReactionActionsOptions {
 
 export type ReactionApiResultsType = {
   reactions: {
+    addPersonaReaction: ReactionType;
     addReaction: ReactionType;
+    deletePersonaReaction: ReactionType;
     deleteReaction: ReactionType;
     getReactionCount: number;
+    hasPersonaReaction: boolean;
     hasReaction: boolean;
   };
 };
 
 export interface ReactionActions {
+  addPersonaReaction: (personaId: string, itemId: string, itemType: string, reaction: Partial<ReactionType>, reactionProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ReactionType>;
   addReaction: (itemId: string, itemType: string, reaction: Partial<ReactionType>, reactionProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ReactionType>;
+  deletePersonaReaction: (personaId: string, itemId: string, itemType: string, reactionName: string, reactionProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ReactionType>;
   deleteReaction: (itemId: string, itemType: string, reactionName: string, reactionProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ReactionType>;
   getReactionCount: (itemId: string, itemType: string, reactionName: string, requestOptions?: ActionRequestOptions) => Promise<number>;
+  hasPersonaReaction: (personaId: string, itemId: string, itemType: string, reactionName: string, requestOptions?: ActionRequestOptions) => Promise<boolean>;
   hasReaction: (itemId: string, itemType: string, reactionName: string, direction: string, requestOptions?: ActionRequestOptions) => Promise<boolean>;
   abbreviateCount: (count: number) => string;
   updateReactionAdapter: (adapter: (input: unknown, options?: ReactionAdapterOptions) => any) => void;
@@ -128,6 +134,54 @@ export const createReactionActions = (
     }
   };
 
+  const addPersonaReaction = async (
+    personaId: string,
+    itemId: string,
+    itemType: string,
+    reaction: Partial<ReactionType>,
+    reactionProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<ReactionType> => {
+    const validatedReaction = validateReaction(reaction, reactionAdapterOptions);
+    const {value} = validatedReaction;
+    const formatValue = value !== undefined ? value.toString() : value;
+
+    try {
+      const queryVariables = {
+        itemId: {
+          type: 'ID!',
+          value: `${itemType}/${itemId}`
+        },
+        personaId: {
+          type: 'ID',
+          value: personaId
+        },
+        reaction: {
+          type: 'ReactionInput',
+          value: {
+            ...validatedReaction,
+            value: formatValue
+          }
+        }
+      };
+
+      const onSuccess = (data: ReactionApiResultsType) => {
+        const reaction = data?.reactions?.addPersonaReaction || {};
+        return Flux.dispatch({itemId, itemType, reaction, type: REACTION_CONSTANTS.ADD_ITEM_SUCCESS});
+      };
+
+      return await appMutation<ReactionType>(flux, 'addPersonaReaction', DATA_TYPE, queryVariables, ['id', 'name', 'type', 'value', ...reactionProps], {
+        onSuccess
+      });
+    } catch(error) {
+      flux.dispatch({error, type: REACTION_CONSTANTS.ADD_ITEM_ERROR});
+      throw error;
+    } finally {
+      await clearCachedRequest(flux, `reaction.getReactionCount:${itemType}:${itemId}:${reaction.name || ''}`);
+      await clearCachedRequest(flux, `reaction.hasPersonaReaction:${personaId}:${itemType}:${itemId}:${reaction.name || ''}`);
+    }
+  };
+
   const deleteReaction = async (
     itemId: string,
     itemType: string,
@@ -166,6 +220,52 @@ export const createReactionActions = (
     } finally {
       await clearCachedRequest(flux, `reaction.getReactionCount:${itemType}:${itemId}:${reactionName}`);
       await clearCachedRequest(flux, `reaction.hasReaction:${itemType}:${itemId}:${reactionName}`);
+    }
+  };
+
+  const deletePersonaReaction = async (
+    personaId: string,
+    itemId: string,
+    itemType: string,
+    reactionName: string,
+    reactionProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<ReactionType> => {
+    try {
+      const queryVariables = {
+        itemId: {
+          type: 'ID!',
+          value: `${itemType}/${itemId}`
+        },
+        personaId: {
+          type: 'ID',
+          value: personaId
+        },
+        reactionName: {
+          type: 'String!',
+          value: reactionName
+        }
+      };
+
+      const onSuccess = (data: ReactionApiResultsType) => {
+        const reaction = data?.reactions?.deletePersonaReaction || {};
+        return Flux.dispatch({
+          itemId,
+          itemType,
+          reaction,
+          type: REACTION_CONSTANTS.REMOVE_ITEM_SUCCESS
+        });
+      };
+
+      return await appMutation<ReactionType>(flux, 'deletePersonaReaction', DATA_TYPE, queryVariables, ['id', 'name', 'type', 'value', ...reactionProps], {
+        onSuccess
+      });
+    } catch(error) {
+      flux.dispatch({error, type: REACTION_CONSTANTS.REMOVE_ITEM_ERROR});
+      throw error;
+    } finally {
+      await clearCachedRequest(flux, `reaction.getReactionCount:${itemType}:${itemId}:${reactionName}`);
+      await clearCachedRequest(flux, `reaction.hasPersonaReaction:${personaId}:${itemType}:${itemId}:${reactionName}`);
     }
   };
 
@@ -296,6 +396,72 @@ export const createReactionActions = (
     }
   };
 
+  const hasPersonaReaction = async (
+    personaId: string,
+    itemId: string,
+    itemType: string,
+    reactionName: string,
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<boolean> => {
+    try {
+      const cachedResult = getCachedRequest<boolean>(
+        flux,
+        `reaction.hasPersonaReaction:${personaId}:${itemType}:${itemId}:${reactionName}`,
+        {itemId, itemType, personaId, reactionName},
+        requestOptions
+      );
+
+      if(cachedResult !== undefined) {
+        return cachedResult;
+      }
+
+      const queryVariables = {
+        itemId: {
+          type: 'ID!',
+          value: `${itemType}/${itemId}`
+        },
+        personaId: {
+          type: 'ID',
+          value: personaId
+        },
+        reactionName: {
+          type: 'String!',
+          value: reactionName
+        }
+      };
+
+      const onSuccess = (data: ReactionApiResultsType) => {
+        const hasReaction = data?.reactions?.hasPersonaReaction ?? false;
+        return Flux.dispatch({
+          hasReaction,
+          itemId: `${itemType}/${itemId}`,
+          name: reactionName,
+          type: REACTION_CONSTANTS.HAS_SUCCESS
+        });
+      };
+
+      const result = await appQuery<boolean>(
+        flux,
+        'hasPersonaReaction',
+        DATA_TYPE,
+        queryVariables,
+        [],
+        {onSuccess}
+      );
+
+      return await setCachedRequest(
+        flux,
+        `reaction.hasPersonaReaction:${personaId}:${itemType}:${itemId}:${reactionName}`,
+        {itemId, itemType, personaId, reactionName},
+        result,
+        requestOptions
+      );
+    } catch(error) {
+      flux.dispatch({error, type: REACTION_CONSTANTS.HAS_ERROR});
+      throw error;
+    }
+  };
+
   const abbreviateCount = (count: number): string => {
     const value = count || 0;
     let newValue = value.toString();
@@ -328,9 +494,12 @@ export const createReactionActions = (
 
   // Return the actions object
   return {
+    addPersonaReaction,
     addReaction,
+    deletePersonaReaction,
     deleteReaction,
     getReactionCount,
+    hasPersonaReaction,
     hasReaction,
     abbreviateCount,
     updateReactionAdapter,
