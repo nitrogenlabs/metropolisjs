@@ -1,6 +1,6 @@
 {
   "name": "@nlabs/metropolisjs",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "MetropolisJS is a library to connect users to Reaktor",
   "type": "module",
   "main": "lib/index.js",
