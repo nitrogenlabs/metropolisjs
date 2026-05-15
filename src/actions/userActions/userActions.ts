@@ -172,6 +172,12 @@ export interface UserActionsOptions {
   readonly userAdapterOptions?: UserAdapterOptions;
 }
 
+export interface VerificationEmailOptions {
+  readonly subject?: string;
+  readonly template?: string;
+  readonly text?: string;
+}
+
 export interface UserApiResultsType {
   readonly users: {
     readonly activeCount?: number;
@@ -250,7 +256,11 @@ export interface userActions {
   remove: (userId: string, requestOptions?: ActionRequestOptions) => Promise<User>;
   resetPassword: (username: string, password: string, code: string, type: 'email' | 'phone', requestOptions?: ActionRequestOptions) => Promise<boolean>;
   search: (query: string, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
-  sendVerificationEmail: (email: string, requestOptions?: ActionRequestOptions) => Promise<boolean>;
+  sendVerificationEmail: (
+    email: string,
+    emailOptions?: VerificationEmailOptions,
+    requestOptions?: ActionRequestOptions
+  ) => Promise<boolean>;
   session: (userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
   saveBillingCard: (card: Record<string, unknown>, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
   signIn: (user: Partial<User>, expires?: number, requestOptions?: ActionRequestOptions) => Promise<SessionType>;
@@ -1054,12 +1064,19 @@ export const createUserActions = (
     });
   };
 
-  const sendVerificationEmail = async (email: string, requestOptions: ActionRequestOptions = {}): Promise<boolean> => {
+  const sendVerificationEmail = async (
+    email: string,
+    emailOptions: VerificationEmailOptions = {},
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<boolean> => {
     const queryVariables = {
       user: {
         type: 'UserInput!',
         value: {
-          email
+          email,
+          ...(emailOptions.subject ? {verificationEmailSubject: emailOptions.subject} : {}),
+          ...(emailOptions.template ? {verificationEmailTemplate: emailOptions.template} : {}),
+          ...(emailOptions.text ? {verificationEmailText: emailOptions.text} : {})
         }
       }
     };

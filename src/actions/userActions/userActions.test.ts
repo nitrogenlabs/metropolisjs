@@ -166,6 +166,39 @@ describe('createUserActions', () => {
     await expect(actions.currentAuthenticatedUser()).resolves.toEqual(session);
   });
 
+  it('sends verification email template fields through the public mutation', async () => {
+    const flux = createMockFlux();
+    const actions = createUserActions(flux as any);
+    publicMutationMock.mockImplementation(async (_flux, _name, _type, _variables, _props, options) => {
+      await options?.onSuccess?.({users: {sendVerificationEmail: true}});
+      return {users: {sendVerificationEmail: true}};
+    });
+
+    await expect(actions.sendVerificationEmail('test@example.com', {
+      subject: '[appTitle] code',
+      template: '<strong>[emailCode]</strong>',
+      text: 'Use [emailCode].'
+    })).resolves.toBe(true);
+
+    expect(publicMutationMock).toHaveBeenCalledWith(
+      flux,
+      'sendVerificationEmail',
+      'users',
+      expect.objectContaining({
+        user: expect.objectContaining({
+          value: expect.objectContaining({
+            email: 'test@example.com',
+            verificationEmailSubject: '[appTitle] code',
+            verificationEmailTemplate: '<strong>[emailCode]</strong>',
+            verificationEmailText: 'Use [emailCode].'
+          })
+        })
+      }),
+      [],
+      expect.any(Object)
+    );
+  });
+
   it('persists and returns the normalized session from signIn', async () => {
     const flux = createMockFlux();
     const actions = createUserActions(flux as any);
