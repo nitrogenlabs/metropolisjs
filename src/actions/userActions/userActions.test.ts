@@ -144,6 +144,7 @@ describe('createUserActions', () => {
     expect(actions.remove).toBeTypeOf('function');
     expect(actions.resetPassword).toBeTypeOf('function');
     expect(actions.search).toBeTypeOf('function');
+    expect(actions.sendVerificationEmail).toBeTypeOf('function');
     expect(actions.session).toBeTypeOf('function');
     expect(actions.signIn).toBeTypeOf('function');
     expect(actions.signOut).toBeTypeOf('function');

@@ -195,6 +195,7 @@ export interface UserApiResultsType {
     readonly remove?: Partial<User>;
     readonly resetPassword?: boolean;
     readonly saveBillingCard?: Partial<User>;
+    readonly sendVerificationEmail?: boolean;
     readonly session?: Partial<User>;
     readonly signIn?: Partial<User>;
     readonly signUp?: Partial<User>;
@@ -249,6 +250,7 @@ export interface userActions {
   remove: (userId: string, requestOptions?: ActionRequestOptions) => Promise<User>;
   resetPassword: (username: string, password: string, code: string, type: 'email' | 'phone', requestOptions?: ActionRequestOptions) => Promise<boolean>;
   search: (query: string, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
+  sendVerificationEmail: (email: string, requestOptions?: ActionRequestOptions) => Promise<boolean>;
   session: (userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
   saveBillingCard: (card: Record<string, unknown>, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
   signIn: (user: Partial<User>, expires?: number, requestOptions?: ActionRequestOptions) => Promise<SessionType>;
@@ -1052,6 +1054,39 @@ export const createUserActions = (
     });
   };
 
+  const sendVerificationEmail = async (email: string, requestOptions: ActionRequestOptions = {}): Promise<boolean> => {
+    const queryVariables = {
+      user: {
+        type: 'UserInput!',
+        value: {
+          email
+        }
+      }
+    };
+
+    const onSuccess = (data?: UserApiResultsType) => {
+      const success = !!data?.users?.sendVerificationEmail;
+      return flux.dispatch({
+        type: success ? USER_CONSTANTS.CONFIRM_SIGN_UP_SUCCESS : USER_CONSTANTS.CONFIRM_SIGN_UP_ERROR
+      });
+    };
+
+    return publicMutation<UserApiResultsType>(
+      flux,
+      'sendVerificationEmail',
+      DATA_TYPE,
+      queryVariables,
+      [],
+      {onSuccess}
+    ).then((data) => {
+      const success = !!data?.users?.sendVerificationEmail;
+      if(!success) {
+        throw new Error('send_verification_email_failed');
+      }
+      return true;
+    });
+  };
+
   const resetPassword = async (
     username: string,
     password: string,
@@ -1114,6 +1149,7 @@ export const createUserActions = (
     resetPassword,
     saveBillingCard,
     search,
+    sendVerificationEmail,
     session,
     signIn,
     signOut,
