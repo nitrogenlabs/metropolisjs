@@ -4,7 +4,7 @@
  */
 import {validateUserInput} from '../../adapters/userAdapter/userAdapter.js';
 import {USER_CONSTANTS} from '../../stores/userStore.js';
-import {appMutation, appQuery, publicMutation, refreshSession} from '../../utils/api.js';
+import {appMutation, appQuery, publicMutation, publicQuery, refreshSession} from '../../utils/api.js';
 import {createBaseActions} from '../../utils/baseActionFactory.js';
 import {
   clearPersistedSession,
@@ -186,6 +186,7 @@ export interface UserApiResultsType {
     readonly deactivate?: Partial<User>;
     readonly forgotPassword?: boolean;
     readonly itemById?: Partial<User>;
+    readonly getUserByAttribute?: Partial<User>;
     readonly getUserBySession?: Partial<User>;
     readonly itemBySession?: Partial<User>;
     readonly itemByToken?: Partial<User>;
@@ -232,6 +233,12 @@ export interface userActions {
   list: (userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
   listByConnection: (userId: string, from?: number, to?: number, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
   itemById: (userId: string, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
+  getUserByAttribute: (
+    attribute: 'email' | 'username',
+    value: string,
+    userProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<User>;
   deleteBillingCard: (userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
   listByLatest: (username?: string, from?: number, to?: number, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
   listByReactions: (
@@ -603,6 +610,61 @@ export const createUserActions = (
     );
 
     return setCachedRequest<User>(flux, `user.itemById:${userId}`, {userId, userProps}, result as User, requestOptions);
+  };
+
+  const getUserByAttribute = async (
+    attribute: 'email' | 'username',
+    value: string,
+    userProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<User> => {
+    const normalizedAttribute = String(attribute || '').trim() as 'email' | 'username';
+    const normalizedValue = String(value || '').trim();
+    let matchingUser: Partial<User> = {};
+    const cachedResult = getCachedRequest<User>(
+      flux,
+      `user.getUserByAttribute:${normalizedAttribute}:${normalizedValue}`,
+      {attribute: normalizedAttribute, userProps, value: normalizedValue},
+      requestOptions
+    );
+
+    if(cachedResult !== undefined) {
+      return cachedResult;
+    }
+
+    const queryVariables = {
+      attribute: {
+        type: 'String!',
+        value: normalizedAttribute
+      },
+      value: {
+        type: 'String!',
+        value: normalizedValue
+      }
+    };
+
+    const onSuccess = (data: ApiResultsType = {}) => {
+      const user = ((data as unknown as UserApiResultsType & {
+        users?: {getUserByAttribute?: Partial<User>};
+      })?.users?.getUserByAttribute) || {};
+      matchingUser = user;
+
+      return flux.dispatch({type: USER_CONSTANTS.GET_ITEM_SUCCESS, user});
+    };
+
+    await withInvalidFieldRetry(
+      (safeUserProps) => publicQuery(flux, 'getUserByAttribute', DATA_TYPE, queryVariables, safeUserProps, {onSuccess}),
+      userProps,
+      DEFAULT_USER_QUERY_FIELDS
+    );
+
+    return setCachedRequest<User>(
+      flux,
+      `user.getUserByAttribute:${normalizedAttribute}:${normalizedValue}`,
+      {attribute: normalizedAttribute, userProps, value: normalizedValue},
+      matchingUser as User,
+      requestOptions
+    );
   };
 
   const saveBillingCard = async (
@@ -1037,6 +1099,7 @@ export const createUserActions = (
     true;
 
   const forgotPassword = async (username: string, requestOptions: ActionRequestOptions = {}): Promise<boolean> => {
+    let forgotPasswordSucceeded = false;
     const queryVariables = {
       user: {
         type: 'UserInput!',
@@ -1050,18 +1113,19 @@ export const createUserActions = (
 
     const onSuccess = (data?: UserApiResultsType) => {
       const success = !!data?.users?.forgotPassword;
+      forgotPasswordSucceeded = success;
       return flux.dispatch({
         type: success ? USER_CONSTANTS.FORGOT_PASSWORD_SUCCESS : USER_CONSTANTS.FORGOT_PASSWORD_ERROR
       });
     };
 
-    return publicMutation<UserApiResultsType>(flux, 'forgotPassword', DATA_TYPE, queryVariables, [], {onSuccess}).then((data) => {
-      const success = !!data?.users?.forgotPassword;
-      if(!success) {
-        throw new Error('forgot_password_failed');
-      }
-      return true;
-    });
+    await publicMutation<UserApiResultsType>(flux, 'forgotPassword', DATA_TYPE, queryVariables, [], {onSuccess});
+
+    if(!forgotPasswordSucceeded) {
+      throw new Error('forgot_password_failed');
+    }
+
+    return true;
   };
 
   const sendVerificationEmail = async (
@@ -1157,6 +1221,7 @@ export const createUserActions = (
     forgotPassword,
     isLoggedIn,
     itemById,
+    getUserByAttribute,
     listByConnection,
     listByLatest,
     listByReactions,

@@ -2,6 +2,7 @@ import {beforeEach, describe, expect, it, vi} from 'vitest';
 
 const appMutationMock = vi.fn();
 const appQueryMock = vi.fn();
+const publicQueryMock = vi.fn();
 const publicMutationMock = vi.fn();
 const refreshSessionMock = vi.fn();
 const clearPersistedSessionMock = vi.fn();
@@ -17,6 +18,7 @@ vi.mock('../../utils/api.js', () => ({
   appMutation: appMutationMock,
   appQuery: appQueryMock,
   publicMutation: publicMutationMock,
+  publicQuery: publicQueryMock,
   refreshSession: refreshSessionMock
 }));
 
@@ -116,6 +118,7 @@ describe('createUserActions', () => {
     appMutationMock.mockReset();
     appQueryMock.mockReset();
     publicMutationMock.mockReset();
+    publicQueryMock.mockReset();
     refreshSessionMock.mockReset();
     clearPersistedSessionMock.mockReset();
     hydrateSessionFromStorageMock.mockReset();
@@ -134,6 +137,7 @@ describe('createUserActions', () => {
     expect(actions.currentAuthenticatedUser).toBeTypeOf('function');
     expect(actions.currentUser).toBeTypeOf('function');
     expect(actions.forgotPassword).toBeTypeOf('function');
+    expect(actions.getUserByAttribute).toBeTypeOf('function');
     expect(actions.itemById).toBeTypeOf('function');
     expect(actions.list).toBeTypeOf('function');
     expect(actions.listByConnection).toBeTypeOf('function');
@@ -154,6 +158,41 @@ describe('createUserActions', () => {
     expect(actions.updateUser).toBeTypeOf('function');
     expect(actions.updateUserAdapter).toBeTypeOf('function');
     expect(actions.updateUserAdapterOptions).toBeTypeOf('function');
+  });
+
+  it('gets a public user by attribute', async () => {
+    const flux = createMockFlux();
+    const actions = createUserActions(flux as any);
+    const user = {email: 'test@example.com', userId: 'user-1'};
+
+    publicQueryMock.mockImplementation(async (_flux, _name, _type, _variables, _props, options) => {
+      await options?.onSuccess?.({users: {getUserByAttribute: user}});
+      return {users: {getUserByAttribute: user}};
+    });
+
+    await expect(actions.getUserByAttribute('email', 'test@example.com', ['email', 'userId'])).resolves.toEqual(user);
+
+    expect(publicQueryMock).toHaveBeenCalledWith(
+      flux,
+      'getUserByAttribute',
+      'users',
+      {
+        attribute: {
+          type: 'String!',
+          value: 'email'
+        },
+        value: {
+          type: 'String!',
+          value: 'test@example.com'
+        }
+      },
+      ['email', 'userId'],
+      expect.any(Object)
+    );
+    expect(flux.dispatch).toHaveBeenCalledWith({
+      type: 'USER_GET_ITEM_SUCCESS',
+      user
+    });
   });
 
   it('returns the hydrated session from currentAuthenticatedUser', async () => {
