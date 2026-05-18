@@ -75,25 +75,25 @@
   "license": "MIT",
   "dependencies": {
     "@nlabs/rip-hunter": "3.1.0",
-    "@nlabs/utils": "^2.8.6",
-    "i18next": "^25.10.9",
+    "@nlabs/utils": "^2.10.4",
+    "i18next": "^26.2.0",
     "luxon": "^3.7.2",
     "p-debounce": "^5.1.0",
-    "react-i18next": "^16.6.6",
+    "react-i18next": "^17.0.8",
     "sockette": "^2.0.6",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@jest/globals": "30.3.0",
+    "@jest/globals": "30.4.1",
     "@nlabs/arkhamjs": "3.31.9",
     "@nlabs/arkhamjs-storage-browser": "^3.30.6",
     "@nlabs/arkhamjs-utils-react": "^3.32.7",
-    "@nlabs/lex": "^1.55.2",
+    "@nlabs/lex": "^1.58.2",
     "@types/jest": "^30.0.0",
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.9.0",
     "@types/react": "^19.2.14",
-    "react": "^19.2.4",
-    "typescript": "^6.0.2"
+    "react": "^19.2.6",
+    "typescript": "^6.0.3"
   },
   "peerDependencies": {
     "@nlabs/arkhamjs": "^3.31.1",
@@ -106,9 +106,15 @@
     "got": "^14.6.5",
     "http-cache-semantics": "^4.2.0",
     "http-proxy-middleware": "^3.0.5",
+    "is-svg": {
+      "fast-xml-parser": "^5.8.0"
+    },
     "lodash.pick": "npm:lodash@^4.17.21",
     "nth-check": "^2.1.1",
     "postcss": "^8.5.6",
+    "postcss-url": {
+      "minimatch": "^3.1.5"
+    },
     "semver-regex": "^4.0.5",
     "tmp": "^0.2.5"
   }

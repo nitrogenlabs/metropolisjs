@@ -333,4 +333,3 @@ describe('fileAdapter', () => {
     });
   });
 });
-import {it} from 'vitest';
