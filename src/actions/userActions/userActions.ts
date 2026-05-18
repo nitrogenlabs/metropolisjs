@@ -1100,13 +1100,13 @@ export const createUserActions = (
 
   const forgotPassword = async (username: string, requestOptions: ActionRequestOptions = {}): Promise<boolean> => {
     let forgotPasswordSucceeded = false;
+    const identifier = String(username || '').trim();
+    const attribute = identifier.includes('@') ? 'email' : 'username';
     const queryVariables = {
       user: {
         type: 'UserInput!',
         value: {
-          email: username,
-          phone: username,
-          username
+          [attribute]: identifier
         }
       }
     };

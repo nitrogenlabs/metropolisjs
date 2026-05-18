@@ -195,6 +195,62 @@ describe('createUserActions', () => {
     });
   });
 
+  it('sends only email for forgot password email identifiers', async () => {
+    const flux = createMockFlux();
+    const actions = createUserActions(flux as any);
+
+    publicMutationMock.mockImplementation(async (_flux, _name, _type, _variables, _props, options) => {
+      await options?.onSuccess?.({users: {forgotPassword: true}});
+      return {users: {forgotPassword: true}};
+    });
+
+    await expect(actions.forgotPassword('admin@nitrogenx.co')).resolves.toBe(true);
+
+    expect(publicMutationMock).toHaveBeenCalledWith(
+      flux,
+      'forgotPassword',
+      'users',
+      {
+        user: {
+          type: 'UserInput!',
+          value: {
+            email: 'admin@nitrogenx.co'
+          }
+        }
+      },
+      [],
+      expect.any(Object)
+    );
+  });
+
+  it('sends only username for forgot password username identifiers', async () => {
+    const flux = createMockFlux();
+    const actions = createUserActions(flux as any);
+
+    publicMutationMock.mockImplementation(async (_flux, _name, _type, _variables, _props, options) => {
+      await options?.onSuccess?.({users: {forgotPassword: true}});
+      return {users: {forgotPassword: true}};
+    });
+
+    await expect(actions.forgotPassword('nitrog7')).resolves.toBe(true);
+
+    expect(publicMutationMock).toHaveBeenCalledWith(
+      flux,
+      'forgotPassword',
+      'users',
+      {
+        user: {
+          type: 'UserInput!',
+          value: {
+            username: 'nitrog7'
+          }
+        }
+      },
+      [],
+      expect.any(Object)
+    );
+  });
+
   it('returns the hydrated session from currentAuthenticatedUser', async () => {
     const flux = createMockFlux();
     const actions = createUserActions(flux as any);
