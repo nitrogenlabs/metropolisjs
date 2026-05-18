@@ -303,4 +303,81 @@ describe('createTagActions', () => {
 
     expect(appQueryMock).toHaveBeenCalled();
   });
+
+  it('dispatches add, update, persona link, and unlink success branches', async () => {
+    const flux = {
+      dispatch: vi.fn(async (payload) => payload),
+      getState: vi.fn((key: string, fallback?: unknown) => {
+        if(key === 'user.session') {
+          return {personaId: 'persona-1', tags: []};
+        }
+        return fallback;
+      })
+    };
+    const tagActions = createTagActions(flux as any);
+    const tag = {name: 'Alpha', tagId: 'alpha'};
+
+    appMutationMock.mockImplementation(async (_flux, operation, _type, _variables, _props, options) => {
+      const response = {
+        tags: {
+          addTag: tag,
+          addTagToItem: tag,
+          deleteTagFromItem: true,
+          updateTag: {...tag, name: 'Beta'}
+        }
+      };
+      await options?.onSuccess?.(response);
+      return response.tags[operation];
+    });
+
+    await expect(tagActions.addTag(tag)).resolves.toEqual(tag);
+    await expect(tagActions.updateTag({...tag, name: 'Beta'})).resolves.toEqual({...tag, name: 'Beta'});
+    await expect(tagActions.addTagToItem('alpha', 'personas/persona-1')).resolves.toEqual(tag);
+    await expect(tagActions.deleteTagFromItem('alpha', 'personas/persona-1')).resolves.toBe(true);
+    await expect(tagActions.addTagToItem('alpha', 'posts/post-1')).resolves.toEqual(tag);
+    await expect(tagActions.deleteTagFromItem('alpha', 'posts/post-1')).resolves.toBe(true);
+
+    expect(flux.dispatch).toHaveBeenCalledWith({tag, type: 'TAG_ADD_ITEM_SUCCESS'});
+    expect(flux.dispatch).toHaveBeenCalledWith({tag: {...tag, name: 'Beta'}, type: 'TAG_UPDATE_ITEM_SUCCESS'});
+    expect(flux.dispatch).toHaveBeenCalledWith({tag, type: 'TAG_ADD_PERSONA_SUCCESS'});
+    expect(flux.dispatch).toHaveBeenCalledWith({tag: {tagId: 'alpha'}, type: 'TAG_REMOVE_PERSONA_SUCCESS'});
+    expect(flux.dispatch).toHaveBeenCalledWith({itemDocId: 'posts/post-1', tag, type: 'TAG_ADD_LINK_SUCCESS'});
+    expect(flux.dispatch).toHaveBeenCalledWith({
+      itemDocId: 'posts/post-1',
+      removed: true,
+      tag: {tagId: 'alpha'},
+      type: 'TAG_REMOVE_LINK_SUCCESS'
+    });
+  });
+
+  it('returns an existing persona tag without linking again', async () => {
+    const existingTag = {name: 'Alpha', tagId: 'alpha'};
+    const flux = {
+      dispatch: vi.fn(async (payload) => payload),
+      getState: vi.fn((key: string, fallback?: unknown) => {
+        if(key === 'user.session') {
+          return {personaId: 'persona-1', tags: [existingTag]};
+        }
+        return fallback;
+      })
+    };
+    const tagActions = createTagActions(flux as any);
+
+    await expect(tagActions.addTagToItem('alpha', 'personas/persona-1')).resolves.toEqual(existingTag);
+    expect(appMutationMock).not.toHaveBeenCalled();
+  });
+
+  it('dispatches tag action errors', async () => {
+    const flux = createMockFlux();
+    const tagActions = createTagActions(flux as any);
+    const error = new Error('tag failed');
+
+    appMutationMock.mockRejectedValueOnce(error);
+    await expect(tagActions.addTag({name: 'Alpha'})).rejects.toThrow('tag failed');
+    expect(flux.dispatch).toHaveBeenCalledWith({error, type: 'TAG_ADD_ITEM_ERROR'});
+
+    appQueryMock.mockRejectedValueOnce(error);
+    await expect(tagActions.getTagsByItem('posts/post-1')).rejects.toThrow('tag failed');
+    expect(flux.dispatch).toHaveBeenCalledWith({error, type: 'TAG_GET_LIST_ERROR'});
+  });
 });

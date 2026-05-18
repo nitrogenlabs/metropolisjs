@@ -1,4 +1,6 @@
 import {USER_CONSTANTS, defaultValues, userStore} from './userStore';
+import {REACTION_CONSTANTS} from './reactionStore';
+import {TAG_CONSTANTS} from './tagStore';
 
 describe('userStore', () => {
   it('should have expected USER_CONSTANTS values', () => {
@@ -368,5 +370,57 @@ describe('userStore', () => {
     expect(result).toBeDefined();
     expect(typeof result).toBe('object');
     expect(result.users).toBeDefined();
+  });
+
+  it('updates session tags, personas, reactions, and error reset branches', () => {
+    let state = userStore(USER_CONSTANTS.SIGN_IN_SUCCESS, {
+      session: {
+        tags: [{name: 'Old', tagId: 'tag-1'}],
+        userId: 'user-1',
+        username: 'alpha'
+      }
+    } as any);
+
+    state = userStore(TAG_CONSTANTS.ADD_PERSONA_SUCCESS, {
+      tag: {name: 'New', tagId: 'tag-2'}
+    } as any, state);
+    expect(state.session.tags?.map((tag: any) => tag.name)).toEqual(['New', 'Old']);
+
+    state = userStore(TAG_CONSTANTS.REMOVE_PERSONA_SUCCESS, {
+      tag: {tagId: 'tag-1'}
+    } as any, state);
+    expect(state.session.tags).toEqual([{name: 'New', tagId: 'tag-2'}]);
+
+    state = userStore(USER_CONSTANTS.UPDATE_PERSONA_SUCCESS, {
+      persona: {personaId: 'persona-1', name: 'Persona'}
+    } as any, state);
+    expect(state.session.personaId).toBe('persona-1');
+
+    state = userStore(USER_CONSTANTS.UPDATE_SESSION_SUCCESS, {
+      user: {userActive: true}
+    } as any, state);
+    expect(state.session.userActive).toBe(true);
+
+    state = userStore(USER_CONSTANTS.GET_DETAILS_SUCCESS, {
+      user: {userId: 'user-1', username: 'alpha'}
+    } as any, state);
+    state = userStore(REACTION_CONSTANTS.ADD_ITEM_SUCCESS, {
+      itemId: 'user-1',
+      itemType: 'users',
+      reaction: {name: 'like', value: 'true'}
+    } as any, state);
+    expect(state.users['user-1'].hasLike).toBe(true);
+    expect(state.users['user-1'].likeCount).toBe(1);
+
+    state = userStore(REACTION_CONSTANTS.REMOVE_ITEM_SUCCESS, {
+      itemId: 'user-1',
+      itemType: 'users',
+      reaction: {name: 'like', value: 'false'}
+    } as any, state);
+    expect(state.users['user-1'].hasLike).toBe(false);
+    expect(state.users['user-1'].likeCount).toBe(0);
+
+    expect(userStore(USER_CONSTANTS.SIGN_IN_ERROR, {}, state).session.username).toBe('alpha');
+    expect(userStore(USER_CONSTANTS.GET_SESSION_ERROR, {}, state)).toEqual(defaultValues);
   });
 });

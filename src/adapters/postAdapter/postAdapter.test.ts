@@ -1,4 +1,4 @@
-import {parsePost, PostValidationError, validatePostInput} from './postAdapter';
+import {formatPostOutput, parsePost, PostValidationError, validatePostInput} from './postAdapter';
 
 describe('postAdapter', () => {
   describe('validatePostInput', () => {
@@ -151,6 +151,45 @@ describe('postAdapter', () => {
       expect(result.likeCount).toBe(25);
       expect(result.cached).toBe(1234567890);
       expect(result.modified).toBe(1234567890);
+    });
+
+    it('parses relational, date, file, privacy, and tag fields', () => {
+      const post = {
+        _id: 'posts/post-1',
+        _key: 'post-1',
+        content: 'Body',
+        endDate: 2000,
+        files: [{fileId: 'file-1', name: 'file.txt'}],
+        groupId: 'groups/group-1',
+        location: 'Austin',
+        name: 'Post',
+        parentId: 'posts/parent-1',
+        privacy: 'private',
+        startDate: 1000,
+        tags: [{tagId: 'tag-1', name: 'Alpha'}],
+        type: 'status',
+        userId: 'users/user-1'
+      };
+
+      const result = parsePost(post);
+
+      expect(result).toEqual(expect.objectContaining({
+        groupId: 'groupsgroup1',
+        id: 'posts/post1',
+        location: 'Austin',
+        parentId: 'postsparent1',
+        postId: 'post1',
+        privacy: 'private',
+        type: 'status',
+        userId: 'usersuser1'
+      }));
+      expect(result.files).toHaveLength(1);
+      expect(result.tags).toHaveLength(1);
+      expect(formatPostOutput(result)).toBe(result);
+    });
+
+    it('wraps unexpected parse errors', () => {
+      expect(() => parsePost(null as any)).toThrow(PostValidationError);
     });
   });
 

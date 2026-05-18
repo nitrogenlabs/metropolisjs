@@ -22,5 +22,37 @@ export default Config.create({
   outputPath: 'lib',
   targetEnvironment: 'web',
   useESM: true,
-  useTypescript: true
+  useTypescript: true,
+  vitest: {
+    coverage: {
+      enabled: true,
+      exclude: [
+        '**/node_modules/**',
+        '**/dist/**',
+        '**/lib/**',
+        '**/__snapshots__/**',
+        '**/*.d.ts',
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.test.ts',
+        'src/**/*.test.tsx',
+        'src/**/*.e2e.{ts,tsx}',
+        'src/**/*.e2e.test.ts',
+        'src/**/*.e2e.test.tsx',
+        'src/**/*.e2e.*',
+        'src/tests/**',
+        'src/tests/**/*',
+        '**/src/tests/**',
+        '**/src/tests/**/*',
+        'src/**/*.types.ts',
+        'src/graphql/**'
+      ],
+      include: ['src/**/*.{ts,tsx}'],
+      reporter: ['text-summary'],
+      thresholds: {
+        functions: 90,
+        lines: 90,
+        statements: 90
+      }
+    }
+  }
 });

@@ -250,6 +250,16 @@ describe('sessionAdapter', () => {
       expect(result.expires).toBe(1640995200000);
       expect(result.issued).toBe(1640991600000);
     });
+
+    it('uses id fallbacks and reports invalid session input', () => {
+      expect(parseSession({id: 'sessions/session-1'}).id).toBe('sessions/session1');
+      expect(parseSession({_key: 'session-1'}).sessionId).toBe('session1');
+      expect(() => validateSessionInput({expires: 'bad'} as any)).toThrow(SessionValidationError);
+    });
+
+    it('wraps unexpected parse errors', () => {
+      expect(() => parseSession(null as any)).toThrow(SessionValidationError);
+    });
   });
 
   describe('SessionValidationError', () => {

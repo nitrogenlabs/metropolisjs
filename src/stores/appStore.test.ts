@@ -9,4 +9,9 @@ describe('appStore', () => {
     const updatedState = appStore('', {}, defaultValues);
     return expect(updatedState).toBe(defaultValues);
   });
+
+  it('keeps supplied app state for unknown actions', () => {
+    const state = {network: {status: true}};
+    expect(appStore('UNKNOWN', {}, state)).toBe(state);
+  });
 });

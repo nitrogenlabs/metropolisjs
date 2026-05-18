@@ -313,6 +313,10 @@ describe('fileAdapter', () => {
       expect(result.base64).toBe(file.base64);
       expect(result.buffer).toBe(file.buffer);
     });
+
+    it('wraps unexpected parse errors', () => {
+      expect(() => parseFile(null as any)).toThrow(FileValidationError);
+    });
   });
 
   describe('FileValidationError', () => {

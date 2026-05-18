@@ -1,3 +1,5 @@
+import {resetActionScenarioMocks, runImageActionsScenario} from '../../tests/actionTestScenarios.js';
+import {expect, it, vi} from 'vitest';
 import {createImageActions} from './imageActions';
 
 const createMockFlux = () => {
@@ -37,6 +39,7 @@ describe('imageActions', () => {
   let imageActions;
 
   beforeEach(() => {
+    resetActionScenarioMocks();
     imageActions = createImageActions(mockFlux);
   });
 
@@ -52,6 +55,8 @@ describe('imageActions', () => {
     expect(imageActions.updateImageAdapterOptions).toBeDefined();
     expect(imageActions.upload).toBeDefined();
   });
+
+  it('exercises image action methods', runImageActionsScenario);
 
   it('should have correct method types', () => {
     expect(typeof imageActions.add).toBe('function');
@@ -479,5 +484,71 @@ describe('imageActions', () => {
     expect(typeof imageActions.updateImageAdapterOptions).toBe('function');
 
     imageActions.updateImageAdapterOptions = originalOptions;
+  });
+
+  it('exercises upload, mutation, query, and error branches with mocked APIs', async () => {
+    vi.resetModules();
+    const appMutation = vi.fn(async (_flux, operation, _type, _variables, _props, options) => {
+      const image = {imageId: 'image-1', itemId: 'post-1'};
+      const response = {
+        images: {
+          deleteImage: image,
+          getImageById: image,
+          getImageListByItem: [image],
+          imagesByPersonaReactions: [image],
+          imagesByReactions: [image],
+          updateImage: image
+        },
+        imageCount: 2
+      };
+      await options?.onSuccess?.(response);
+      return operation === 'imageCount' ? 2 : response.images[operation] ?? image;
+    });
+    const appQuery = vi.fn(async (_flux, operation, _type, _variables, _props, options) => {
+      const image = {imageId: 'image-1', itemId: 'post-1'};
+      const response = {
+        images: {
+          getImageById: image,
+          getImageListByItem: [image],
+          imagesByPersonaReactions: [image],
+          imagesByReactions: [image]
+        },
+        imageCount: 2
+      };
+      await options?.onSuccess?.(response);
+      return operation === 'imageCount' ? 2 : response.images[operation] ?? [image];
+    });
+    const uploadImage = vi.fn(async () => ({image: {imageId: 'upload-1', itemId: 'post-1'}}));
+    vi.doMock('../../utils/api.js', () => ({appMutation, appQuery, uploadImage}));
+    vi.doMock('../../utils/file.js', () => ({
+      convertFileToUploadFile: vi.fn(async (file) => file)
+    }));
+    const {createImageActions: createMockedImageActions} = await import('./imageActions.js');
+    const flux = {
+      dispatch: vi.fn(async (payload) => payload),
+      getState: vi.fn((path: string, fallback?: unknown) => {
+        if(path === 'app.config') {
+          return {app: {images: {maxImageSize: 10, maxImageUploadBytes: 10}}};
+        }
+        return fallback;
+      }),
+      setState: vi.fn(async () => undefined)
+    };
+    const actions = createMockedImageActions(flux as any);
+
+    await expect(actions.add({base64: 'abc', description: 'description', itemId: 'post-1'})).resolves.toEqual({imageId: 'upload-1', itemId: 'post-1'});
+    await expect(actions.update({description: 'Updated', imageId: 'image-1'})).resolves.toEqual({imageId: 'image-1', itemId: 'post-1'});
+    await expect(actions.update({base64: 'abc', imageId: 'image-1', itemId: 'post-1'})).resolves.toEqual({imageId: 'upload-1', itemId: 'post-1'});
+    await expect(actions.upload([new File(['x'], 'x.txt', {type: 'text/plain'})], 'post-1', 'posts')).resolves.toEqual([{imageId: 'upload-1', itemId: 'post-1'}]);
+    await expect(actions.countByItem('post-1')).resolves.toBe(2);
+    await expect(actions.getImageById('image-1')).resolves.toEqual({imageId: 'image-1', itemId: 'post-1'});
+    await expect(actions.listByItem('post-1', 'posts')).resolves.toEqual([{imageId: 'image-1', itemId: 'post-1'}]);
+    await expect(actions.listByReactions(['like'])).resolves.toEqual([{imageId: 'image-1', itemId: 'post-1'}]);
+    await expect(actions.listByPersonaReactions('persona-1', ['like'])).resolves.toEqual([{imageId: 'image-1', itemId: 'post-1'}]);
+    await expect(actions.delete('image-1')).resolves.toEqual({imageId: 'image-1', itemId: 'post-1'});
+
+    uploadImage.mockRejectedValueOnce(new Error('upload failed'));
+    await expect(actions.add({base64: 'abc', itemId: 'post-1'})).rejects.toThrow('upload failed');
+    expect(flux.dispatch).toHaveBeenCalledWith(expect.objectContaining({type: 'IMAGE_ADD_ITEM_ERROR'}));
   });
 });

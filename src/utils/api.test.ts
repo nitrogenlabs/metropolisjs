@@ -22,6 +22,7 @@ const {
   appQuery,
   createMutation,
   createQuery,
+  getGraphql,
   publicMutation,
   publicQuery,
   refreshSession,
@@ -225,5 +226,97 @@ describe('api utilities', () => {
       session: {},
       type: 'USER_SIGN_OUT_SUCCESS'
     });
+  });
+
+  it('queues retry actions while offline', async () => {
+    const flux = {
+      ...createMockFlux(),
+      getState: vi.fn((key: string, fallback?: unknown) => {
+        if(key === 'app.networkType') {
+          return 'none';
+        }
+        return createMockFlux().getState(key, fallback);
+      })
+    };
+    const onSuccess = vi.fn();
+
+    await getGraphql(flux as any, 'http://localhost/graphql', false, {query: '{}'}, {onSuccess});
+
+    expect(flux.dispatch).toHaveBeenCalledWith({
+      retry: expect.objectContaining({responseMethod: onSuccess}),
+      type: 'APP_API_NETWORK_ERROR'
+    });
+    expect(graphqlQueryMock).not.toHaveBeenCalled();
+  });
+
+  it('handles upload configuration, auth, fetch, and fetch error branches', async () => {
+    const noUrlFlux = {
+      ...createMockFlux(),
+      getState: vi.fn((key: string, fallback?: unknown) => {
+        if(key === 'app.config') {
+          return {app: {api: {uploadImage: ''}}};
+        }
+        return createMockFlux().getState(key, fallback);
+      })
+    };
+    await expect(uploadImage(noUrlFlux as any, {base64: 'abc'})).rejects.toThrow('upload_endpoint_not_configured');
+
+    const noTokenFlux = {
+      ...createMockFlux(),
+      getState: vi.fn((key: string, fallback?: unknown) => {
+        if(key === 'user.session.token') {
+          return '';
+        }
+        return createMockFlux().getState(key, fallback);
+      })
+    };
+    await expect(uploadImage(noTokenFlux as any, {base64: 'abc'})).rejects.toThrow('missing_auth_token');
+
+    const okResponse = {
+      headers: {get: vi.fn(() => 'application/json')},
+      json: vi.fn(async () => ({imageId: 'image-1'})),
+      ok: true,
+      text: vi.fn()
+    };
+    const failResponse = {
+      headers: {get: vi.fn(() => 'application/json')},
+      json: vi.fn(async () => ({error: 'bad upload'})),
+      ok: false,
+      statusText: 'Bad Request',
+      text: vi.fn()
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(okResponse)
+      .mockResolvedValueOnce(failResponse);
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(uploadImage(createMockFlux() as any, new FormData())).resolves.toEqual({imageId: 'image-1'});
+    await expect(uploadImage(createMockFlux() as any, new FormData())).rejects.toThrow('bad upload');
+  });
+
+  it('returns null for missing or expired refresh tokens and clears invalid sessions', async () => {
+    const missingTokenFlux = {
+      ...createMockFlux(),
+      getState: vi.fn((key: string, fallback?: unknown) => {
+        if(key === 'user.session.token') {
+          return '';
+        }
+        return createMockFlux().getState(key, fallback);
+      })
+    };
+    await expect(refreshSession(missingTokenFlux as any)).resolves.toBeNull();
+
+    const expiredToken = [
+      'header',
+      Buffer.from(JSON.stringify({exp: Math.floor(Date.now() / 1000) - 60})).toString('base64url'),
+      'sig'
+    ].join('.');
+    const expiredFlux = createMockFlux();
+
+    await expect(refreshSession(expiredFlux as any, expiredToken)).resolves.toBeNull();
+    expect(expiredFlux.clearAppData).toHaveBeenCalled();
+    expect(expiredFlux.dispatch).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'USER_GET_SESSION_ERROR'
+    }));
   });
 });

@@ -128,4 +128,117 @@ describe('createWebsocketActions', () => {
     expect(socketteInstances[1]?.url).toContain('token=token-2');
     expect(socketteInstances[1]?.url).toContain('clientId=');
   });
+
+  it('skips invalid sends and init, reuses existing sockets, and dispatches close/error events', () => {
+    const flux = createFlux();
+    const actions = createWebsocketActions(flux as any);
+
+    expect(actions.sendNotification(null as any)).toBeNull();
+    expect(createWebsocketActions({
+      ...flux,
+      getState: vi.fn((key?: string, fallback?: unknown) => {
+        if(key === 'app.config') {
+          return {app: {urls: {websocket: 'wss://example.com/ws'}}};
+        }
+        return fallback;
+      })
+    } as any).wsInit('')).toBeNull();
+
+    const firstSocket = actions.wsInit('token-1', 'persona-1');
+    const secondSocket = actions.wsInit('token-1', 'persona-1');
+    expect(secondSocket).toBe(firstSocket);
+
+    actions.onError({timeStamp: 2});
+    actions.onClose({timeStamp: 3});
+
+    expect(flux.dispatch).toHaveBeenCalledWith({timestamp: 2, type: 'WEBSOCKET_ERROR'});
+    expect(flux.dispatch).toHaveBeenCalledWith({timestamp: 3, type: 'WEBSOCKET_CLOSE'});
+  });
+
+  it('ignores incomplete websocket payloads', () => {
+    const flux = createFlux();
+    const actions = createWebsocketActions(flux as any);
+
+    actions.sendTyping('', true);
+    actions.onReceive({data: JSON.stringify({action: 'message.created', data: {message: {content: 'missing conversation'}}}), timeStamp: 1});
+    actions.onReceive({data: JSON.stringify({action: 'message.typing', data: {typing: {conversationId: '', isTyping: true}}}), timeStamp: 2});
+    actions.onReceive({data: JSON.stringify({action: 'notification.created', data: {notification: null}}), timeStamp: 3});
+    actions.onReceive({data: JSON.stringify({action: 'video.processing.completed', data: {video: null}}), timeStamp: 4});
+
+    expect(flux.dispatch).toHaveBeenCalledWith(expect.objectContaining({type: 'WEBSOCKET_MESSAGE'}));
+    expect(socketteInstances).toHaveLength(0);
+  });
+
+  it('covers send, receive, typing, notification, video, and close flows', () => {
+    vi.useFakeTimers();
+    const flux = createFlux();
+    const actions = createWebsocketActions(flux as any);
+
+    expect(actions.wsInit()).toBeDefined();
+    expect(socketteInstances).toHaveLength(1);
+    const socket = socketteInstances[0];
+
+    actions.wsSend({action: 'queued'});
+    (socket.options.onopen as any)({timeStamp: 1});
+    expect(socket.json).toHaveBeenCalledWith(expect.objectContaining({action: 'websocketConnect'}));
+    expect(socket.json).toHaveBeenCalledWith({action: 'queued'});
+
+    actions.sendTyping('conversation-1', true, {personaId: 'persona-1', userId: 'user-1', users: [{userId: 'user-2'}]});
+    expect(socket.json).toHaveBeenCalledWith(expect.objectContaining({action: 'messageTyping'}));
+
+    const notification = actions.sendNotification({content: 'Hi'} as any);
+    expect(notification?.notificationId).toBeTruthy();
+
+    actions.onReceive({data: '', timeStamp: 2});
+    actions.onReceive({data: '{bad', timeStamp: 3});
+    actions.onReceive({
+      timeStamp: 4,
+      data: JSON.stringify({
+        action: 'message.created',
+        data: {
+          message: {
+            content: 'Hello',
+            conversationId: 'conversation-1',
+            messageId: 'message-1',
+            user: {personaId: 'persona-1'},
+            userId: 'user-1'
+          }
+        }
+      })
+    });
+    actions.onReceive({
+      timeStamp: 5,
+      data: JSON.stringify({
+        action: 'message.typing',
+        data: {typing: {conversationId: 'conversation-1', isTyping: true, personaId: 'persona-1'}}
+      })
+    });
+    actions.onReceive({
+      timeStamp: 5.5,
+      data: JSON.stringify({
+        action: 'message.typing',
+        data: {typing: {conversationId: 'conversation-1', isTyping: false, personaId: 'persona-1'}}
+      })
+    });
+    actions.onReceive({
+      timeStamp: 6,
+      data: JSON.stringify({
+        action: 'notification.created',
+        data: {notification: {notificationId: 'notification-1'}}
+      })
+    });
+    actions.onReceive({
+      timeStamp: 7,
+      data: JSON.stringify({
+        action: 'video.processing.completed',
+        data: {video: {videoId: 'video-1'}}
+      })
+    });
+    vi.advanceTimersByTime(60000);
+
+    actions.onError({timeStamp: 8});
+    actions.onClose({timeStamp: 9});
+    actions.wsClose();
+    expect(socket.close).toHaveBeenCalledWith(1000, 'metropolis_close');
+  });
 });

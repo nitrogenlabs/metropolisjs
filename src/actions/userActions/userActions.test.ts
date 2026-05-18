@@ -171,6 +171,7 @@ describe('createUserActions', () => {
     });
 
     await expect(actions.getUserByAttribute('email', 'test@example.com', ['email', 'userId'])).resolves.toEqual(user);
+    await expect(actions.getUserByAttribute('email', 'test@example.com', ['email', 'userId'], {cacheTimeout: 5})).resolves.toEqual(user);
 
     expect(publicQueryMock).toHaveBeenCalledWith(
       flux,
@@ -193,6 +194,20 @@ describe('createUserActions', () => {
       type: 'USER_GET_ITEM_SUCCESS',
       user
     });
+  });
+
+  it('gets a public user by username', async () => {
+    const flux = createMockFlux();
+    const actions = createUserActions(flux as any);
+    const user = {userId: 'user-1', username: 'alpha'};
+
+    publicQueryMock.mockImplementation(async (_flux, _name, _type, _variables, _props, options) => {
+      await options?.onSuccess?.({users: {getUserByUsername: user}});
+      return {users: {getUserByUsername: user}};
+    });
+
+    await expect(actions.getUserByUsername('alpha', ['username'], {cacheTimeout: 5})).resolves.toEqual(user);
+    await expect(actions.getUserByUsername('alpha', ['username'], {cacheTimeout: 5})).resolves.toEqual(user);
   });
 
   it('sends only email for forgot password email identifiers', async () => {
@@ -259,6 +274,19 @@ describe('createUserActions', () => {
     hydrateSessionFromStorageMock.mockResolvedValue(session);
 
     await expect(actions.currentAuthenticatedUser()).resolves.toEqual(session);
+    await expect(actions.currentUser()).resolves.toEqual(session);
+  });
+
+  it('checks login state and refreshes the current session', async () => {
+    const flux = createMockFlux();
+    const actions = createUserActions(flux as any);
+    const session = {refreshSession: {expires: 60, token: 'token-1', userId: 'user-1'}};
+
+    refreshSessionMock.mockResolvedValue(session);
+
+    expect(actions.isLoggedIn()).toBe(false);
+    await expect(actions.refreshSession('token-1', 60)).resolves.toEqual(session.refreshSession);
+    expect(refreshSessionMock).toHaveBeenCalledWith(flux, 'token-1', 60);
   });
 
   it('sends verification email template fields through the public mutation', async () => {
@@ -407,6 +435,7 @@ describe('createUserActions', () => {
 
   it('updates the subscription plan with the canonical planId variable', async () => {
     const flux = createMockFlux();
+    flux.state.user.session = {userId: 'user-1'};
     const actions = createUserActions(flux as any);
 
     appMutationMock.mockImplementation(async (_flux, _name, _type, _variables, _props, options) => {
@@ -460,6 +489,165 @@ describe('createUserActions', () => {
 
     await expect(actions.updatePlan('')).rejects.toThrow('A subscription planId is required to update a user plan');
     expect(appMutationMock).not.toHaveBeenCalled();
+  });
+
+  it('queries and caches user list helpers', async () => {
+    const flux = createMockFlux();
+    const actions = createUserActions(flux as any);
+    const user = {userId: 'user-1', username: 'alpha'};
+
+    appQueryMock.mockImplementation(async (_flux, operation, _type, _variables, _props, options) => {
+      const response = {users: {[operation]: [user]}};
+      await options?.onSuccess?.(response);
+      return [user];
+    });
+
+    await expect(actions.list(['username'], {cacheTimeout: 5})).resolves.toEqual([user]);
+    await expect(actions.listByLatest('a', 0, 5, ['username'], {cacheTimeout: 5})).resolves.toEqual([user]);
+    await expect(actions.listByTags('a', ['creator'], 0, 5, ['username'], {cacheTimeout: 5})).resolves.toEqual([user]);
+    await expect(actions.search('alpha', ['username'], {cacheTimeout: 5})).resolves.toEqual([user]);
+    await expect(actions.list(['username'], {cacheTimeout: 5})).resolves.toEqual([user]);
+    await expect(actions.listByLatest('a', 0, 5, ['username'], {cacheTimeout: 5})).resolves.toEqual([user]);
+    await expect(actions.listByTags('a', ['creator'], 0, 5, ['username'], {cacheTimeout: 5})).resolves.toEqual([user]);
+    await expect(actions.search('alpha', ['username'], {cacheTimeout: 5})).resolves.toEqual([user]);
+    await expect(actions.listByConnection('user-1')).resolves.toEqual([]);
+    await expect(actions.listByReactions('alpha', ['like'])).resolves.toEqual([]);
+
+    expect(flux.dispatch).toHaveBeenCalledWith({list: [user], type: 'USER_GET_LIST_SUCCESS'});
+    expect(flux.setState).toHaveBeenCalledWith('app.requestCache.user.list', expect.objectContaining({data: [user]}));
+    expect(flux.setState).toHaveBeenCalledWith('app.requestCache.user.listByLatest', expect.objectContaining({data: [user]}));
+    expect(flux.setState).toHaveBeenCalledWith('app.requestCache.user.listByTags', expect.objectContaining({data: [user]}));
+    expect(flux.setState).toHaveBeenCalledWith('app.requestCache.user.search', expect.objectContaining({data: [user]}));
+  });
+
+  it('exercises user create, update, session, billing, and verification helpers', async () => {
+    const flux = createMockFlux();
+    const actions = createUserActions(flux as any);
+    const user = {email: 'alpha@example.com', personaId: 'persona-1', token: 'token-1', userId: 'user-1', username: 'alpha'};
+
+    flux.state.user.session = {userId: 'user-1'};
+    publicMutationMock.mockImplementation(async (_flux, operation, _type, _variables, _props, options) => {
+      const response = {
+        users: {
+          addUser: user,
+          confirmCode: true,
+          resetPassword: true,
+          sendVerificationEmail: true,
+          signUp: user
+        }
+      };
+      await options?.onSuccess?.(response);
+      return response;
+    });
+    appMutationMock.mockImplementation(async (_flux, operation, _type, _variables, _props, options) => {
+      const response = {
+        users: {
+          deleteBillingCard: user,
+          remove: user,
+          saveBillingCard: user,
+          updateUser: user
+        }
+      };
+      await options?.onSuccess?.(response);
+      return response.users[operation];
+    });
+    appQueryMock.mockImplementation(async (_flux, operation, _type, _variables, _props, options) => {
+      const response = {
+        users: {
+          getUserById: user,
+          getUserBySession: user
+        }
+      };
+      await options?.onSuccess?.(response);
+      return response;
+    });
+    hydrateSessionFromStorageMock.mockResolvedValue(user);
+
+    await expect(actions.addUser({email: user.email, password: 'secret', username: user.username})).resolves.toEqual(expect.objectContaining({users: expect.any(Object)}));
+    await expect(actions.signUp({email: user.email, password: 'secret', username: user.username})).resolves.toEqual(expect.objectContaining({users: expect.any(Object)}));
+    await expect(actions.updateUser({email: user.email, userId: user.userId, username: user.username})).resolves.toEqual(user);
+    await expect(actions.confirmCode(123456, {type: 'email', value: user.email})).resolves.toBe(true);
+    await expect(actions.session()).resolves.toEqual(expect.objectContaining({userId: 'user-1'}));
+    await expect(actions.itemById('user-1', ['email'], {cacheTimeout: 5})).resolves.toEqual(expect.objectContaining({users: expect.any(Object)}));
+    await expect(actions.currentUser()).resolves.toEqual(expect.objectContaining({userId: 'user-1'}));
+    await expect(actions.saveBillingCard({token: 'tok_123'})).resolves.toEqual(user);
+    await expect(actions.deleteBillingCard()).resolves.toEqual(user);
+    await expect(actions.remove('user-1')).resolves.toEqual(user);
+    await expect(actions.sendVerificationEmail(user.email, {subject: 'Verify', template: 'tpl', text: 'Hello'})).resolves.toBe(true);
+    await expect(actions.resetPassword(user.email, 'secret', '123456', 'email')).resolves.toBe(true);
+    await expect(actions.confirmSignUp('123456', 'email')).resolves.toBe(true);
+    await expect(actions.updatePassword('old', 'new')).resolves.toBe(true);
+
+    expect(flux.dispatch).toHaveBeenCalledWith({type: 'USER_ADD_ITEM_SUCCESS', user});
+    expect(flux.dispatch).toHaveBeenCalledWith({type: 'USER_SIGN_UP_SUCCESS', user});
+    expect(flux.dispatch).toHaveBeenCalledWith({type: 'USER_UPDATE_ITEM_SUCCESS', user});
+    expect(flux.dispatch).toHaveBeenCalledWith({confirmed: true, type: 'USER_CONFIRM_SIGN_UP_SUCCESS'});
+    expect(flux.dispatch).toHaveBeenCalledWith({session: expect.objectContaining({userId: 'user-1'}), type: 'USER_GET_SESSION_SUCCESS'});
+    expect(syncPersonaTagsToSessionMock).toHaveBeenCalledWith(flux, 'persona-1');
+  });
+
+  it('throws for failed public recovery helpers and invalid sessions', async () => {
+    const flux = createMockFlux();
+    const actions = createUserActions(flux as any);
+
+    publicMutationMock.mockImplementationOnce(async (_flux, _operation, _type, _variables, _props, options) => {
+      const response = {users: {forgotPassword: false}};
+      await options?.onSuccess?.(response);
+      return response;
+    });
+    await expect(actions.forgotPassword('alpha')).rejects.toThrow('forgot_password_failed');
+    expect(flux.dispatch).toHaveBeenCalledWith({type: 'USER_FORGOT_PASSWORD_ERROR'});
+
+    publicMutationMock.mockImplementationOnce(async (_flux, _operation, _type, _variables, _props, options) => {
+      const response = {users: {sendVerificationEmail: false}};
+      await options?.onSuccess?.(response);
+      return response;
+    });
+    await expect(actions.sendVerificationEmail('alpha@example.com')).rejects.toThrow('send_verification_email_failed');
+
+    publicMutationMock.mockImplementationOnce(async (_flux, _operation, _type, _variables, _props, options) => {
+      const response = {users: {resetPassword: false}};
+      await options?.onSuccess?.(response);
+      return response;
+    });
+    await expect(actions.resetPassword('alpha', 'secret', '123456', 'phone')).rejects.toThrow('reset_password_failed');
+
+    appQueryMock.mockResolvedValueOnce({users: {getUserBySession: {}}});
+    await expect(actions.session()).rejects.toThrow('invalid_session');
+    expect(clearPersistedSessionMock).toHaveBeenCalledWith(flux);
+    expect(flux.dispatch).toHaveBeenCalledWith({type: 'USER_GET_SESSION_ERROR'});
+  });
+
+  it('handles sign-in fallback and error branches', async () => {
+    const flux = createMockFlux();
+    const actions = createUserActions(flux as any);
+    const session = {token: 'token-1', userId: 'user-1', username: 'alpha'};
+
+    publicMutationMock.mockImplementationOnce(async (_flux, _name, _type, _variables, _props, options) => {
+      await options?.onSuccess?.({users: {signIn: session}});
+      return session;
+    });
+    appQueryMock.mockResolvedValueOnce({users: {getUserBySession: {}}});
+
+    await expect(actions.signIn({email: 'alpha@example.com', password: 'secret'})).resolves.toEqual(expect.objectContaining(session));
+    expect(flux.dispatch).toHaveBeenCalledWith({
+      session: expect.objectContaining(session),
+      type: 'USER_SIGN_IN_SUCCESS'
+    });
+
+    publicMutationMock.mockImplementationOnce(async (_flux, _name, _type, variables, _props, options) => {
+      await options?.onSuccess?.({users: {signIn: session}});
+      return session;
+    });
+    appQueryMock.mockResolvedValueOnce({users: {getUserBySession: {userId: 'user-1', username: 'alpha'}}});
+    await expect(actions.signIn({password: 'secret', phone: '+15551234567'})).resolves.toEqual(expect.objectContaining({userId: 'user-1'}));
+
+    const error = new Error('sign in failed');
+    publicMutationMock.mockRejectedValueOnce(error);
+    await expect(actions.signIn({password: 'secret', username: 'alpha'})).rejects.toThrow('sign in failed');
+    expect(flux.dispatch).toHaveBeenCalledWith({error, type: 'USER_SIGN_IN_ERROR'});
+
+    await expect(actions.signIn({username: 'alpha'} as any)).rejects.toThrow('Username, email, or phone number and password are required to sign in');
   });
 
   it('supports adapter updates', () => {

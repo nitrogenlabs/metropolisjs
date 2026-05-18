@@ -1,4 +1,4 @@
-import {MessageValidationError, parseMessage, validateMessageInput} from './messageAdapter';
+import {formatMessageOutput, MessageValidationError, parseMessage, validateMessageInput} from './messageAdapter';
 
 describe('messageAdapter', () => {
   describe('validateMessageInput', () => {
@@ -143,6 +143,25 @@ describe('messageAdapter', () => {
       expect(result.readAt).toBe(1234567890);
       expect(result.cached).toBe(1234567890);
       expect(result.modified).toBe(1234567890);
+    });
+
+    it('formats messages and parses nested files and images', () => {
+      const result = parseMessage({
+        files: [{fileId: 'file-1', name: 'report.pdf'}],
+        id: 'messages/message-1',
+        images: [{imageId: 'image-1', name: 'image.jpg'}],
+        saved: true
+      });
+
+      expect(formatMessageOutput(result)).toBe(result);
+      expect(result.id).toBe('messages/message1');
+      expect(result.files).toHaveLength(1);
+      expect(result.images).toHaveLength(1);
+      expect(result.saved).toBe(true);
+    });
+
+    it('wraps unexpected parse errors', () => {
+      expect(() => parseMessage({files: [null]} as any)).toThrow(MessageValidationError);
     });
   });
 

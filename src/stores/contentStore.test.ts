@@ -41,4 +41,18 @@ describe('contentStore', () => {
     const state = contentStore(CONTENT_CONSTANTS.ADD_ITEM_ERROR, {error}, {content: {}, lists: {}});
     expect(state.error).toBe(error);
   });
+
+  it('handles update and remove success branches', () => {
+    const content = {contentId: '123', key: 'test', locale: 'en' as const, content: 'Test content'} as ContentType;
+    let state = contentStore(CONTENT_CONSTANTS.ADD_ITEM_SUCCESS, {content}, {content: {}, lists: {}});
+
+    state = contentStore(CONTENT_CONSTANTS.UPDATE_ITEM_SUCCESS, {
+      content: {...content, key: 'updated'}
+    }, state);
+    expect(state.content['123'].key).toBe('updated');
+
+    state = contentStore(CONTENT_CONSTANTS.REMOVE_ITEM_SUCCESS, {content}, state);
+    expect(state.content['123']).toBeUndefined();
+    expect(contentStore(CONTENT_CONSTANTS.ADD_ITEM_SUCCESS, {}, state)).toBe(state);
+  });
 });

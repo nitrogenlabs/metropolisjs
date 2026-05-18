@@ -145,4 +145,78 @@ describe('messageActions', () => {
       }
     });
   });
+
+  it('fetches direct conversations, messages, and conversation lists with caching support', async () => {
+    const flux = createMockFlux('persona-1', 'user-1');
+    const messageActions = createMessageActions(flux as any);
+    const conversation = {conversationId: 'conversation-1', name: 'Direct'};
+    const message = {content: 'Hello', conversationId: 'conversation-1', messageId: 'message-1'};
+
+    appQueryMock.mockImplementation(async (_flux, operation, _type, _variables, _props, options) => {
+      const response = {
+        messages: {
+          directConversation: conversation,
+          getConversations: [conversation],
+          getMessages: [message]
+        }
+      };
+      await options?.onSuccess?.(response);
+      return response;
+    });
+
+    await expect(messageActions.getDirectConversation('user-2', {cacheTimeout: 5})).resolves.toEqual(conversation);
+    await expect(messageActions.getMessages('conversation-1', ['custom'], {cacheTimeout: 5})).resolves.toEqual([message]);
+    await expect(messageActions.getMessages('conversation-1', ['custom'], {cacheTimeout: 5})).resolves.toEqual([message]);
+    await expect(messageActions.getConversations(0, 5, {cacheTimeout: 5})).resolves.toEqual([conversation]);
+    await expect(messageActions.getConversations(0, 5, {cacheTimeout: 5})).resolves.toEqual([conversation]);
+
+    expect(flux.dispatch).toHaveBeenCalledWith({conversation, type: 'MESSAGE_GET_CONVO_LIST_SUCCESS'});
+    expect(flux.dispatch).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      list: [message],
+      type: 'MESSAGE_GET_LIST_SUCCESS'
+    });
+    expect(flux.dispatch).toHaveBeenCalledWith({conversations: [conversation], type: 'MESSAGE_GET_CONVO_LIST_SUCCESS'});
+    expect(setCachedRequestMock).toHaveBeenCalledTimes(5);
+  });
+
+  it('dispatches message action failures', async () => {
+    const flux = createMockFlux('persona-1', 'user-1');
+    const messageActions = createMessageActions(flux as any);
+    const error = new Error('messages failed');
+
+    appQueryMock.mockRejectedValueOnce(error);
+    await expect(messageActions.getMessages('conversation-1')).rejects.toThrow('messages failed');
+    expect(flux.dispatch).toHaveBeenCalledWith({error, type: 'MESSAGE_GET_LIST_ERROR'});
+
+    appMutationMock.mockRejectedValueOnce(error);
+    await expect(messageActions.sendMessage({content: 'Hello', conversationId: 'conversation-1'})).rejects.toThrow('messages failed');
+    expect(flux.dispatch).toHaveBeenCalledWith({error, type: 'MESSAGE_ADD_ITEM_ERROR'});
+
+    appQueryMock.mockRejectedValueOnce(error);
+    await expect(messageActions.getConversations()).rejects.toThrow('messages failed');
+    expect(flux.dispatch).toHaveBeenCalledWith({error, type: 'MESSAGE_GET_CONVO_LIST_ERROR'});
+
+    appQueryMock.mockRejectedValueOnce(error);
+    await expect(messageActions.getDirectConversation('user-2')).rejects.toThrow('messages failed');
+    expect(flux.dispatch).toHaveBeenCalledWith({error, type: 'MESSAGE_GET_CONVO_LIST_ERROR'});
+  });
+
+  it('returns cached message queries without hitting the API', async () => {
+    const flux = createMockFlux('persona-1', 'user-1');
+    const messageActions = createMessageActions(flux as any);
+    const conversation = {conversationId: 'conversation-1'};
+    const messages = [{messageId: 'message-1', conversationId: 'conversation-1'}];
+    const conversations = [conversation];
+
+    getCachedRequestMock
+      .mockReturnValueOnce(conversation)
+      .mockReturnValueOnce(messages)
+      .mockReturnValueOnce(conversations);
+
+    await expect(messageActions.getDirectConversation('user-2')).resolves.toBe(conversation);
+    await expect(messageActions.getMessages('conversation-1')).resolves.toBe(messages);
+    await expect(messageActions.getConversations()).resolves.toBe(conversations);
+    expect(appQueryMock).not.toHaveBeenCalled();
+  });
 });

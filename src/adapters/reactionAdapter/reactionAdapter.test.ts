@@ -1,4 +1,4 @@
-import {parseReaction, ReactionValidationError, validateReactionInput} from './reactionAdapter';
+import {formatReactionOutput, parseReaction, ReactionValidationError, validateReactionInput} from './reactionAdapter';
 
 describe('reactionAdapter', () => {
   describe('validateReactionInput', () => {
@@ -112,6 +112,28 @@ describe('reactionAdapter', () => {
       const result = parseReaction(reaction);
       expect(result.cached).toBe(1234567890);
       expect(result.modified).toBe(1234567890);
+    });
+
+    it('formats reactions and parses display fields', () => {
+      const result = parseReaction({
+        id: 'reactions/reaction-1',
+        name: 'Like',
+        reactionId: 'reaction-1',
+        type: 'images',
+        value: 'heart'
+      });
+
+      expect(formatReactionOutput(result)).toBe(result);
+      expect(result).toEqual(expect.objectContaining({
+        id: 'reactions/reaction1',
+        name: 'Like',
+        reactionId: 'reaction1',
+        value: 'heart'
+      }));
+    });
+
+    it('wraps unexpected parse errors', () => {
+      expect(() => parseReaction(null as any)).toThrow(ReactionValidationError);
     });
   });
 

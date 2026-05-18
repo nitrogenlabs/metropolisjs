@@ -14,4 +14,19 @@ describe('tagStore', () => {
     const updatedState = tagStore(TAG_CONSTANTS.GET_LIST_SUCCESS, {}, defaultValues);
     return expect(updatedState).toEqual(expect.objectContaining({list: []}));
   });
+
+  it('adds, updates, sorts, and removes tags by canonical tagId', () => {
+    let state = tagStore(TAG_CONSTANTS.ADD_ITEM_SUCCESS, {tag: {name: 'Bravo', tagId: 'tag-2'} as any}, defaultValues);
+    state = tagStore(TAG_CONSTANTS.ADD_ITEM_SUCCESS, {tag: {name: 'Alpha', tagId: 'tag-1'} as any}, state);
+
+    expect(state.list.map((tag) => tag.name)).toEqual(['Alpha', 'Bravo']);
+
+    state = tagStore(TAG_CONSTANTS.UPDATE_ITEM_SUCCESS, {tag: {name: 'Charlie', tagId: 'tag-2'} as any}, state);
+    expect(state.list.map((tag) => tag.name)).toEqual(['Alpha', 'Charlie']);
+
+    state = tagStore(TAG_CONSTANTS.REMOVE_ITEM_SUCCESS, {tag: {tagId: 'tag-1'} as any}, state);
+    expect(state.list).toEqual([{name: 'Charlie', tagId: 'tag-2'}]);
+    expect(tagStore(TAG_CONSTANTS.ADD_ITEM_SUCCESS, {tag: {name: 'Missing'} as any}, state)).toBe(state);
+    expect(tagStore(TAG_CONSTANTS.REMOVE_ITEM_SUCCESS, {tag: {name: 'Missing'} as any}, state)).toBe(state);
+  });
 });

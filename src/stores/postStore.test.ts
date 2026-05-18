@@ -14,4 +14,11 @@ describe('postStore', () => {
     const updatedState = postStore(POST_CONSTANTS.GET_LIST_SUCCESS, {}, defaultValues);
     return expect(updatedState).toBe(defaultValues);
   });
+
+  it('stores viewed posts from item responses', () => {
+    const state = postStore(POST_CONSTANTS.GET_ITEM_SUCCESS, {post: {postId: 'post-1'} as any});
+
+    expect(state.viewed['post-1']).toBeDefined();
+    expect(postStore(POST_CONSTANTS.GET_ITEM_SUCCESS, {}, state)).toBe(state);
+  });
 });

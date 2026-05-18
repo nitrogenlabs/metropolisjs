@@ -2,6 +2,7 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
+import {resetActionScenarioMocks, runGroupActionsScenario} from '../../tests/actionTestScenarios.js';
 import {createGroupActions} from './groupActions.js';
 
 describe('createGroupActions', () => {
@@ -9,6 +10,7 @@ describe('createGroupActions', () => {
   let groupActions: any;
 
   beforeEach(() => {
+    resetActionScenarioMocks();
     flux = {
       dispatch: () => Promise.resolve({}),
       getState: () => ({}),
@@ -29,6 +31,8 @@ describe('createGroupActions', () => {
       expect(typeof groupActions.updateGroupAdapter).toBe('function');
       expect(typeof groupActions.updateGroupAdapterOptions).toBe('function');
     });
+
+    it('exercises group action methods', runGroupActionsScenario);
   });
 
   describe('adapter options', () => {

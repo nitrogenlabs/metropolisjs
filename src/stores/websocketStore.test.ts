@@ -24,4 +24,10 @@ describe('websocketStore', () => {
     const updatedState = websocketStore(WEBSOCKET_CONSTANTS.MESSAGE, {data: {test: 'test'}}, defaultValues);
     return expect(updatedState).toEqual({...defaultValues, data: {test: 'test'}});
   });
+
+  it('toggles websocket state from arbitrary starting values', () => {
+    expect(websocketStore(WEBSOCKET_CONSTANTS.OPEN, {}).isOpen).toBe(true);
+    expect(websocketStore(WEBSOCKET_CONSTANTS.CLOSE, {}, {isOpen: true}).isOpen).toBe(false);
+    expect(websocketStore(WEBSOCKET_CONSTANTS.MESSAGE, {data: {ok: true}}).data).toEqual({ok: true});
+  });
 });

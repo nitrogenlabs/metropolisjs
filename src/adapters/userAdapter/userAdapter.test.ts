@@ -1,4 +1,13 @@
-import {parseUser, UserValidationError, validateUserInput} from './userAdapter';
+import {
+  clearUserCache,
+  formatUserOutput,
+  getUserCacheSize,
+  parseUser,
+  parseUserLegacy,
+  userCache,
+  UserValidationError,
+  validateUserInput
+} from './userAdapter';
 
 describe('userAdapter', () => {
   describe('validateUserInput', () => {
@@ -148,6 +157,85 @@ describe('userAdapter', () => {
       expect(result.longitude).toBe(-74.0060);
       expect(result.added).toBe(1234567890);
       expect(result.modified).toBe(1234567890);
+    });
+
+    it('normalizes profile, billing, verification, and date fields', () => {
+      const result = parseUser({
+        active: 1 as any,
+        bankId: 'bank-1',
+        birthdate: 1000,
+        country: 'us',
+        currency: 'usd',
+        deviceToken: 'device-1',
+        gender: 'f',
+        imageId: 'images/image-1',
+        lastActive: 2000,
+        mailingList: 1 as any,
+        name: 'Alpha User',
+        password: 'secret',
+        phone: '(555) 123-4567',
+        planExpires: 3000,
+        planId: 'plus',
+        planStatus: 'active',
+        planSubscriptionId: 'sub-1',
+        salt: 'salt',
+        state: 'ca',
+        street1: 'One Main',
+        street2: 'Suite 2',
+        stripeAccountId: 'acct-1',
+        stripeCardBrand: 'visa',
+        stripeCardId: 'card-1',
+        stripeCardLast4: '4242',
+        stripeCustomerId: 'cus-1',
+        type: 'member',
+        userAccess: 0,
+        userId: '../user-1',
+        username: 'alpha',
+        verifiedEmail: 1 as any,
+        verifiedEmailCode: 123,
+        verifiedEmailExpires: 4000,
+        verifiedPhone: 0 as any,
+        verifiedPhoneExpires: 5000,
+        verifiedSmsCode: 456,
+        zip: '90210'
+      });
+
+      expect(result).toEqual(expect.objectContaining({
+        active: true,
+        country: 'US',
+        currency: 'USD',
+        gender: 'F',
+        mailingList: true,
+        phone: '+5551234567',
+        state: 'CA',
+        stripeCardLast4: '4242',
+        userAccess: 0,
+        userId: 'user1',
+        verifiedEmail: true,
+        verifiedPhone: false
+      }));
+    });
+
+    it('throws validation errors for invalid normalized fields', () => {
+      expect(() => parseUser({country: 'USA'})).toThrow(UserValidationError);
+      expect(() => parseUser({state: 'California'})).toThrow(UserValidationError);
+      expect(() => parseUser({gender: 'X'})).toThrow(UserValidationError);
+      expect(() => parseUser({phone: '123'})).toThrow(UserValidationError);
+    });
+
+    it('formats safe output and exposes cache helpers', () => {
+      userCache.set('user-1', {userId: 'user-1'});
+      expect(getUserCacheSize()).toBe(1);
+      clearUserCache();
+      expect(getUserCacheSize()).toBe(0);
+      expect(formatUserOutput({
+        password: 'secret',
+        salt: 'salt',
+        userId: 'user-1',
+        verifiedEmailCode: 123,
+        verifiedSmsCode: 456
+      })).toEqual({userId: 'user-1'});
+      expect(parseUserLegacy({userId: 'user-1'}).userId).toBe('user1');
     });
   });
 

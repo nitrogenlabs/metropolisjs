@@ -1,4 +1,4 @@
-import {LocationValidationError, parseLocation, validateLocationInput} from './locationAdapter';
+import {formatLocationOutput, LocationValidationError, parseLocation, validateLocationInput} from './locationAdapter';
 
 describe('locationAdapter', () => {
   describe('validateLocationInput', () => {
@@ -120,6 +120,27 @@ describe('locationAdapter', () => {
       expect(result.longitude).toBe(-74.0060);
       expect(result.cached).toBe(1234567890);
       expect(result.modified).toBe(1234567890);
+    });
+
+    it('formats location output and parses alternate location fields', () => {
+      const result = parseLocation({
+        id: 'locations/location-1',
+        location: 'Warehouse',
+        street: 'Main',
+        zip: '12345'
+      });
+
+      expect(formatLocationOutput(result)).toBe(result);
+      expect(result).toEqual(expect.objectContaining({
+        id: 'locations/location1',
+        location: 'Warehouse',
+        street: 'Main',
+        zip: '12345'
+      }));
+    });
+
+    it('wraps unexpected parse errors', () => {
+      expect(() => parseLocation(null as any)).toThrow(LocationValidationError);
     });
   });
 

@@ -1,4 +1,4 @@
-import {parseTag, TagValidationError, validateTagInput} from './tagAdapter';
+import {formatTagOutput, parseTag, parseTagLegacy, TagValidationError, validateTagInput} from './tagAdapter';
 
 describe('tagAdapter', () => {
   describe('validateTagInput', () => {
@@ -128,6 +128,38 @@ describe('tagAdapter', () => {
       expect(result.count).toBe(100);
       expect(result.cached).toBe(1234567890);
       expect(result.modified).toBe(1234567890);
+    });
+
+    it('parses ids, tag ownership, user ownership, and legacy output', () => {
+      const tag = {
+        id: 'tags/tag-1',
+        tagBy: 'personas/persona-1',
+        tagId: 'tag-1',
+        userId: 'users/user-1'
+      };
+      const result = parseTag(tag);
+
+      expect(result).toEqual(expect.objectContaining({
+        _id: 'tags/tag-1',
+        _key: 'tag-1',
+        id: 'tags/tag1',
+        tagBy: 'personaspersona1',
+        tagId: 'tag1',
+        userId: 'usersuser1'
+      }));
+      expect(formatTagOutput(result)).toBe(result);
+      expect(parseTagLegacy(tag).tagId).toBe('tag1');
+    });
+
+    it('preserves canonical id fields when parsed ids are unavailable', () => {
+      expect(parseTag({id: 'tags/tag-2'})).toEqual(expect.objectContaining({
+        _id: 'tags/tag-2',
+        id: 'tags/tag2'
+      }));
+      expect(parseTag({tagId: 'tag-2'})).toEqual(expect.objectContaining({
+        _key: 'tag-2',
+        tagId: 'tag2'
+      }));
     });
   });
 

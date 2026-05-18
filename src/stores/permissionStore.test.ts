@@ -40,6 +40,12 @@ describe('permissionStore', () => {
 
       expect(newState.permissions.perm2).toEqual(permission);
     });
+
+    it('should not add permission without id', () => {
+      const newState = permissionStore(PERMISSION_CONSTANTS.GET_ITEM_SUCCESS, {permission: {name: 'Missing'}}, defaultValues);
+
+      expect(newState).toEqual(defaultValues);
+    });
   });
 
   describe('GET_LIST_SUCCESS', () => {
@@ -81,6 +87,12 @@ describe('permissionStore', () => {
       expect(newState.permissions.perm1.name).toBe('New Name');
       expect(newState.permissions.perm1.level).toBe(2);
     });
+
+    it('should not update permission without id', () => {
+      const newState = permissionStore(PERMISSION_CONSTANTS.UPDATE_ITEM_SUCCESS, {permission: {name: 'Missing'}}, defaultValues);
+
+      expect(newState).toEqual(defaultValues);
+    });
   });
 
   describe('REMOVE_ITEM_SUCCESS', () => {
@@ -99,6 +111,12 @@ describe('permissionStore', () => {
 
       expect(newState.permissions.perm1).toBeUndefined();
       expect(newState.permissions.perm2).toBeDefined();
+    });
+
+    it('should not remove permission without id', () => {
+      const newState = permissionStore(PERMISSION_CONSTANTS.REMOVE_ITEM_SUCCESS, {permission: {name: 'Missing'}}, defaultValues);
+
+      expect(newState).toEqual(defaultValues);
     });
   });
 

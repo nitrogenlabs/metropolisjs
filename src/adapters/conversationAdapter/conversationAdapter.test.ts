@@ -1,4 +1,9 @@
-import {ConversationValidationError, parseConversation, validateConversationInput} from './conversationAdapter';
+import {
+  ConversationValidationError,
+  formatConversationOutput,
+  parseConversation,
+  validateConversationInput
+} from './conversationAdapter';
 
 describe('conversationAdapter', () => {
   describe('validateConversationInput', () => {
@@ -124,6 +129,33 @@ describe('conversationAdapter', () => {
       expect(result.unreadCount).toBe(5);
       expect(result.cached).toBe(1234567890);
       expect(result.modified).toBe(1234567890);
+    });
+
+    it('formats conversations and parses direct users', () => {
+      const conversation = {
+        id: 'conversations/conversation-1',
+        isDirect: true,
+        name: 'Direct chat',
+        type: 'direct',
+        users: [
+          {
+            userId: 'user-1',
+            username: 'sender'
+          }
+        ]
+      };
+      const result = parseConversation(conversation);
+
+      expect(formatConversationOutput(result)).toBe(result);
+      expect(result.id).toBe('conversations/conversation1');
+      expect(result.conversationId).toBeUndefined();
+      expect(result.isDirect).toBe(true);
+      expect(result.name).toBe('Direct chat');
+      expect(result.users).toHaveLength(1);
+    });
+
+    it('wraps unexpected parse errors', () => {
+      expect(() => parseConversation(null as any)).toThrow(ConversationValidationError);
     });
   });
 

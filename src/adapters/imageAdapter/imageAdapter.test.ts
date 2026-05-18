@@ -1,4 +1,4 @@
-import {ImageValidationError, parseImage, validateImageInput} from './imageAdapter';
+import {formatImageOutput, ImageValidationError, parseImage, validateImageInput} from './imageAdapter';
 
 describe('imageAdapter', () => {
   describe('validateImageInput', () => {
@@ -131,6 +131,51 @@ describe('imageAdapter', () => {
       expect(result.iso).toBe(100);
       expect(result.cached).toBe(1234567890);
       expect(result.modified).toBe(1234567890);
+    });
+
+    it('formats image output and parses media metadata', () => {
+      const file = new File(['image'], 'image.jpg', {type: 'image/jpeg'});
+      const image = {
+        base64: 'base64',
+        bucket: 'images',
+        color: '#fff',
+        description: 'A sample image',
+        file,
+        imageId: 'image-1',
+        itemId: 'posts/post-1',
+        itemType: 'posts',
+        make: 'Canon',
+        model: 'EOS',
+        privacy: 'public',
+        s3Options: {acl: 'public-read'},
+        taken: 1234567890,
+        type: 'image',
+        fileType: 'image/jpeg'
+      };
+      const result = parseImage(image);
+
+      expect(formatImageOutput(result)).toBe(result);
+      expect(result).toEqual(expect.objectContaining({
+        base64: 'base64',
+        bucket: 'images',
+        color: '#fff',
+        description: 'A sample image',
+        file,
+        imageId: 'image1',
+        itemId: 'postspost1',
+        itemType: 'posts',
+        make: 'Canon',
+        model: 'EOS',
+        privacy: 'public',
+        s3Options: {acl: 'public-read'},
+        taken: 1234567890,
+        type: 'image',
+        fileType: 'image/jpeg'
+      }));
+    });
+
+    it('wraps unexpected parse errors', () => {
+      expect(() => parseImage(null as any)).toThrow(ImageValidationError);
     });
   });
 

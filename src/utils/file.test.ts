@@ -4,7 +4,7 @@
  */
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 
-import {convertFileToBase64} from './file';
+import {convertFileToBase64, convertFileToUploadFile} from './file';
 
 // Helper to create a mock File with image data
 const createMockImageFile = (width: number, height: number, filename: string): File => {
@@ -91,6 +91,9 @@ describe('file utilities', () => {
       }
       return {} as any;
     }) as any;
+
+    global.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+    global.URL.revokeObjectURL = vi.fn();
   });
 
   describe('convertFileToBase64', () => {
@@ -170,6 +173,27 @@ describe('file utilities', () => {
       expect(mockCanvas.toDataURL).toHaveBeenCalledTimes(3);
     });
 
+    it('should reduce base64 dimensions after quality reductions are exhausted', async () => {
+      const file = createMockImageFile(1600, 1600, 'huge.jpg');
+      mockImage.width = 1600;
+      mockImage.height = 1600;
+      const oversizedDataUrl = `data:image/jpeg;base64,${'a'.repeat(2_000_000)}`;
+      const resizedDataUrl = 'data:image/jpeg;base64,small-enough';
+      const mockCanvas = global.document.createElement('canvas') as any;
+
+      mockCanvas.toDataURL
+        .mockImplementationOnce(() => oversizedDataUrl)
+        .mockImplementationOnce(() => oversizedDataUrl)
+        .mockImplementationOnce(() => oversizedDataUrl)
+        .mockImplementationOnce(() => oversizedDataUrl)
+        .mockImplementationOnce(() => oversizedDataUrl)
+        .mockImplementationOnce(() => oversizedDataUrl)
+        .mockImplementationOnce(() => resizedDataUrl);
+
+      await expect(convertFileToBase64(file, 1600, 100_000)).resolves.toBe(resizedDataUrl);
+      expect(mockCanvas.toDataURL).toHaveBeenCalledTimes(7);
+    });
+
     it('should reject on file read error', async () => {
       // Create a file that will cause read error
       const file = new File([''], 'test.jpg', {type: 'image/jpeg'});
@@ -194,6 +218,80 @@ describe('file utilities', () => {
       } as any;
 
       await expect(convertFileToBase64(file, 200)).rejects.toBeDefined();
+    });
+
+  });
+
+  describe('convertFileToUploadFile', () => {
+    it('should return non-image files unchanged', async () => {
+      const file = new File(['text'], 'test.txt', {type: 'text/plain'});
+
+      await expect(convertFileToUploadFile(file, 200)).resolves.toBe(file);
+    });
+
+    it('should render and resize upload files', async () => {
+      const file = createMockImageFile(600, 300, 'wide.png');
+      mockImage.width = 600;
+      mockImage.height = 300;
+      const mockCanvas = global.document.createElement('canvas') as any;
+      mockCanvas.toBlob = vi.fn((callback: (blob: Blob | null) => void) => {
+        callback(new Blob(['small'], {type: 'image/jpeg'}));
+      });
+
+      const result = await convertFileToUploadFile(file, 300, 100_000);
+
+      expect(result.name).toBe('wide.jpg');
+      expect(result.type).toBe('image/jpeg');
+      expect(mockCanvas.toBlob).toHaveBeenCalled();
+      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+    });
+
+    it('should shrink quality and dimensions until upload file fits', async () => {
+      const file = createMockImageFile(1200, 1200, 'large.png');
+      mockImage.width = 1200;
+      mockImage.height = 1200;
+      const mockCanvas = global.document.createElement('canvas') as any;
+      let calls = 0;
+      mockCanvas.toBlob = vi.fn((callback: (blob: Blob | null) => void) => {
+        calls++;
+        const payload = calls < 5 ? 'x'.repeat(2000) : 'small';
+        callback(new Blob([payload], {type: 'image/jpeg'}));
+      });
+
+      const result = await convertFileToUploadFile(file, 1200, 1000);
+
+      expect(result.size).toBeLessThanOrEqual(1000);
+      expect(mockCanvas.toBlob).toHaveBeenCalled();
+    });
+
+    it('should reject when canvas context or blob is unavailable', async () => {
+      const file = createMockImageFile(100, 100, 'broken.png');
+      const mockCanvas = global.document.createElement('canvas') as any;
+      mockCanvas.getContext.mockReturnValueOnce(null);
+
+      await expect(convertFileToUploadFile(file, 200)).rejects.toThrow('Unable to prepare image upload.');
+
+      mockCanvas.getContext.mockReturnValue({
+        clearRect: vi.fn(),
+        drawImage: vi.fn()
+      });
+      mockCanvas.toBlob = vi.fn((callback: (blob: Blob | null) => void) => callback(null));
+
+      await expect(convertFileToUploadFile(file, 200)).rejects.toThrow('Unable to prepare image upload.');
+    });
+
+    it('should reject when upload image loading fails', async () => {
+      const file = createMockImageFile(100, 100, 'broken.png');
+      global.Image = class ErrorImageMock {
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        set src(_value: string) {
+          setTimeout(() => this.onerror?.(), 0);
+        }
+      } as any;
+
+      await expect(convertFileToUploadFile(file, 200)).rejects.toThrow('Unable to prepare image upload.');
+      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
     });
   });
 });

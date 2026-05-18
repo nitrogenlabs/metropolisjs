@@ -350,6 +350,44 @@ describe('personaAdapter', () => {
       expect(result.imageUrl).toBe(persona.imageUrl);
       expect(result.thumbUrl).toBe(persona.thumbUrl);
     });
+
+    it('parses relationship and count fields', () => {
+      const result = parsePersona({
+        afterglow: 2,
+        birthdate: 123456,
+        followerCount: 3,
+        followingCount: 4,
+        id: 'personas/persona-1',
+        isBlocked: 0 as any,
+        isFollowedBy: 1 as any,
+        isFollowing: 1 as any,
+        isFriend: 0 as any,
+        latitude: 30.25,
+        location: 'Austin',
+        longitude: -97.75,
+        personaId: 'persona-1'
+      });
+
+      expect(result).toEqual(expect.objectContaining({
+        afterglow: 2,
+        birthdate: 123456,
+        followerCount: 3,
+        followingCount: 4,
+        id: 'personas/persona1',
+        isBlocked: false,
+        isFollowedBy: true,
+        isFollowing: true,
+        isFriend: false,
+        latitude: 30.25,
+        location: 'Austin',
+        longitude: -97.75,
+        personaId: 'persona1'
+      }));
+    });
+
+    it('wraps unexpected parse errors', () => {
+      expect(() => parsePersona(null as any)).toThrow(PersonaValidationError);
+    });
   });
 
   describe('PersonaValidationError', () => {

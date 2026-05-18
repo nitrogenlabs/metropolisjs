@@ -1,3 +1,4 @@
+import {resetActionScenarioMocks, runTranslationActionsScenario} from '../../tests/actionTestScenarios.js';
 import {createTranslationActions} from './translationActions';
 
 const createMockFlux = () => {
@@ -40,6 +41,7 @@ describe('translationActions', () => {
   let translationActions;
 
   beforeEach(() => {
+    resetActionScenarioMocks();
     translationActions = createTranslationActions(mockFlux);
   });
 
@@ -54,6 +56,8 @@ describe('translationActions', () => {
     expect(translationActions.updateTranslationAdapter).toBeDefined();
     expect(translationActions.updateTranslationAdapterOptions).toBeDefined();
   });
+
+  it('exercises translation action methods', runTranslationActionsScenario);
 
   it('should have correct method types', () => {
     expect(typeof translationActions.addTranslations).toBe('function');

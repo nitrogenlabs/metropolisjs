@@ -1,4 +1,5 @@
 import { parseDateTime } from './dateUtils';
+import {DateTime} from 'luxon';
 
 describe('dateUtils utilities', () => {
   describe('parseDateTime', () => {
@@ -23,6 +24,12 @@ describe('dateUtils utilities', () => {
       const result = parseDateTime(timestamp);
 
       expect(result).toBe(0);
+    });
+
+    it('should parse Luxon DateTime values', () => {
+      const value = DateTime.fromISO('2023-12-25T10:30:00.000Z');
+
+      expect(parseDateTime(value)).toBe(value.toMillis());
     });
   });
 });

@@ -1,3 +1,4 @@
+import {resetActionScenarioMocks, runContentActionsScenario} from '../../tests/actionTestScenarios.js';
 import {createContentActions} from './contentActions';
 
 const createMockFlux = () => {
@@ -37,6 +38,7 @@ describe('contentActions', () => {
   let contentActions;
 
   beforeEach(() => {
+    resetActionScenarioMocks();
     contentActions = createContentActions(mockFlux);
   });
 
@@ -51,6 +53,8 @@ describe('contentActions', () => {
     expect(contentActions.updateContentAdapter).toBeDefined();
     expect(contentActions.updateContentAdapterOptions).toBeDefined();
   });
+
+  it('exercises content action methods', runContentActionsScenario);
 
   it('should have correct method types', () => {
     expect(typeof contentActions.add).toBe('function');

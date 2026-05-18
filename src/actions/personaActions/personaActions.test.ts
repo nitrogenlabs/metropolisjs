@@ -1,4 +1,5 @@
-import {createPersonaActions} from './personaActions';
+import {resetActionScenarioMocks, runPersonaActionsScenario} from '../../tests/actionTestScenarios.js';
+import {createPersonaActions, syncPersonaTagsToSession, syncPersonaToSession} from './personaActions';
 
 const createMockFlux = () => {
   const defaultConfig = {
@@ -37,6 +38,7 @@ describe('personaActions', () => {
   let personaActions;
 
   beforeEach(() => {
+    resetActionScenarioMocks();
     personaActions = createPersonaActions(mockFlux as any);
   });
 
@@ -49,6 +51,40 @@ describe('personaActions', () => {
     expect(personaActions.updatePersona).toBeDefined();
     expect(personaActions.updatePersonaAdapter).toBeDefined();
     expect(personaActions.updatePersonaAdapterOptions).toBeDefined();
+  });
+
+  it('exercises persona action methods', runPersonaActionsScenario);
+
+  it('syncs persona details and tags to the active session', async () => {
+    const state = new Map<string, any>([
+      ['user.session', {personaId: 'persona-1', userId: 'user-1'}],
+      ['user.session.personaId', 'persona-1']
+    ]);
+    const flux = {
+      dispatch: vi.fn(async (payload) => payload),
+      getState: vi.fn((path: string, fallback?: unknown) => state.get(path) ?? fallback),
+      setState: vi.fn(async (path: string, value: unknown) => {
+        state.set(path, value);
+        return value;
+      })
+    };
+
+    syncPersonaToSession(flux as any, {
+      name: 'Persona',
+      personaId: 'persona-1',
+      tags: [{name: 'Alpha', tagId: 'tag-1'}],
+      userId: 'user-1'
+    });
+    expect(flux.setState).toHaveBeenCalledWith('user.session', expect.objectContaining({
+      name: 'Persona',
+      tags: [{name: 'Alpha', tagId: 'tag-1'}]
+    }));
+
+    await expect(syncPersonaTagsToSession(flux as any, 'persona-1')).resolves.toBeDefined();
+    await expect(syncPersonaTagsToSession(flux as any, '')).resolves.toBeDefined();
+
+    syncPersonaToSession(flux as any, {personaId: 'other', userId: 'user-1'});
+    expect(flux.setState).not.toHaveBeenCalledWith('user.session', expect.objectContaining({personaId: 'other'}));
   });
 
   it('should have correct method types', () => {

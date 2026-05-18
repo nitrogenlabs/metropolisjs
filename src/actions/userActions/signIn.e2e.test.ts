@@ -15,9 +15,9 @@
 
 import http from 'http';
 import https from 'https';
-import { createUserActions } from '../../actions/userActions/userActions';
-import { MOCK_USER, startTestServer, stopTestServer } from './helpers/testGraphQLServer';
-import { startSimpleServer, stopServer } from './helpers/testGraphQLServerSimple';
+import { createUserActions } from './userActions';
+import { MOCK_USER, startTestServer, stopTestServer } from '../../tests/testGraphQLServer';
+import { startSimpleServer, stopServer } from '../../tests/testGraphQLServerSimple';
 
 // Polyfill fetch for Node.js environment
 if (typeof global.fetch === 'undefined') {

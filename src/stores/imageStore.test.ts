@@ -14,4 +14,13 @@ describe('imageStore', () => {
     const updatedState = imageStore(IMAGE_CONSTANTS.GET_LIST_SUCCESS, {}, defaultValues);
     return expect(updatedState).toBe(defaultValues);
   });
+
+  it('stores image lists by item id', () => {
+    const updatedState = imageStore(IMAGE_CONSTANTS.GET_LIST_SUCCESS, {
+      itemId: 'post-1',
+      list: [{imageId: 'image-1'} as any]
+    }, defaultValues);
+
+    expect(updatedState.lists['post-1']).toHaveLength(1);
+  });
 });

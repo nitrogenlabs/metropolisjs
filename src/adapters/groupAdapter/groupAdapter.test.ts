@@ -92,6 +92,34 @@ describe('groupAdapter', () => {
       expect(result).toBeDefined();
       expect(result.groupId).toBe('group123');
     });
+
+    it('parses optional identity, image, type, dates, and count fields', () => {
+      const result = parseGroup({
+        _id: 'groups/group-1',
+        _key: 'group-1',
+        added: 1000,
+        groupId: 'group-1',
+        imageId: 'images/image-1',
+        modified: 2000,
+        name: 'Group',
+        ownerId: 'users/user-1',
+        privacy: 'private',
+        type: 'community',
+        userCount: 12
+      });
+
+      expect(result).toEqual(expect.objectContaining({
+        groupId: 'group1',
+        imageId: 'imagesimage1',
+        ownerId: 'usersuser1',
+        type: 'community',
+        userCount: 12
+      }));
+    });
+
+    it('throws validation errors for invalid group input', () => {
+      expect(() => validateGroupInput({tags: 'bad'} as any)).toThrow(GroupValidationError);
+    });
   });
 
   describe('GroupValidationError', () => {
