@@ -187,7 +187,6 @@ export interface UserApiResultsType {
     readonly forgotPassword?: boolean;
     readonly itemById?: Partial<User>;
     readonly getUserByAttribute?: Partial<User>;
-    readonly getUserByUsername?: Partial<User>;
     readonly getUserBySession?: Partial<User>;
     readonly itemBySession?: Partial<User>;
     readonly itemByToken?: Partial<User>;
@@ -240,7 +239,6 @@ export interface userActions {
     userProps?: string[],
     requestOptions?: ActionRequestOptions
   ) => Promise<User>;
-  getUserByUsername: (username: string, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
   deleteBillingCard: (userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
   listByLatest: (username?: string, from?: number, to?: number, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
   listByReactions: (
@@ -664,55 +662,6 @@ export const createUserActions = (
       flux,
       `user.getUserByAttribute:${normalizedAttribute}:${normalizedValue}`,
       {attribute: normalizedAttribute, userProps, value: normalizedValue},
-      matchingUser as User,
-      requestOptions
-    );
-  };
-
-  const getUserByUsername = async (
-    username: string,
-    userProps: string[] = [],
-    requestOptions: ActionRequestOptions = {}
-  ): Promise<User> => {
-    const normalizedUsername = String(username || '').trim();
-    let matchingUser: Partial<User> = {};
-    const cachedResult = getCachedRequest<User>(
-      flux,
-      `user.getUserByUsername:${normalizedUsername}`,
-      {username: normalizedUsername, userProps},
-      requestOptions
-    );
-
-    if(cachedResult !== undefined) {
-      return cachedResult;
-    }
-
-    const queryVariables = {
-      username: {
-        type: 'String!',
-        value: normalizedUsername
-      }
-    };
-
-    const onSuccess = (data: ApiResultsType = {}) => {
-      const user = ((data as unknown as UserApiResultsType & {
-        users?: {getUserByUsername?: Partial<User>};
-      })?.users?.getUserByUsername) || {};
-      matchingUser = user;
-
-      return flux.dispatch({type: USER_CONSTANTS.GET_ITEM_SUCCESS, user});
-    };
-
-    await withInvalidFieldRetry(
-      (safeUserProps) => publicQuery(flux, 'getUserByUsername', DATA_TYPE, queryVariables, safeUserProps, {onSuccess}),
-      userProps,
-      DEFAULT_USER_QUERY_FIELDS
-    );
-
-    return setCachedRequest<User>(
-      flux,
-      `user.getUserByUsername:${normalizedUsername}`,
-      {username: normalizedUsername, userProps},
       matchingUser as User,
       requestOptions
     );
@@ -1273,7 +1222,6 @@ export const createUserActions = (
     isLoggedIn,
     itemById,
     getUserByAttribute,
-    getUserByUsername,
     listByConnection,
     listByLatest,
     listByReactions,
