@@ -1,7 +1,7 @@
 # MetropolisJS: Seamless Frontend-Backend Integration Framework
 
 <p align="center">
-  <img src="docs/assets/metropolisjs-logo.png" alt="MetropolisJS logo" width="720">
+  <img src="docs/assets/metropolisjs-logo.png" alt="MetropolisJS logo" width="432">
 </p>
 
 > **The Ultimate Frontend Integration Library for Modern Web Applications**
