@@ -204,24 +204,51 @@ const createFlux = () => {
   };
 };
 
+const expectFluxAction = async (promise: Promise<unknown>, flux: ReturnType<typeof createFlux>, expectedAction: Record<string, unknown>) => {
+  await expect(promise).resolves.toEqual(expectedAction);
+  expect(flux.dispatch).toHaveBeenLastCalledWith(expectedAction);
+};
+
+const expectFluxError = async (promise: Promise<unknown>, flux: ReturnType<typeof createFlux>, error: Error, type: string) => {
+  await expect(promise).rejects.toThrow(error.message);
+  expect(flux.dispatch).toHaveBeenLastCalledWith({error, type});
+};
+
 export const resetActionScenarioMocks = () => {
   vi.clearAllMocks();
 };
 
 export const runAppActionsScenario = async () => {
   const {createAppActions} = await import('../actions/appActions/appActions.js');
-  const actions = createAppActions(createFlux() as any);
+  const flux = createFlux();
+  const actions = createAppActions(flux as any);
 
-  await expect(actions.add({appId: 'app-1', name: 'App'})).resolves.toBeDefined();
-  await expect(actions.itemById('app-1')).resolves.toBeDefined();
-  await expect(actions.list()).resolves.toBeDefined();
-  await expect(actions.update({appId: 'app-1', name: 'Updated'})).resolves.toBeDefined();
-  await expect(actions.delete('app-1')).resolves.toBeDefined();
+  await expectFluxAction(actions.add({appId: 'app-1', name: 'App'}), flux, {
+    app: makeEntity('apps', 'add'),
+    type: 'APP_ADD_ITEM_SUCCESS'
+  });
+  await expectFluxAction(actions.itemById('app-1'), flux, {
+    app: makeEntity('apps', 'itemById'),
+    type: 'APP_GET_ITEM_SUCCESS'
+  });
+  await expectFluxAction(actions.list(), flux, {
+    list: listEntity('apps', 'list'),
+    type: 'APP_GET_LIST_SUCCESS'
+  });
+  await expectFluxAction(actions.update({appId: 'app-1', name: 'Updated'}), flux, {
+    app: makeEntity('apps', 'update'),
+    type: 'APP_UPDATE_ITEM_SUCCESS'
+  });
+  await expectFluxAction(actions.delete('app-1'), flux, {
+    app: makeEntity('apps', 'remove'),
+    type: 'APP_REMOVE_ITEM_SUCCESS'
+  });
   actions.updateAppAdapter((input) => input);
   actions.updateAppAdapterOptions({strict: true});
 
-  apiMocks.appMutation.mockRejectedValueOnce(new Error('app failed'));
-  await expect(actions.add({appId: 'app-1', name: 'App'})).rejects.toThrow('app failed');
+  const error = new Error('app failed');
+  apiMocks.appMutation.mockRejectedValueOnce(error);
+  await expectFluxError(actions.add({appId: 'app-1', name: 'App'}), flux, error, 'APP_ADD_ITEM_ERROR');
 };
 
 export const runConnectionActionsScenario = async () => {

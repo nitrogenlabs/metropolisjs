@@ -3,6 +3,7 @@
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
 import {createContentActions} from '../actions/contentActions/contentActions.js';
+import {createCrmActions} from '../actions/crmActions/crmActions.js';
 import {createEventActions} from '../actions/eventActions/eventActions.js';
 import {createGroupActions} from '../actions/groupActions/groupActions.js';
 import {createImageActions} from '../actions/imageActions/imageActions.js';
@@ -12,6 +13,7 @@ import {createPermissionActions} from '../actions/permissionActions/permissionAc
 import {createPostActions} from '../actions/postActions/postActions.js';
 import {createPersonaActions} from '../actions/personaActions/personaActions.js';
 import {createReactionActions} from '../actions/reactionActions/reactionActions.js';
+import {createRestActions} from '../actions/restActions/restActions.js';
 import {createSSEActions} from '../actions/sseActions/sseActions.js';
 import {createSubscriptionActions} from '../actions/subscriptionActions/subscriptionActions.js';
 import {createTagActions} from '../actions/tagActions/tagActions.js';
@@ -22,6 +24,7 @@ import {createWebsocketActions} from '../actions/websocketActions/websocketActio
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {ContentActionsOptions} from '../actions/contentActions/contentActions.js';
+import type {CrmActionsOptions} from '../actions/crmActions/crmActions.js';
 import type {EventActionsOptions} from '../actions/eventActions/eventActions.js';
 import type {GroupActionsOptions} from '../actions/groupActions/groupActions.js';
 import type {ImageActionsOptions} from '../actions/imageActions/imageActions.js';
@@ -31,6 +34,7 @@ import type {PermissionActionsOptions} from '../actions/permissionActions/permis
 import type {PostActionsOptions} from '../actions/postActions/postActions.js';
 import type {PersonaActionsOptions} from '../actions/personaActions/personaActions.js';
 import type {ReactionActionsOptions} from '../actions/reactionActions/reactionActions.js';
+import type {RestActionsOptions} from '../actions/restActions/restActions.js';
 import type {SSEActionsOptions} from '../actions/sseActions/sseActions.js';
 import type {TagActionsOptions} from '../actions/tagActions/tagActions.js';
 import type {TranslationActionsOptions} from '../actions/translationActions/translationActions.js';
@@ -41,6 +45,7 @@ const websocketActionCache = new WeakMap<FluxFramework, ReturnType<typeof create
 
 export type ActionType =
   | 'content'
+  | 'crm'
   | 'event'
   | 'group'
   | 'image'
@@ -50,6 +55,7 @@ export type ActionType =
   | 'post'
   | 'persona'
   | 'reaction'
+  | 'rest'
   | 'sse'
   | 'subscription'
   | 'tag'
@@ -60,6 +66,7 @@ export type ActionType =
 
 export type ActionOptions =
   | ContentActionsOptions
+  | CrmActionsOptions
   | EventActionsOptions
   | GroupActionsOptions
   | ImageActionsOptions
@@ -69,6 +76,7 @@ export type ActionOptions =
   | PostActionsOptions
   | PersonaActionsOptions
   | ReactionActionsOptions
+  | RestActionsOptions
   | SSEActionsOptions
   | TagActionsOptions
   | TranslationActionsOptions
@@ -84,6 +92,9 @@ export const createAction = <T extends ActionType>(
   switch(actionType) {
     case 'content':
       return createContentActions(flux, options as ContentActionsOptions);
+
+    case 'crm':
+      return createCrmActions(flux, options as CrmActionsOptions);
 
     case 'event':
       return createEventActions(flux, options as EventActionsOptions);
@@ -111,6 +122,9 @@ export const createAction = <T extends ActionType>(
 
     case 'reaction':
       return createReactionActions(flux, options as ReactionActionsOptions);
+
+    case 'rest':
+      return createRestActions(flux, options as RestActionsOptions);
 
     case 'sse':
       return createSSEActions(flux, options as SSEActionsOptions);
@@ -162,6 +176,7 @@ export const createAllActions = (
 ) => {
   const allActionTypes: ActionType[] = [
     'content',
+    'crm',
     'event',
     'group',
     'image',
@@ -171,6 +186,7 @@ export const createAllActions = (
     'post',
     'persona',
     'reaction',
+    'rest',
     'sse',
     'subscription',
     'tag',

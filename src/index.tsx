@@ -157,9 +157,13 @@ export {
   publicMutation,
   publicQuery,
   refreshSession,
+  resolveRestEndpoint,
+  restRequest,
   uploadImage,
   type ApiResultsType,
-  type ReaktorDbCollection
+  type ReaktorDbCollection,
+  type RestApiOptions,
+  type RestMethod
 } from './utils/api.js';
 
 export {resolveEnvironmentConfig} from './config/index.js';
@@ -294,6 +298,7 @@ export * from './utils/file.js';
 export * from './utils/location.js';
 export {
   useContentActions,
+  useCrmActions,
   useEventActions,
   useGroupActions,
   useImageActions,
@@ -303,6 +308,7 @@ export {
   useMetropolisFlux, usePostActions,
   usePersonaActions,
   useReactionActions,
+  useRestActions,
   useTagActions,
   useTranslationActions,
   useUserActions,
@@ -330,6 +336,8 @@ export type {BaseAdapterOptions} from './utils/validatorFactory.js';
 export * from './actions/appActions/appActions.js';
 export * from './actions/connectionActions/connectionActions.js';
 export * from './actions/conversationActions/conversationActions.js';
+export * from './actions/crmActions/crmActions.js';
+export * from './actions/restActions/restActions.js';
 export * from './actions/videoActions/videoActions.js';
 export * from './constants/Collections.js';
 export * from './types/index.js';

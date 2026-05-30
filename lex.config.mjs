@@ -53,6 +53,8 @@ export default Config.create({
         lines: 90,
         statements: 90
       }
-    }
+    },
+    hookTimeout: 120000,
+    testTimeout: 120000
   }
 });

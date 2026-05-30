@@ -1,167 +1,55 @@
-# MetropolisJS AI Coding Assistant Instructions
+# AI Coding Assistant Instructions
 
-## Project Overview
-MetropolisJS is a React library that provides seamless frontend-backend integration for applications using Reaktor backend services and ArkhamJS state management. It handles authentication, real-time messaging, content management, and social features through a unified API.
+## Shared NLabs Stack
+- Use Lex (`@nlabs/lex`) for CLI workflows, building, compiling, deploying, and testing projects.
+- Use Vitest for unit and integration tests.
+- Use Playwright for end-to-end tests.
+- Use GothamJS (`@nlabs/gothamjs`) for the presentation layer. Obtain components, views, routing, Tailwind setup, and default styles from GothamJS before creating custom project-level components.
+- Use React v19 for frontend work.
+- Use Tailwind v4 for CSS styles.
+- Use MetropolisJS (`@nlabs/metropolisjs`) as the starting point for all frontend API integration. Create custom data types, actions, queries, or mutations only after MetropolisJS has been exhausted.
+- Use Rip-Hunter to access API endpoints.
+- Use `fetch` through Rip-Hunter rather than direct project-level `fetch` calls.
+- Use ArkhamJS (`@nlabs/arkhamjs`) as the frontend data store. Store data, including session-storage-backed data, through Flux actions and event listeners.
+- Prefer listening for Flux events over chaining `.then(...)` to Flux action promises.
+- Flux actions update the data store before dispatching their events.
+- Multiple listeners may listen for the same Flux action event.
+- Read persistent data from the data store, and read event-specific data directly from the Flux action event when appropriate.
+- Send all data as JSON.
+- Use Reaktor (`@nlabs/reaktor`) for actions that interact with the ArangoDB database.
 
-## Architecture Patterns
+## Database
+- All projects use the ArangoDB instance at `https://db.reaktor.io:8529`.
+- ArangoDB is a document NoSQL database with SQL-style query and graph database features.
+- When adding or deleting documents, check whether associated graph edges also need to be added or deleted.
 
-### Core Components
-- **Stores**: ArkhamJS-based state management with domain-specific stores (`users`, `posts`, `messages`, etc.)
-- **Actions**: Factory function pattern using `createUserActions(flux)`, `createPostActions(flux)`, etc.
-- **Adapters**: Zod-validated data parsers for API responses (`parseUser`, `parsePost`, etc.)
-- **Configuration**: Environment-specific config objects with API endpoints, WebSocket URLs, and session settings
+## Project Structure
+- Web apps should contain at least one microsite.
+- Web apps should include a `src/ui` folder.
+- Web apps with a backend should include a `src/api` folder or microsite.
+- Library projects may use a root source folder without `src/ui` or `src/api`.
+- Shared utility/helper functions should live in a shared file when used in more than one place.
+- Keep one component per file.
+- Each component should have a sibling test file named `MyComponent.test.ts` or `MyComponent.test.tsx`.
+- Group components by component folder, for example `src/ui/components/MyComponent/MyComponent.tsx`.
 
-### Key Conventions
+## Package Scripts
+- All projects should have at least `start`, `test`, and `update` scripts.
+- If a project includes both `api` and `ui` workspaces, use `concurrently` in `start`:
+  `"start": "concurrently \"npm run start -w api\" \"npm run start -w ui\""`
+- Use this workspace test script:
+  `"test": "npm run test --workspaces --ignore-scripts"`
+- Use this workspace update script:
+  `"update": "npm run update --workspaces"`
 
-#### 1. Action Creation Pattern
-```typescript
-// Correct: Use factory functions
-import {createUserActions} from '@nlabs/metropolisjs';
-const userActions = createUserActions(flux);
+## Testing
+- Maintain at least 90% unit test coverage.
+- Components that require other components should have integration tests.
+- Provide at least one Playwright e2e test for each happy path.
 
-// Avoid: Direct instantiation
-const userActions = new UserActions(flux);
-```
-
-#### 2. GraphQL Mutation Structure
-All GraphQL mutations are wrapped in domain fields:
-```graphql
-mutation UsersSignIn($user: UserInput!, $expires: Int) {
-  users {
-    signIn(user: $user, expires: $expires) {
-      token
-      expires
-    }
-  }
-}
-```
-
-#### 3. Store Constants Pattern
-Each store defines action type constants:
-```typescript
-export const USER_CONSTANTS = {
-  SIGN_IN_SUCCESS: 'USER_SIGN_IN_SUCCESS',
-  SIGN_IN_ERROR: 'USER_SIGN_IN_ERROR',
-  // ... etc
-};
-```
-
-#### 4. Adapter Validation
-Use Zod schemas for data validation in adapters:
-```typescript
-import {z} from 'zod';
-const userSchema = z.object({
-  id: z.string(),
-  email: z.string().email(),
-  // ...
-});
-```
-
-## Development Workflow
-
-### Build Commands
-- `npm run build` - Compile TypeScript to `lib/` using @nlabs/lex
-- `npm run dev` - Development build with watch mode
-- `npm run test` - Run Jest tests with @nlabs/lex configuration
-- `npm run lint` - ESLint with auto-fix using @nlabs/lex
-
-### Testing Setup
-- Uses Jest with jsdom environment
-- Tests located in `__tests__/` directories alongside source
-- Mock setup in `__mocks__/` for external dependencies
-
-### TypeScript Configuration
-- Strict mode disabled (`"strict": false`)
-- ESNext modules with bundler resolution
-- Declaration files emitted to `lib/` directory
-
-## Coding Conventions
-
-### Comments
-- Do not write comments in code except for TODOs, copyrights, and lint disables
-- Variables and code should be self-explanatory with clear, descriptive names
-- Use meaningful variable names that explain their purpose
-- Structure code to be readable without additional comments
-
-## Integration Points
-
-### External Dependencies
-- **@nlabs/arkhamjs**: State management framework
-- **@nlabs/arkhamjs-utils-react**: React hooks for ArkhamJS
-- **i18next**: Internationalization
-- **sockette**: WebSocket client
-- **zod**: Schema validation
-
-### Real-time Features
-- WebSocket connections via `websocketStore`
-- Server-Sent Events (SSE) for notifications
-- Automatic reconnection and state synchronization
-
-### Authentication Flow
-- Session management through `user.session` state
-- Token refresh via `refreshSession()` API calls
-- Environment-specific auth checks via config
-
-## Code Organization
-
-### Directory Structure
-```
-src/
-├── actions/          # Factory-based action creators
-├── adapters/         # Data parsing and validation
-├── stores/           # ArkhamJS store definitions
-├── config/           # Environment configuration
-├── utils/            # Shared utilities (API, i18n, etc.)
-└── constants/        # Application constants
-```
-
-### File Naming
-- Actions: `userActions.ts`, `postActions.ts`
-- Stores: `userStore.ts`, `postStore.ts`
-- Adapters: `userAdapter.ts`, `postAdapter.ts`
-- Tests: `userActions.test.ts` alongside implementation
-
-## Common Patterns
-
-### Error Handling
-```typescript
-try {
-  const result = await userActions.signIn({username, password});
-  // Handle success
-} catch (error) {
-  // Error dispatched to store with *_ERROR constant
-  console.error('Sign in failed:', error);
-}
-```
-
-### State Access
-```typescript
-import {useFlux} from '@nlabs/arkhamjs-utils-react';
-
-const MyComponent = () => {
-  const flux = useFlux();
-  const user = flux.getState('user.item', {});
-  // ...
-};
-```
-
-### Custom Adapters
-```typescript
-const customUserAdapter = (input: unknown) => {
-  const user = parseUser(input); // Use default parser first
-  // Add custom business logic
-  return {...user, computedField: 'value'};
-};
-
-const userActions = createUserActions(flux, {
-  userAdapter: customUserAdapter
-});
-```
-
-## Key Files to Reference
-- `src/index.tsx` - Main library exports and Metropolis component
-- `src/stores/index.ts` - All store exports
-- `src/actions/index.ts` - All action exports
-- `src/adapters/index.ts` - All adapter exports
-- `src/utils/api.ts` - GraphQL API utilities
-- `factoryPatternGuide.md` - Detailed factory pattern documentation
+## Code Style
+- Use arrow functions for functions.
+- Correctly type all variables, props, and arguments unless TypeScript inference already provides the correct type.
+- Sort props and object keys alphabetically.
+- Check and fix all ESLint errors and warnings.
+- Use `eslint-config-styleguide` for linting rules.

@@ -196,18 +196,18 @@ describe('createUserActions', () => {
     });
   });
 
-  it('gets a public user by username', async () => {
+  it('gets a public user by username attribute', async () => {
     const flux = createMockFlux();
     const actions = createUserActions(flux as any);
     const user = {userId: 'user-1', username: 'alpha'};
 
     publicQueryMock.mockImplementation(async (_flux, _name, _type, _variables, _props, options) => {
-      await options?.onSuccess?.({users: {getUserByUsername: user}});
-      return {users: {getUserByUsername: user}};
+      await options?.onSuccess?.({users: {getUserByAttribute: user}});
+      return {users: {getUserByAttribute: user}};
     });
 
-    await expect(actions.getUserByUsername('alpha', ['username'], {cacheTimeout: 5})).resolves.toEqual(user);
-    await expect(actions.getUserByUsername('alpha', ['username'], {cacheTimeout: 5})).resolves.toEqual(user);
+    await expect(actions.getUserByAttribute('username', 'alpha', ['username'], {cacheTimeout: 5})).resolves.toEqual(user);
+    await expect(actions.getUserByAttribute('username', 'alpha', ['username'], {cacheTimeout: 5})).resolves.toEqual(user);
   });
 
   it('sends only email for forgot password email identifiers', async () => {

@@ -17,6 +17,7 @@ export interface ConfigAppUrls {
 }
 
 export interface ConfigAppApiType {
+  readonly endpoints?: Record<string, string>;
   readonly public?: string;
   readonly url?: string;
   readonly uploadImage?: string;

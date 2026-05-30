@@ -1,5 +1,9 @@
 # MetropolisJS: Seamless Frontend-Backend Integration Framework
 
+<p align="center">
+  <img src="docs/assets/metropolisjs-logo.png" alt="MetropolisJS logo" width="720">
+</p>
+
 > **The Ultimate Frontend Integration Library for Modern Web Applications**
 
 [![npm version](https://img.shields.io/npm/v/@nlabs/metropolisjs.svg?style=flat-square)](https://www.npmjs.com/package/@nlabs/metropolisjs)
@@ -53,7 +57,7 @@ npm install @nlabs/metropolisjs @nlabs/arkhamjs @nlabs/arkhamjs-utils-react
 ### Basic Setup
 
 ```tsx
-import {Metropolis, useUserActions, useMessageActions, useWebsocketActions} from '@nlabs/metropolisjs';
+import {Metropolis, useUserActions, useMessageActions, useRestActions, useWebsocketActions} from '@nlabs/metropolisjs';
 
 const App = () => {
   return (
@@ -92,12 +96,57 @@ MetropolisJS provides multiple ways to access actions:
 // Option 1: Specialized hooks (recommended - best performance)
 const userActions = useUserActions();
 const postActions = usePostActions();
+const restActions = useRestActions();
 
 // Option 2: Selective creation
-const {userActions, postActions} = useMetropolis(['user', 'post']);
+const {userActions, postActions, restActions} = useMetropolis(['user', 'post', 'rest']);
 
 // Option 3: All actions (default behavior)
 const {userActions, postActions, messageActions} = useMetropolis();
+```
+
+### External REST Endpoints
+
+MetropolisJS includes a `rest` action group for APIs that are not part of Reaktor. It delegates to `@nlabs/rip-hunter`, so app code can keep using Metropolis actions instead of importing rip-hunter directly.
+
+```tsx
+<Metropolis
+  config={{
+    development: {
+      app: {
+        api: {
+          endpoints: {
+            weather: 'https://api.example.com/weather'
+          },
+          public: 'http://localhost:3000/public',
+          url: 'http://localhost:3000/app'
+        }
+      }
+    }
+  }}
+>
+  <YourApp />
+</Metropolis>
+
+const WeatherPanel = () => {
+  const restActions = useRestActions();
+
+  const loadWeather = async () => {
+    const weather = await restActions.get('weather', {zip: '60601'}, {cache: true});
+    return weather;
+  };
+};
+```
+
+Use `authenticate: true` when an external endpoint should receive the current Metropolis session token:
+
+```tsx
+const profile = await restActions.request(
+  'https://api.example.com/profile',
+  'PATCH',
+  {displayName: 'Ada'},
+  {authenticate: true}
+);
 ```
 
 ## Configuration
@@ -165,6 +214,7 @@ The `config` prop accepts a `MetropolisConfiguration` object that supports envir
 - `environment`: `'development' | 'production' | 'test' | 'local'` - Current environment
 - `app`: Application-specific configuration
   - `api`: API endpoint configuration
+    - `endpoints`: Named external REST endpoints for `restActions`
     - `url`: Main API endpoint
     - `public`: Public API endpoint
     - `uploadImage`: Image upload endpoint

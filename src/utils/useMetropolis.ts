@@ -72,6 +72,9 @@ const mapActionsToReturnKeys = (actions: Record<string, any>): Record<string, an
   if (actions.content) {
     mapped.contentActions = actions.content;
   }
+  if (actions.crm) {
+    mapped.crmActions = actions.crm;
+  }
   if (actions.event) {
     mapped.eventActions = actions.event;
   }
@@ -98,6 +101,9 @@ const mapActionsToReturnKeys = (actions: Record<string, any>): Record<string, an
   }
   if (actions.reaction) {
     mapped.reactionActions = actions.reaction;
+  }
+  if (actions.rest) {
+    mapped.restActions = actions.rest;
   }
   if (actions.subscription) {
     mapped.subscriptionActions = actions.subscription;
@@ -221,6 +227,11 @@ export const useContentActions = () => {
   return contentActions;
 };
 
+export const useCrmActions = () => {
+  const {crmActions} = useMetropolis(['crm']);
+  return crmActions;
+};
+
 export const useEventActions = () => {
   const {eventActions} = useMetropolis(['event']);
   return eventActions;
@@ -269,6 +280,11 @@ export const usePersonaActions = () => {
 export const useReactionActions = () => {
   const {reactionActions} = useMetropolis(['reaction']);
   return reactionActions;
+};
+
+export const useRestActions = () => {
+  const {restActions} = useMetropolis(['rest']);
+  return restActions;
 };
 
 export const useTagActions = () => {

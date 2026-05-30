@@ -11,9 +11,13 @@ export {
   publicMutation,
   publicQuery,
   refreshSession,
+  resolveRestEndpoint,
+  restRequest,
   uploadImage,
   type ApiResultsType,
   type ReaktorDbCollection,
+  type RestApiOptions,
+  type RestMethod,
   type SessionType
 } from './api.js';
 
@@ -51,7 +55,28 @@ export {
   type PermissionGuardProps,
   type UsePermissionsReturn
 } from './permissionUtils.js';
-export {useMetropolis} from './useMetropolis.js';
+export {
+  useContentActions,
+  useCrmActions,
+  useEventActions,
+  useGroupActions,
+  useImageActions,
+  useLocationActions,
+  useMessageActions,
+  useMetropolis,
+  useMetropolisConfig,
+  useMetropolisFlux,
+  usePermissionActions,
+  usePersonaActions,
+  usePostActions,
+  useReactionActions,
+  useRestActions,
+  useTagActions,
+  useTranslationActions,
+  useUserActions,
+  useVideoActions,
+  useWebsocketActions
+} from './useMetropolis.js';
 export {useConversationTyping, type ConversationTypingOptions, type UseConversationTypingOptions} from './useConversationTyping.js';
 export {useTranslations} from './useTranslations.js';
 
@@ -62,4 +87,3 @@ export * from './file.js';
 export * from './i18n.js';
 export * from './location.js';
 export * from './session.js';
-

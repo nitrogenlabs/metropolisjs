@@ -1,7 +1,11 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 
 const graphqlQueryMock = vi.fn();
+const ajaxMock = vi.fn();
+const delMock = vi.fn();
+const getMock = vi.fn();
 const postMock = vi.fn();
+const putMock = vi.fn();
 
 vi.mock('@nlabs/rip-hunter', () => ({
   ApiError: class ApiError extends Error {
@@ -13,8 +17,12 @@ vi.mock('@nlabs/rip-hunter', () => ({
       this.name = 'ApiError';
     }
   },
+  ajax: ajaxMock,
+  del: delMock,
+  get: getMock,
   graphqlQuery: graphqlQueryMock,
-  post: postMock
+  post: postMock,
+  put: putMock
 }));
 
 const {
@@ -26,6 +34,8 @@ const {
   publicMutation,
   publicQuery,
   refreshSession,
+  resolveRestEndpoint,
+  restRequest,
   uploadImage
 } = await import('./api.js');
 
@@ -37,6 +47,9 @@ const createMockFlux = () => ({
       return {
         app: {
           api: {
+            endpoints: {
+              profile: 'https://external.example.com/profile'
+            },
             public: 'http://localhost:3000/public',
             uploadImage: 'http://localhost:3000/upload',
             url: 'http://localhost:3000/app'
@@ -72,8 +85,12 @@ const createMockFlux = () => ({
 
 describe('api utilities', () => {
   beforeEach(() => {
+    ajaxMock.mockReset();
+    delMock.mockReset();
+    getMock.mockReset();
     graphqlQueryMock.mockReset();
     postMock.mockReset();
+    putMock.mockReset();
   });
 
   it('creates queries without variables', () => {
@@ -195,6 +212,43 @@ describe('api utilities', () => {
         query: expect.stringContaining('query getItem')
       }),
       {token: ''}
+    );
+  });
+
+  it('resolves configured and absolute REST endpoints', () => {
+    const flux = createMockFlux();
+
+    expect(resolveRestEndpoint(flux as any, 'profile')).toBe('https://external.example.com/profile');
+    expect(resolveRestEndpoint(flux as any, 'https://api.example.com/status')).toBe('https://api.example.com/status');
+    expect(() => resolveRestEndpoint(flux as any, 'missing')).toThrow('rest_endpoint_not_configured:missing');
+  });
+
+  it('uses rip-hunter for REST requests and dispatches network success', async () => {
+    const flux = createMockFlux();
+    getMock.mockResolvedValue({ok: true});
+
+    const result = await restRequest(flux as any, 'profile', 'GET', {userId: 'user-1'}, {cache: true});
+
+    expect(result).toEqual({ok: true});
+    expect(getMock).toHaveBeenCalledWith(
+      'https://external.example.com/profile',
+      {userId: 'user-1'},
+      expect.objectContaining({cache: true})
+    );
+    expect(flux.dispatch).toHaveBeenCalledWith({type: 'APP_API_NETWORK_SUCCESS'});
+  });
+
+  it('supports authenticated REST requests and non-standard REST methods', async () => {
+    const flux = createMockFlux();
+    ajaxMock.mockResolvedValue({patched: true});
+
+    await restRequest(flux as any, 'https://api.example.com/profile', 'PATCH', {name: 'Ada'}, {authenticate: true});
+
+    expect(ajaxMock).toHaveBeenCalledWith(
+      'https://api.example.com/profile',
+      'PATCH',
+      {name: 'Ada'},
+      expect.objectContaining({token: 'test-token'})
     );
   });
 

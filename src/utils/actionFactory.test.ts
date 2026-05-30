@@ -15,6 +15,7 @@ describe('actionFactory', () => {
 
     expect(Object.keys(all).sort()).toEqual([
       'content',
+      'crm',
       'event',
       'group',
       'image',
@@ -24,6 +25,7 @@ describe('actionFactory', () => {
       'persona',
       'post',
       'reaction',
+      'rest',
       'sse',
       'subscription',
       'tag',
@@ -37,10 +39,11 @@ describe('actionFactory', () => {
   });
 
   it('creates selected actions and rejects unknown action types', () => {
-    const actions = createActions(['user', 'post'], flux as any);
+    const actions = createActions(['user', 'post', 'rest'], flux as any);
 
     expect(actions.user).toBeDefined();
     expect(actions.post).toBeDefined();
+    expect(actions.rest).toBeDefined();
     expect(() => createAction('nope' as any, flux as any)).toThrow('Unknown action type');
   });
 });

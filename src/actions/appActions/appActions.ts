@@ -5,6 +5,7 @@
 import {parseId, parseNum} from '@nlabs/utils';
 
 import {validateAppInput} from '../../adapters/appAdapter/appAdapter.js';
+import {APP_CONSTANTS} from '../../stores/appStore.js';
 import {appMutation, appQuery} from '../../utils/api.js';
 import {createBaseActions} from '../../utils/baseActionFactory.js';
 import {clearCachedRequest, getCachedRequest, setCachedRequest} from '../../utils/requestCache.js';
@@ -67,15 +68,21 @@ export const createAppActions = (
           value: appBase.validator(appData)
         }
       };
+      const onSuccess = (data: AppApiResultsType) => {
+        const app = data?.apps?.add || {};
+        return flux.dispatch({app, type: APP_CONSTANTS.ADD_ITEM_SUCCESS});
+      };
 
       return await appMutation<AppType>(
         flux,
         'add',
         DATA_TYPE,
         queryVariables,
-        ['appId', ...appProps]
+        ['appId', ...appProps],
+        {...requestOptions, onSuccess}
       );
     } catch(error) {
+      flux.dispatch({error, type: APP_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
     } finally {
       await clearCachedRequest(flux, 'app.list');
@@ -96,6 +103,10 @@ export const createAppActions = (
           value: parseId(appId)
         }
       };
+      const onSuccess = (data: AppApiResultsType) => {
+        const app = data?.apps?.itemById || {};
+        return flux.dispatch({app, type: APP_CONSTANTS.GET_ITEM_SUCCESS});
+      };
 
       const result = await appQuery<AppType>(
         flux,
@@ -113,10 +124,12 @@ export const createAppActions = (
           'url',
           'userId',
           ...appProps
-        ]
+        ],
+        {...requestOptions, onSuccess}
       );
       return await setCachedRequest(flux, `app.itemById:${appId}`, {appId, appProps}, result, requestOptions);
     } catch(error) {
+      flux.dispatch({error, type: APP_CONSTANTS.GET_ITEM_ERROR});
       throw error;
     }
   };
@@ -144,6 +157,10 @@ export const createAppActions = (
           value: parseNum(to)
         }
       };
+      const onSuccess = (data: AppApiResultsType) => {
+        const list = data?.apps?.list || [];
+        return flux.dispatch({list, type: APP_CONSTANTS.GET_LIST_SUCCESS});
+      };
 
       const result = await appQuery<AppType[]>(
         flux,
@@ -161,10 +178,12 @@ export const createAppActions = (
           'url',
           'userId',
           ...appProps
-        ]
+        ],
+        {...requestOptions, onSuccess}
       );
       return await setCachedRequest(flux, 'app.list', {from, to, appProps}, result, requestOptions);
     } catch(error) {
+      flux.dispatch({error, type: APP_CONSTANTS.GET_LIST_ERROR});
       throw error;
     }
   };
@@ -181,15 +200,21 @@ export const createAppActions = (
           value: parseId(appId)
         }
       };
+      const onSuccess = (data: AppApiResultsType) => {
+        const app = data?.apps?.remove || {};
+        return flux.dispatch({app, type: APP_CONSTANTS.REMOVE_ITEM_SUCCESS});
+      };
 
       return await appMutation<AppType>(
         flux,
         'remove',
         DATA_TYPE,
         queryVariables,
-        ['appId', ...appProps]
+        ['appId', ...appProps],
+        {...requestOptions, onSuccess}
       );
     } catch(error) {
+      flux.dispatch({error, type: APP_CONSTANTS.REMOVE_ITEM_ERROR});
       throw error;
     } finally {
       await clearCachedRequest(flux, `app.itemById:${appId}`);
@@ -209,15 +234,21 @@ export const createAppActions = (
           value: appBase.validator(app)
         }
       };
+      const onSuccess = (data: AppApiResultsType) => {
+        const updatedApp = data?.apps?.update || {};
+        return flux.dispatch({app: updatedApp, type: APP_CONSTANTS.UPDATE_ITEM_SUCCESS});
+      };
 
       return await appMutation<AppType>(
         flux,
         'update',
         DATA_TYPE,
         queryVariables,
-        ['appId', ...appProps]
+        ['appId', ...appProps],
+        {...requestOptions, onSuccess}
       );
     } catch(error) {
+      flux.dispatch({error, type: APP_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;
     } finally {
       await clearCachedRequest(flux, `app.itemById:${String(app?.appId || '')}`);

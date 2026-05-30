@@ -1,4 +1,4 @@
-import {ApiError, graphqlQuery, post} from '@nlabs/rip-hunter';
+import {ApiError, ajax, del, get, graphqlQuery, post, put} from '@nlabs/rip-hunter';
 import {camelCase, isEmpty, upperFirst} from '@nlabs/utils';
 
 import {APP_CONSTANTS} from '../stores/appStore.js';
@@ -14,11 +14,19 @@ export interface ApiOptions {
   readonly variables?: Record<string, unknown>;
 }
 
+export type RestMethod = 'DELETE' | 'GET' | 'PATCH' | 'POST' | 'PUT' | (string & {});
+
+export interface RestApiOptions extends HunterOptionsType {
+  readonly authenticate?: boolean;
+  readonly onSuccess?: (data: any) => any;
+}
+
 export type ReaktorDbCollection =
   'apps' |
   'connections' |
   'contents' |
   'conversations' |
+  'crm' |
   'events' |
   'files' |
   'groups' |
@@ -51,7 +59,12 @@ export interface ApiResultsType {
 }
 
 export interface RetryType {
-  readonly query: HunterQueryType | HunterQueryType[];
+  readonly query?: HunterQueryType | HunterQueryType[];
+  readonly request?: {
+    readonly method: string;
+    readonly params?: unknown;
+    readonly url: string;
+  };
   readonly responseMethod: (results: ApiResultsType) => void;
 }
 
@@ -75,6 +88,54 @@ const clearInvalidSessionState = async (flux: FluxFramework): Promise<void> => {
   await flux.dispatch({session: {}, type: USER_CONSTANTS.SIGN_OUT_SUCCESS});
 };
 
+const resolveAuthToken = async (flux: FluxFramework): Promise<string> => {
+  const stateSession: SessionType = (flux.getState('user.session') || {}) as SessionType;
+  const hydratedSession: SessionType = stateSession.token ? stateSession : await hydrateSessionFromStorage(flux);
+  const {
+    expires: authExpires = 0,
+    issued: authIssued = 0,
+    token: hydratedToken
+  }: SessionType = hydratedSession || {};
+  let token = hydratedToken || stateSession.token;
+
+  if(!token) {
+    throw new ApiError(['invalid_session'], 'invalid_session');
+  }
+
+  const tokenExpiresAt = parseJwtExpiryMs(token);
+
+  if(tokenExpiresAt > 0 && Date.now() >= tokenExpiresAt) {
+    throw new ApiError(['expired_session'], 'expired_session');
+  }
+
+  const config = getConfigFromFlux(flux);
+  const minutesUntilExpiry = getMinutesUntil(Number(authExpires || 0));
+  const sessionLifetimeMinutes = Math.round((authExpires - authIssued) / (1000 * 60));
+  const refreshWindowMinutes = getRefreshWindowMinutes(
+    sessionLifetimeMinutes || DEFAULT_SESSION_MAX_MINUTES,
+    config.app?.session || {}
+  );
+  const refreshExpiresMinutes = Math.max(
+    1,
+    Number(config.app?.session?.maxMinutes || sessionLifetimeMinutes || DEFAULT_SESSION_MAX_MINUTES)
+  );
+
+  if(minutesUntilExpiry > 0 && minutesUntilExpiry <= refreshWindowMinutes) {
+    const {
+      session: updatedSession = {}
+    }: ApiResultsType = (await refreshSession(flux, token, refreshExpiresMinutes)) || {};
+    const {token: newToken}: SessionType = (updatedSession || {});
+
+    if(!newToken) {
+      throw new ApiError(['invalid_session'], 'invalid_session');
+    }
+
+    token = newToken;
+  }
+
+  return token;
+};
+
 export const getGraphql = async (
   flux: FluxFramework,
   url: string,
@@ -91,52 +152,10 @@ export const getGraphql = async (
       return flux.dispatch({retry, type: APP_CONSTANTS.API_NETWORK_ERROR});
     }
 
-    const stateSession: SessionType = (flux.getState('user.session') || {}) as SessionType;
     let token: string | undefined;
 
     if(authenticate) {
-      const hydratedSession: SessionType = stateSession.token ? stateSession : await hydrateSessionFromStorage(flux);
-      const {
-        expires: authExpires = 0,
-        issued: authIssued = 0,
-        token: hydratedToken
-      }: SessionType = hydratedSession || {};
-      token = hydratedToken || stateSession.token;
-
-      if(!token) {
-        throw new ApiError(['invalid_session'], 'invalid_session');
-      }
-
-      const tokenExpiresAt = parseJwtExpiryMs(token);
-
-      if(tokenExpiresAt > 0 && Date.now() >= tokenExpiresAt) {
-        throw new ApiError(['expired_session'], 'expired_session');
-      }
-
-      const config = getConfigFromFlux(flux);
-      const minutesUntilExpiry = getMinutesUntil(Number(authExpires || 0));
-      const sessionLifetimeMinutes = Math.round((authExpires - authIssued) / (1000 * 60));
-      const refreshWindowMinutes = getRefreshWindowMinutes(
-        sessionLifetimeMinutes || DEFAULT_SESSION_MAX_MINUTES,
-        config.app?.session || {}
-      );
-      const refreshExpiresMinutes = Math.max(
-        1,
-        Number(config.app?.session?.maxMinutes || sessionLifetimeMinutes || DEFAULT_SESSION_MAX_MINUTES)
-      );
-
-      if(minutesUntilExpiry > 0 && minutesUntilExpiry <= refreshWindowMinutes) {
-        const {
-          session: updatedSession = {}
-        }: ApiResultsType = (await refreshSession(flux, token, refreshExpiresMinutes)) || {};
-        const {token: newToken}: SessionType = (updatedSession || {});
-
-        if(!newToken) {
-          throw new ApiError(['invalid_session'], 'invalid_session');
-        }
-
-        token = newToken;
-      }
+      token = await resolveAuthToken(flux);
     }
 
     return graphqlQuery(url, query, {token: token || ''})
@@ -166,6 +185,97 @@ export const getGraphql = async (
     if(errors.includes('invalid_session') || errors.includes('expired_session') || message === 'invalid_session' || message === 'expired_session') {
       await clearInvalidSessionState(flux);
       return {};
+    }
+
+    throw error;
+  }
+};
+
+export const resolveRestEndpoint = (
+  flux: FluxFramework,
+  endpoint: string
+): string => {
+  const targetEndpoint = String(endpoint || '').trim();
+
+  if(isEmpty(targetEndpoint)) {
+    throw new ApiError(['invalid_url'], 'rest_endpoint_required');
+  }
+
+  if(/^https?:\/\//i.test(targetEndpoint)) {
+    return targetEndpoint;
+  }
+
+  const config = getConfigFromFlux(flux);
+  const configuredEndpoint = config.app?.api?.endpoints?.[targetEndpoint] || '';
+
+  if(isEmpty(configuredEndpoint)) {
+    throw new ApiError(['invalid_url'], `rest_endpoint_not_configured:${targetEndpoint}`);
+  }
+
+  return configuredEndpoint;
+};
+
+export const restRequest = async <T = ApiResultsType>(
+  flux: FluxFramework,
+  endpoint: string,
+  method: RestMethod = 'GET',
+  params?: unknown,
+  options: RestApiOptions = {}
+): Promise<T> => {
+  const {authenticate = false, onSuccess, ...hunterOptions} = options;
+  const url = resolveRestEndpoint(flux, endpoint);
+  const requestMethod = String(method || 'GET').toUpperCase();
+  const retry: RetryType = {
+    request: {method: requestMethod, params, url},
+    responseMethod: onSuccess || (() => {})
+  };
+
+  try {
+    const networkType: string = flux.getState('app.networkType') as string;
+
+    if(networkType === 'none') {
+      return flux.dispatch({retry, type: APP_CONSTANTS.API_NETWORK_ERROR}) as Promise<T>;
+    }
+
+    const token = authenticate ? await resolveAuthToken(flux) : hunterOptions.token;
+    const requestOptions: HunterOptionsType = {
+      ...hunterOptions,
+      ...(token ? {token} : {})
+    };
+    let data: T;
+
+    switch(requestMethod) {
+      case 'DELETE':
+        data = await del(url, params, requestOptions);
+        break;
+
+      case 'GET':
+        data = await get(url, params, requestOptions);
+        break;
+
+      case 'POST':
+        data = await post(url, params, requestOptions);
+        break;
+
+      case 'PUT':
+        data = await put(url, params, requestOptions);
+        break;
+
+      default:
+        data = await ajax(url, requestMethod, params, requestOptions);
+        break;
+    }
+
+    await flux.dispatch({type: APP_CONSTANTS.API_NETWORK_SUCCESS});
+
+    return onSuccess ? onSuccess(data) : data;
+  } catch(error) {
+    const errors = error instanceof ApiError ? error.errors : [];
+    const message = error instanceof Error ? error.message : '';
+
+    if(errors.includes('invalid_session') || errors.includes('expired_session') || message === 'invalid_session' || message === 'expired_session') {
+      await clearInvalidSessionState(flux);
+      return {} as T;
     }
 
     throw error;

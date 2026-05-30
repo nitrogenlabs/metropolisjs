@@ -6,12 +6,20 @@
 export const COLLECTIONS = {
   APPS: 'apps',
   CONVERSATIONS: 'conversations',
+  CUSTOMER_NOTIFICATIONS: 'customerNotifications',
+  CUSTOMER_ORDERS: 'customerOrders',
   FILES: 'files',
   GROUPS: 'groups',
   IMAGES: 'images',
+  MAILING_LISTS: 'mailingLists',
   MESSAGES: 'messages',
   POSTS: 'posts',
   PERSONAS: 'personas',
+  SHOPIFY_PRODUCTS: 'shopifyProducts',
+  SHOPIFY_WEBHOOK_EVENTS: 'shopifyWebhookEvents',
+  SUPPORT_TICKET_EVENTS: 'supportTicketEvents',
+  SUPPORT_TICKET_MESSAGES: 'supportTicketMessages',
+  SUPPORT_TICKETS: 'supportTickets',
   TAGS: 'tags',
   USERS: 'users',
   VIDEOS: 'videos'
@@ -22,9 +30,17 @@ export type CollectionType = typeof COLLECTIONS[keyof typeof COLLECTIONS];
 export const EDGES = {
   HAS_CONNECTION: 'hasConnection',
   HAS_CONVERSATION: 'hasConversation',
+  HAS_CUSTOMER_NOTIFICATION: 'hasCustomerNotification',
+  HAS_CUSTOMER_ORDER: 'hasCustomerOrder',
   HAS_FILE: 'hasFile',
   HAS_MEDIA: 'hasMedia',
+  HAS_MAILING_LIST: 'hasMailingList',
+  HAS_PERSONA: 'hasPersona',
+  HAS_PURCHASED_PRODUCT: 'hasPurchasedProduct',
   HAS_REACTION: 'hasReaction',
+  HAS_SUPPORT_TICKET: 'hasSupportTicket',
+  HAS_SUPPORT_TICKET_EVENT: 'hasSupportTicketEvent',
+  HAS_SUPPORT_TICKET_MESSAGE: 'hasSupportTicketMessage',
   IS_TAGGED: 'isTagged'
 } as const;
 

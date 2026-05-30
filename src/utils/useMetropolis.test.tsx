@@ -53,6 +53,7 @@ describe('useMetropolis', () => {
     const {result} = renderHook(() => useMetropolis(), {wrapper});
 
     expect(result.current.contentActions).toBeDefined();
+    expect(result.current.crmActions).toBeDefined();
     expect(result.current.eventActions).toBeDefined();
     expect(result.current.groupActions).toBeDefined();
     expect(result.current.imageActions).toBeDefined();
@@ -62,6 +63,7 @@ describe('useMetropolis', () => {
     expect(result.current.postActions).toBeDefined();
     expect(result.current.personaActions).toBeDefined();
     expect(result.current.reactionActions).toBeDefined();
+    expect(result.current.restActions).toBeDefined();
     expect(result.current.subscriptionActions).toBeDefined();
     expect(result.current.tagActions).toBeDefined();
     expect(result.current.translationActions).toBeDefined();
@@ -72,15 +74,17 @@ describe('useMetropolis', () => {
 
   it('creates selected action hooks and returns context config/flux', async () => {
     const hooks = await import('./useMetropolis.js');
-    const {result: selected} = renderHook(() => hooks.useMetropolis(['user', 'post']), {wrapper});
+    const {result: selected} = renderHook(() => hooks.useMetropolis(['user', 'post', 'rest']), {wrapper});
 
     expect(selected.current.userActions).toBeDefined();
     expect(selected.current.postActions).toBeDefined();
+    expect(selected.current.restActions).toBeDefined();
     expect(selected.current.contentActions).toBeUndefined();
 
     expect(renderHook(() => hooks.useMetropolisConfig(), {wrapper}).result.current.environment).toBe('test');
     expect(renderHook(() => hooks.useMetropolisFlux(), {wrapper}).result.current).toBe(flux);
     expect(renderHook(() => hooks.useContentActions(), {wrapper}).result.current).toBeDefined();
+    expect(renderHook(() => hooks.useCrmActions(), {wrapper}).result.current).toBeDefined();
     expect(renderHook(() => hooks.useEventActions(), {wrapper}).result.current).toBeDefined();
     expect(renderHook(() => hooks.useGroupActions(), {wrapper}).result.current).toBeDefined();
     expect(renderHook(() => hooks.useImageActions(), {wrapper}).result.current).toBeDefined();
@@ -91,6 +95,7 @@ describe('useMetropolis', () => {
     expect(renderHook(() => hooks.usePostActions(), {wrapper}).result.current).toBeDefined();
     expect(renderHook(() => hooks.usePersonaActions(), {wrapper}).result.current).toBeDefined();
     expect(renderHook(() => hooks.useReactionActions(), {wrapper}).result.current).toBeDefined();
+    expect(renderHook(() => hooks.useRestActions(), {wrapper}).result.current).toBeDefined();
     expect(renderHook(() => hooks.useTagActions(), {wrapper}).result.current).toBeDefined();
     expect(renderHook(() => hooks.useVideoActions(), {wrapper}).result.current).toBeDefined();
     expect(renderHook(() => hooks.useTranslationActions(), {wrapper}).result.current).toBeDefined();
