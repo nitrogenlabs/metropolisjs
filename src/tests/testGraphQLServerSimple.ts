@@ -42,7 +42,7 @@ export const stopServer = (server) => {
   });
 };
 
-// Sanity check for Jest so this helper file has at least one test
+// Sanity check so this helper file has at least one test
 describe('testGraphQLServerSimple helper', () => {
   it('exports startSimpleServer and stopServer', () => {
     expect(typeof startSimpleServer).toBe('function');

@@ -139,6 +139,23 @@ const getInvalidFields = (error: unknown): Set<string> => {
   return invalidFields;
 };
 
+const getPasswordResetIdentifier = (request: string | PasswordResetRequest): {
+  readonly identifier: string;
+  readonly type: 'email' | 'phone' | 'username';
+} => {
+  const identifier = typeof request === 'string'
+    ? String(request || '').trim()
+    : String(request.email || request.phone || request.username || '').trim();
+
+  return {
+    identifier,
+    type: typeof request !== 'string' && request.phone ? 'phone' : identifier.includes('@') ? 'email' : 'username'
+  };
+};
+
+const getPasswordResetType = (confirmation: PasswordResetConfirmation): 'email' | 'phone' =>
+  confirmation.type || (confirmation.phone ? 'phone' : 'email');
+
 const withInvalidFieldRetry = async <T>(
   requestWithProps: (props: string[]) => Promise<T>,
   props: string[],
@@ -176,6 +193,18 @@ export interface VerificationEmailOptions {
   readonly subject?: string;
   readonly template?: string;
   readonly text?: string;
+}
+
+export interface PasswordResetRequest {
+  readonly email?: string;
+  readonly phone?: string;
+  readonly username?: string;
+}
+
+export interface PasswordResetConfirmation extends PasswordResetRequest {
+  readonly code: string;
+  readonly password: string;
+  readonly type?: 'email' | 'phone';
 }
 
 export interface UserApiResultsType {
@@ -258,10 +287,12 @@ export interface userActions {
     requestOptions?: ActionRequestOptions
   ) => Promise<User[]>;
   forgotPassword: (username: string, requestOptions?: ActionRequestOptions) => Promise<boolean>;
+  requestPasswordReset: (request: string | PasswordResetRequest, requestOptions?: ActionRequestOptions) => Promise<boolean>;
   isLoggedIn: () => boolean;
   refreshSession: (token?: string, expires?: number, requestOptions?: ActionRequestOptions) => Promise<SessionType>;
   remove: (userId: string, requestOptions?: ActionRequestOptions) => Promise<User>;
   resetPassword: (username: string, password: string, code: string, type: 'email' | 'phone', requestOptions?: ActionRequestOptions) => Promise<boolean>;
+  completePasswordReset: (confirmation: PasswordResetConfirmation, requestOptions?: ActionRequestOptions) => Promise<boolean>;
   search: (query: string, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
   sendVerificationEmail: (
     email: string,
@@ -1098,10 +1129,13 @@ export const createUserActions = (
   const confirmSignUp = async (code: string, type: 'email' | 'phone', requestOptions: ActionRequestOptions = {}): Promise<boolean> =>
     true;
 
-  const forgotPassword = async (username: string, requestOptions: ActionRequestOptions = {}): Promise<boolean> => {
+  const requestPasswordReset = async (
+    request: string | PasswordResetRequest,
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<boolean> => {
     let forgotPasswordSucceeded = false;
-    const identifier = String(username || '').trim();
-    const attribute = identifier.includes('@') ? 'email' : 'username';
+    const {identifier, type} = getPasswordResetIdentifier(request);
+    const attribute = type === 'phone' ? 'phone' : type === 'email' ? 'email' : 'username';
     const queryVariables = {
       user: {
         type: 'UserInput!',
@@ -1127,6 +1161,9 @@ export const createUserActions = (
 
     return true;
   };
+
+  const forgotPassword = async (username: string, requestOptions: ActionRequestOptions = {}): Promise<boolean> =>
+    requestPasswordReset(username, requestOptions);
 
   const sendVerificationEmail = async (
     email: string,
@@ -1206,6 +1243,15 @@ export const createUserActions = (
     });
   };
 
+  const completePasswordReset = async (
+    confirmation: PasswordResetConfirmation,
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<boolean> => {
+    const username = String(confirmation.email || confirmation.phone || confirmation.username || '').trim();
+    const type = getPasswordResetType(confirmation);
+    return resetPassword(username, confirmation.password, confirmation.code, type, requestOptions);
+  };
+
   const updatePassword = async (password: string, newPassword: string, requestOptions: ActionRequestOptions = {}): Promise<boolean> =>
     true
   ;
@@ -1214,6 +1260,7 @@ export const createUserActions = (
     addUser,
     confirmCode,
     confirmSignUp,
+    completePasswordReset,
     currentAuthenticatedUser,
     currentUser,
     deleteBillingCard,
@@ -1228,6 +1275,7 @@ export const createUserActions = (
     listByTags,
     refreshSession: refreshSessionAction,
     remove,
+    requestPasswordReset,
     resetPassword,
     saveBillingCard,
     search,

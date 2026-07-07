@@ -8,8 +8,8 @@
     "skipLibCheck": false,
     "strict": false,
     "types": [
-      "jest",
-      "node"
+      "node",
+      "vitest/globals"
     ],
   },
   "include": [

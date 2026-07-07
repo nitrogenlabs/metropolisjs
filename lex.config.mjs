@@ -12,13 +12,6 @@ export default Config.create({
     minify: process.env.NODE_ENV === 'production'
   },
   gitUrl: 'https://github.com/nitrogenlabs/metropolisjs',
-  jest: {
-    extensionsToTreatAsEsm: ['.ts', '.tsx'],
-    moduleNameMapper: {
-      '^@nlabs/(.*)$': '<rootDir>/node_modules/@nlabs/$1'
-    },
-    testEnvironment: 'jsdom'
-  },
   outputPath: 'lib',
   targetEnvironment: 'web',
   useESM: true,
@@ -54,7 +47,9 @@ export default Config.create({
         statements: 90
       }
     },
+    globals: true,
     hookTimeout: 120000,
+    testEnvironment: 'jsdom',
     testTimeout: 120000
   }
 });

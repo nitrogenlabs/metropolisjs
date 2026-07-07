@@ -36,8 +36,8 @@
       "node_modules/json-d-ts"
     ],
     "types": [
-      "jest",
-      "node"
+      "node",
+      "vitest/globals"
     ],
     "useDefineForClassFields": false,
     "verbatimModuleSyntax": false

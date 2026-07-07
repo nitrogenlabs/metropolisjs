@@ -101,12 +101,17 @@ export const runtimeUpdates = (flux: FluxFramework) => {
 // Example 4: Testing with Mock Adapters
 export const testingExample = (flux: FluxFramework) => {
   // Mock adapter for testing
-  const mockUserAdapter = jest.fn((input: unknown) => ({
-    ...(input as Record<string, unknown>),
-    id: 'mock-user-id',
-    validated: true,
-    timestamp: new Date().toISOString()
-  }));
+  const mockUserAdapter = Object.assign((input: unknown) => {
+    mockUserAdapter.calls.push(input);
+    return {
+      ...(input as Record<string, unknown>),
+      id: 'mock-user-id',
+      validated: true,
+      timestamp: new Date().toISOString()
+    };
+  }, {
+    calls: [] as unknown[]
+  });
 
   const userActions = createAction('user', flux, {
     userAdapter: mockUserAdapter
@@ -119,9 +124,9 @@ export const testingExample = (flux: FluxFramework) => {
       email: 'test@example.com'
     });
 
-    expect(mockUserAdapter).toHaveBeenCalled();
-    expect(user.id).toBe('mock-user-id');
-    expect(user.validated).toBe(true);
+    if(mockUserAdapter.calls.length === 0 || user.id !== 'mock-user-id' || user.validated !== true) {
+      throw new Error('Mock adapter validation failed');
+    }
   };
 
   return {userActions, testUserCreation};

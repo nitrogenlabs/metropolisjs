@@ -266,6 +266,65 @@ describe('createUserActions', () => {
     );
   });
 
+  it('supports shared password reset request and completion helpers', async () => {
+    const flux = createMockFlux();
+    const actions = createUserActions(flux as any);
+
+    publicMutationMock.mockImplementationOnce(async (_flux, _name, _type, _variables, _props, options) => {
+      await options?.onSuccess?.({users: {forgotPassword: true}});
+      return {users: {forgotPassword: true}};
+    });
+
+    await expect(actions.requestPasswordReset({email: 'student@example.com'})).resolves.toBe(true);
+    expect(publicMutationMock).toHaveBeenCalledWith(
+      flux,
+      'forgotPassword',
+      'users',
+      {
+        user: {
+          type: 'UserInput!',
+          value: {
+            email: 'student@example.com'
+          }
+        }
+      },
+      [],
+      expect.any(Object)
+    );
+
+    publicMutationMock.mockImplementationOnce(async (_flux, _name, _type, _variables, _props, options) => {
+      await options?.onSuccess?.({users: {resetPassword: true}});
+      return {users: {resetPassword: true}};
+    });
+
+    await expect(actions.completePasswordReset({
+      code: '123456',
+      email: 'student@example.com',
+      password: 'new-secret'
+    })).resolves.toBe(true);
+    expect(publicMutationMock).toHaveBeenLastCalledWith(
+      flux,
+      'resetPassword',
+      'users',
+      {
+        code: {
+          type: 'String!',
+          value: '123456'
+        },
+        user: {
+          type: 'UserInput!',
+          value: {
+            email: 'student@example.com',
+            password: 'new-secret',
+            username: 'student@example.com'
+          }
+        }
+      },
+      [],
+      expect.any(Object)
+    );
+  });
+
   it('returns the hydrated session from currentAuthenticatedUser', async () => {
     const flux = createMockFlux();
     const actions = createUserActions(flux as any);
