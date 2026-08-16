@@ -3,6 +3,7 @@
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
 import {createContentActions} from '../actions/contentActions/contentActions.js';
+import {createAwsRumActions} from '../actions/awsRumActions/awsRumActions.js';
 import {createCrmActions} from '../actions/crmActions/crmActions.js';
 import {createEventActions} from '../actions/eventActions/eventActions.js';
 import {createGroupActions} from '../actions/groupActions/groupActions.js';
@@ -24,6 +25,7 @@ import {createWebsocketActions} from '../actions/websocketActions/websocketActio
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {ContentActionsOptions} from '../actions/contentActions/contentActions.js';
+import type {AwsRumActionsOptions} from '../actions/awsRumActions/awsRumActions.js';
 import type {CrmActionsOptions} from '../actions/crmActions/crmActions.js';
 import type {EventActionsOptions} from '../actions/eventActions/eventActions.js';
 import type {GroupActionsOptions} from '../actions/groupActions/groupActions.js';
@@ -41,9 +43,22 @@ import type {TranslationActionsOptions} from '../actions/translationActions/tran
 import type {UserActionsOptions} from '../actions/userActions/userActions.js';
 import type {VideoActionsOptions} from '../actions/videoActions/videoActions.js';
 
+const awsRumActionCache = new WeakMap<FluxFramework, {
+  readonly actions: ReturnType<typeof createAwsRumActions>;
+  readonly optionsKey: string;
+}>();
 const websocketActionCache = new WeakMap<FluxFramework, ReturnType<typeof createWebsocketActions>>();
 
+const createAwsRumOptionsKey = (options: AwsRumActionsOptions = {}): string => JSON.stringify({
+  appId: options.appId,
+  debounceMs: options.debounceMs,
+  dedupeMs: options.dedupeMs,
+  enabled: options.enabled,
+  throttleMs: options.throttleMs
+});
+
 export type ActionType =
+  | 'awsRum'
   | 'content'
   | 'crm'
   | 'event'
@@ -65,6 +80,7 @@ export type ActionType =
   | 'websocket';
 
 export type ActionOptions =
+  | AwsRumActionsOptions
   | ContentActionsOptions
   | CrmActionsOptions
   | EventActionsOptions
@@ -90,6 +106,24 @@ export const createAction = <T extends ActionType>(
   options?: ActionOptions
 ) => {
   switch(actionType) {
+    case 'awsRum': {
+      const awsRumOptions = options as AwsRumActionsOptions;
+      const optionsKey = createAwsRumOptionsKey(awsRumOptions);
+      const cached = awsRumActionCache.get(flux);
+
+      if(!cached || cached.optionsKey !== optionsKey) {
+        if(cached) {
+          void cached.actions.destroy();
+        }
+
+        const actions = createAwsRumActions(flux, awsRumOptions);
+        awsRumActionCache.set(flux, {actions, optionsKey});
+        return actions;
+      }
+
+      return cached.actions;
+    }
+
     case 'content':
       return createContentActions(flux, options as ContentActionsOptions);
 
@@ -175,6 +209,7 @@ export const createAllActions = (
   options?: Partial<Record<ActionType, ActionOptions>>
 ) => {
   const allActionTypes: ActionType[] = [
+    'awsRum',
     'content',
     'crm',
     'event',

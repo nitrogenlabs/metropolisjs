@@ -14,6 +14,7 @@ describe('actionFactory', () => {
     const all = createAllActions(flux as any);
 
     expect(Object.keys(all).sort()).toEqual([
+      'awsRum',
       'content',
       'crm',
       'event',
@@ -36,6 +37,12 @@ describe('actionFactory', () => {
     ]);
 
     expect(createAction('websocket', flux as any)).toBe(createAction('websocket', flux as any));
+    expect(createAction('awsRum', flux as any, {appId: 'metropolis'})).toBe(
+      createAction('awsRum', flux as any, {appId: 'metropolis'})
+    );
+    expect(createAction('awsRum', flux as any, {appId: 'other'})).not.toBe(
+      createAction('awsRum', flux as any, {appId: 'metropolis'})
+    );
   });
 
   it('creates selected actions and rejects unknown action types', () => {

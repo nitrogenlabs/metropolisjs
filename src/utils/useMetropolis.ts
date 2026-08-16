@@ -12,13 +12,18 @@ import type {ActionOptions, ActionType} from '../utils/actionFactory.js';
  * Builds action options from adapters in a type-safe way.
  */
 const buildActionOptions = (
-  adapters?: MetropolisAdapters
+  adapters?: MetropolisAdapters,
+  config?: MetropolisEnvironmentConfiguration
 ): Partial<Record<ActionType, ActionOptions>> => {
   if (!adapters) {
-    return {};
+    return config?.app?.rum ? {awsRum: config.app.rum} : {};
   }
 
   const options: Partial<Record<ActionType, ActionOptions>> = {};
+
+  if(config?.app?.rum) {
+    options.awsRum = config.app.rum;
+  }
 
   if (adapters.Content) {
     options.content = {contentAdapter: adapters.Content};
@@ -68,6 +73,10 @@ const buildActionOptions = (
  */
 const mapActionsToReturnKeys = (actions: Record<string, any>): Record<string, any> => {
   const mapped: Record<string, any> = {};
+
+  if(actions.awsRum) {
+    mapped.awsRum = actions.awsRum;
+  }
 
   if (actions.content) {
     mapped.contentActions = actions.content;
@@ -152,8 +161,8 @@ export const useMetropolis = <T extends ActionType[] = ActionType[]>(
   const hookFlux = useFlux();
   const flux = contextFlux || hookFlux;
 
-  const {adapters} = context;
-  const actionOptions = useMemo(() => buildActionOptions(adapters), [adapters]);
+  const {adapters, config} = context;
+  const actionOptions = useMemo(() => buildActionOptions(adapters, config), [adapters, config]);
 
   return useMemo(() => {
     let actions: Record<string, any>;
@@ -225,6 +234,11 @@ export const useMetropolisFlux = (): FluxFramework => {
 export const useContentActions = () => {
   const {contentActions} = useMetropolis(['content']);
   return contentActions;
+};
+
+export const useAwsRum = () => {
+  const {awsRum} = useMetropolis(['awsRum']);
+  return awsRum;
 };
 
 export const useCrmActions = () => {

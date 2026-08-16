@@ -10,6 +10,7 @@ export {
   getGraphql,
   publicMutation,
   publicQuery,
+  rumMutation,
   refreshSession,
   resolveRestEndpoint,
   restRequest,
@@ -57,6 +58,7 @@ export {
 } from './permissionUtils.js';
 export {
   useContentActions,
+  useAwsRum,
   useCrmActions,
   useEventActions,
   useGroupActions,

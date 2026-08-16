@@ -156,6 +156,7 @@ export {
   appQuery,
   publicMutation,
   publicQuery,
+  rumMutation,
   refreshSession,
   resolveRestEndpoint,
   restRequest,
@@ -298,6 +299,7 @@ export * from './utils/file.js';
 export * from './utils/location.js';
 export {
   useContentActions,
+  useAwsRum,
   useCrmActions,
   useEventActions,
   useGroupActions,
@@ -334,6 +336,7 @@ export type {BaseActionOptions} from './utils/baseActionFactory.js';
 export type {BaseAdapterOptions} from './utils/validatorFactory.js';
 
 export * from './actions/appActions/appActions.js';
+export * from './actions/awsRumActions/awsRumActions.js';
 export * from './actions/connectionActions/connectionActions.js';
 export * from './actions/conversationActions/conversationActions.js';
 export * from './actions/crmActions/crmActions.js';

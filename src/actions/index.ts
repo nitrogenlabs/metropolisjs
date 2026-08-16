@@ -1,4 +1,5 @@
 export * from './appActions/appActions.js';
+export * from './awsRumActions/awsRumActions.js';
 export * from './connectionActions/connectionActions.js';
 export * from './contentActions/contentActions.js';
 export * from './conversationActions/conversationActions.js';

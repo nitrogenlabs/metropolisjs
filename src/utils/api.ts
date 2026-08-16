@@ -39,6 +39,7 @@ export type ReaktorDbCollection =
   'posts' |
   'personas' |
   'reactions' |
+  'rum' |
   'subscriptions' |
   'tags' |
   'translations' |
@@ -396,6 +397,20 @@ export const publicMutation = <T>(
   const config = getConfigFromFlux(flux);
   const publicUrl: string = config.app?.api?.public || '';
   return getGraphql(flux, publicUrl, false, query, options) as Promise<T>;
+};
+
+export const rumMutation = <T>(
+  flux: FluxFramework,
+  name: string,
+  dataType: ReaktorDbCollection,
+  queryVariables: ApiQueryVariables,
+  returnProperties: string[],
+  options: ApiOptions = {}
+): Promise<T> => {
+  const query = createMutation(name, dataType, queryVariables, returnProperties);
+  const config = getConfigFromFlux(flux);
+  const rumUrl: string = config.app?.api?.rum || '';
+  return getGraphql(flux, rumUrl, false, query, options) as Promise<T>;
 };
 
 export const uploadImage = (

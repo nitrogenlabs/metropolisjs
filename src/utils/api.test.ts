@@ -33,6 +33,7 @@ const {
   getGraphql,
   publicMutation,
   publicQuery,
+  rumMutation,
   refreshSession,
   resolveRestEndpoint,
   restRequest,
@@ -51,6 +52,7 @@ const createMockFlux = () => ({
               profile: 'https://external.example.com/profile'
             },
             public: 'http://localhost:3000/public',
+            rum: 'https://rum.reaktor.io/public',
             uploadImage: 'http://localhost:3000/upload',
             url: 'http://localhost:3000/app'
           }
@@ -142,6 +144,19 @@ describe('api utilities', () => {
       expect.objectContaining({
         query: expect.stringContaining('mutation UsersAddUser')
       }),
+      {token: ''}
+    );
+  });
+
+  it('uses the shared Reaktor RUM URL for analytics mutations', async () => {
+    const flux = createMockFlux();
+    graphqlQueryMock.mockResolvedValue({rum: {track: {accepted: 1, appId: 'gotham'}}});
+
+    await rumMutation(flux as any, 'track', 'rum', {}, ['accepted', 'appId']);
+
+    expect(graphqlQueryMock).toHaveBeenCalledWith(
+      'https://rum.reaktor.io/public',
+      expect.objectContaining({query: expect.stringContaining('mutation RumTrack')}),
       {token: ''}
     );
   });

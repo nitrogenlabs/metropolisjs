@@ -19,6 +19,7 @@ export interface ConfigAppUrls {
 export interface ConfigAppApiType {
   readonly endpoints?: Record<string, string>;
   readonly public?: string;
+  readonly rum?: string;
   readonly url?: string;
   readonly uploadImage?: string;
 }
@@ -26,6 +27,13 @@ export interface ConfigAppApiType {
 export interface ConfigAppType {
   readonly api?: ConfigAppApiType;
   readonly name?: string;
+  readonly rum?: {
+    readonly appId?: string;
+    readonly debounceMs?: number;
+    readonly dedupeMs?: number;
+    readonly enabled?: boolean;
+    readonly throttleMs?: number;
+  };
   readonly session?: ConfigAppSessionType;
   readonly urls?: ConfigAppUrls;
   readonly version?: string;

@@ -34,7 +34,7 @@ const wrapper = ({children}: {children: ReactNode}) => (
         User: (input: unknown) => input as any,
         Video: (input: unknown) => input as any
       },
-      config: {app: {name: 'Metropolis'}, environment: 'test'},
+      config: {app: {name: 'Metropolis', rum: {appId: 'metropolis'}}, environment: 'test'},
       flux: flux as any,
       isAuth: () => true,
       messages: [],
@@ -53,6 +53,7 @@ describe('useMetropolis', () => {
     const {result} = renderHook(() => useMetropolis(), {wrapper});
 
     expect(result.current.contentActions).toBeDefined();
+    expect(result.current.awsRum).toBeDefined();
     expect(result.current.crmActions).toBeDefined();
     expect(result.current.eventActions).toBeDefined();
     expect(result.current.groupActions).toBeDefined();
@@ -84,6 +85,7 @@ describe('useMetropolis', () => {
     expect(renderHook(() => hooks.useMetropolisConfig(), {wrapper}).result.current.environment).toBe('test');
     expect(renderHook(() => hooks.useMetropolisFlux(), {wrapper}).result.current).toBe(flux);
     expect(renderHook(() => hooks.useContentActions(), {wrapper}).result.current).toBeDefined();
+    expect(renderHook(() => hooks.useAwsRum(), {wrapper}).result.current).toBeDefined();
     expect(renderHook(() => hooks.useCrmActions(), {wrapper}).result.current).toBeDefined();
     expect(renderHook(() => hooks.useEventActions(), {wrapper}).result.current).toBeDefined();
     expect(renderHook(() => hooks.useGroupActions(), {wrapper}).result.current).toBeDefined();
