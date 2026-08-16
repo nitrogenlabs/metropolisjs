@@ -106,16 +106,11 @@
     "got": "^14.6.5",
     "http-cache-semantics": "^4.2.0",
     "http-proxy-middleware": "^3.0.5",
-    "is-svg": {
-      "fast-xml-parser": "^5.8.0"
-    },
-    "lodash.pick": "npm:lodash@^4.17.21",
     "nth-check": "^2.1.1",
     "postcss": "^8.5.6",
     "postcss-url": {
       "minimatch": "^3.1.5"
     },
-    "semver-regex": "^4.0.5",
-    "tmp": "^0.2.5"
+    "semver-regex": "^4.0.5"
   }
 }
