@@ -100,13 +100,13 @@ const resolveAuthToken = async (flux: FluxFramework): Promise<string> => {
   let token = hydratedToken || stateSession.token;
 
   if(!token) {
-    throw new ApiError(['invalid_session'], 'invalid_session');
+    throw new ApiError([{ message: 'invalid_session' }], new Error('invalid_session'));
   }
 
   const tokenExpiresAt = parseJwtExpiryMs(token);
 
   if(tokenExpiresAt > 0 && Date.now() >= tokenExpiresAt) {
-    throw new ApiError(['expired_session'], 'expired_session');
+    throw new ApiError([{ message: 'expired_session' }], new Error('expired_session'));
   }
 
   const config = getConfigFromFlux(flux);
@@ -128,7 +128,7 @@ const resolveAuthToken = async (flux: FluxFramework): Promise<string> => {
     const {token: newToken}: SessionType = (updatedSession || {});
 
     if(!newToken) {
-      throw new ApiError(['invalid_session'], 'invalid_session');
+      throw new ApiError([{ message: 'invalid_session' }], new Error('invalid_session'));
     }
 
     token = newToken;
@@ -199,7 +199,7 @@ export const resolveRestEndpoint = (
   const targetEndpoint = String(endpoint || '').trim();
 
   if(isEmpty(targetEndpoint)) {
-    throw new ApiError(['invalid_url'], 'rest_endpoint_required');
+    throw new ApiError([{ message: 'invalid_url' }], new Error('rest_endpoint_required'));
   }
 
   if(/^https?:\/\//i.test(targetEndpoint)) {
@@ -210,7 +210,7 @@ export const resolveRestEndpoint = (
   const configuredEndpoint = config.app?.api?.endpoints?.[targetEndpoint] || '';
 
   if(isEmpty(configuredEndpoint)) {
-    throw new ApiError(['invalid_url'], `rest_endpoint_not_configured:${targetEndpoint}`);
+    throw new ApiError([{ message: 'invalid_url' }], new Error(`rest_endpoint_not_configured:${targetEndpoint}`));
   }
 
   return configuredEndpoint;
@@ -409,7 +409,7 @@ export const rumMutation = <T>(
 ): Promise<T> => {
   const query = createMutation(name, dataType, queryVariables, returnProperties);
   const config = getConfigFromFlux(flux);
-  const rumUrl: string = config.app?.api?.rum || '';
+  const rumUrl: string = config.app?.api?.rum || config.app?.api?.public || '';
   return getGraphql(flux, rumUrl, false, query, options) as Promise<T>;
 };
 
@@ -423,11 +423,11 @@ export const uploadImage = (
   const token = flux.getState('user.session.token');
 
   if(isEmpty(uploadImageUrl)) {
-    return Promise.reject(new ApiError(['invalid_url'], 'upload_endpoint_not_configured'));
+    return Promise.reject(new ApiError([{ message: 'invalid_url' }], new Error('upload_endpoint_not_configured')));
   }
 
   if(isEmpty(token)) {
-    return Promise.reject(new ApiError(['invalid_session'], 'missing_auth_token'));
+    return Promise.reject(new ApiError([{ message: 'invalid_session' }], new Error('missing_auth_token')));
   }
 
   const headers = new Headers();
@@ -450,7 +450,7 @@ export const uploadImage = (
         const message = typeof data === 'object' && data && 'error' in data
           ? String((data as {error?: string}).error || response.statusText)
           : String(data || response.statusText);
-        throw new ApiError(['upload_error'], message);
+        throw new ApiError([{ message: 'upload_error' }], new Error(message));
       }
 
       return data as ApiResultsType;

@@ -9,6 +9,7 @@ import {useEffect, useMemo, useRef} from 'react';
 import {I18nextProvider} from 'react-i18next';
 
 import {createWebsocketActions} from './actions/websocketActions/websocketActions.js';
+import type {AwsRumActions, AwsRumTrackInput} from './actions/awsRumActions/awsRumActions.js';
 import {syncPersonaTagsToSession, syncPersonaToSession} from './actions/personaActions/personaActions.js';
 import {resolveEnvironmentConfig} from './config/index.js';
 import {
@@ -45,6 +46,8 @@ export {MetropolisContext, MetropolisProvider} from './utils/MetropolisProvider.
 
 export type {MetropolisConfiguration} from './config/index.js';
 export type {MetropolisAdapters} from './utils/MetropolisProvider.js';
+
+export const GOTHAM_ANALYTICS_EVENT = 'nlabs:gotham:analytics';
 
 export const onInit = async (flux: FluxFramework) => {
   if(!flux.getState('app.metropolisInitialized')) {
@@ -191,6 +194,10 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
   const flux = useFlux();
   const resolvedConfig = useMemo<MetropolisEnvironmentConfiguration>(() => resolveEnvironmentConfig(config), [config]);
   const mergedAdapters = useMemo(() => ({...resolvedConfig.adapters, ...adapters}), [resolvedConfig.adapters, adapters]);
+  const rumOptions = useMemo(() => ({
+    ...resolvedConfig.app?.rum,
+    appId: resolvedConfig.app?.rum?.appId || resolvedConfig.app?.name
+  }), [resolvedConfig.app?.name, resolvedConfig.app?.rum]);
   const sessionPersonaId = String(useFluxState('user.session.personaId', '') || '');
   const sessionToken = String(useFluxState('user.session.token', '') || '');
   const sessionHydrated = Boolean(useFluxState('app.sessionHydrated', false));
@@ -204,6 +211,31 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
     websocketsRef.current = createAction('websocket', flux) as ReturnType<typeof createWebsocketActions>;
   }
   const websockets = websocketsRef.current;
+  const awsRum = useMemo(
+    () => createAction('awsRum', flux, rumOptions) as AwsRumActions,
+    [flux, rumOptions]
+  );
+
+  useEffect(() => {
+    if(typeof globalThis.window === 'undefined') {
+      return;
+    }
+
+    const onGothamAnalytics = (event: Event): void => {
+      const detail = (event as CustomEvent<AwsRumTrackInput>).detail;
+
+      if(detail && typeof detail === 'object') {
+        awsRum.track(detail);
+      }
+    };
+
+    globalThis.window.addEventListener(GOTHAM_ANALYTICS_EVENT, onGothamAnalytics);
+
+    return () => {
+      globalThis.window.removeEventListener(GOTHAM_ANALYTICS_EVENT, onGothamAnalytics);
+      void awsRum.destroy();
+    };
+  }, [awsRum]);
 
   useEffect(() => {
     initI18n(translations);

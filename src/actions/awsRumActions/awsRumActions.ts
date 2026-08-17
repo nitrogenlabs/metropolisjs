@@ -34,6 +34,7 @@ export interface AwsRumActionsOptions {
   readonly debounceMs?: number;
   readonly dedupeMs?: number;
   readonly enabled?: boolean;
+  readonly respectPrivacySignals?: boolean;
   readonly throttleMs?: number;
 }
 
@@ -49,6 +50,30 @@ const DEFAULT_THROTTLE_MS = 1000;
 const MAX_BATCH_SIZE = 50;
 const MAX_PROPERTIES = 20;
 const MAX_SEEN_EVENTS = 500;
+const BLOCKED_PROPERTY_KEYS = new Set([
+  'accountid',
+  'address',
+  'email',
+  'firstname',
+  'fullname',
+  'geolocation',
+  'ip',
+  'ipaddress',
+  'lastname',
+  'latitude',
+  'longitude',
+  'name',
+  'phone',
+  'referrer',
+  'token',
+  'useragent',
+  'userid'
+]);
+const EMAIL_PATTERN = /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/i;
+
+interface PrivacyNavigator extends Navigator {
+  readonly globalPrivacyControl?: boolean;
+}
 
 const createId = (): string => {
   if(typeof globalThis.crypto?.randomUUID === 'function') {
@@ -61,18 +86,35 @@ const createId = (): string => {
 const normalizeText = (value: unknown, maxLength: number): string =>
   String(value || '').trim().slice(0, maxLength);
 
+const normalizePropertyKey = (value: string): string =>
+  value.toLowerCase().replace(/[^a-z0-9]/g, '');
+
 const sanitizeProperties = (
   properties: Record<string, AwsRumProperty> = {}
 ): Record<string, AwsRumProperty> => Object.entries(properties)
   .slice(0, MAX_PROPERTIES)
   .reduce<Record<string, AwsRumProperty>>((result, [key, value]) => {
     const propertyKey = normalizeText(key, 64);
+    const normalizedPropertyKey = normalizePropertyKey(propertyKey);
 
-    if(!propertyKey || !['boolean', 'number', 'string'].includes(typeof value)) {
+    if(
+      !propertyKey ||
+      BLOCKED_PROPERTY_KEYS.has(normalizedPropertyKey) ||
+      !['boolean', 'number', 'string'].includes(typeof value)
+    ) {
       return result;
     }
 
-    result[propertyKey] = typeof value === 'string' ? normalizeText(value, 256) : value;
+    if(typeof value === 'string') {
+      const textValue = normalizeText(value, 256);
+
+      if(textValue && !EMAIL_PATTERN.test(textValue)) {
+        result[propertyKey] = textValue;
+      }
+    } else if(typeof value === 'boolean' || Number.isFinite(value)) {
+      result[propertyKey] = value;
+    }
+
     return result;
   }, {});
 
@@ -107,6 +149,7 @@ export const createAwsRumActions = (
   const debounceMs = Math.max(0, options.debounceMs ?? DEFAULT_DEBOUNCE_MS);
   const dedupeMs = Math.max(0, options.dedupeMs ?? DEFAULT_DEDUPE_MS);
   const enabled = options.enabled !== false;
+  const respectPrivacySignals = options.respectPrivacySignals !== false;
   const throttleMs = Math.max(0, options.throttleMs ?? DEFAULT_THROTTLE_MS);
   const journeyId = createId();
   const pendingEvents = new Map<string, AwsRumEvent>();
@@ -115,6 +158,16 @@ export const createAwsRumActions = (
   let lastFlushAt = 0;
   let sequence = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const hasPrivacySignal = (): boolean => {
+    if(!respectPrivacySignals || typeof globalThis.navigator === 'undefined') {
+      return false;
+    }
+
+    const navigatorState = globalThis.navigator as PrivacyNavigator;
+
+    return navigatorState.doNotTrack === '1' || navigatorState.globalPrivacyControl === true;
+  };
 
   const pruneSeenEvents = (): void => {
     if(seenEvents.size <= MAX_SEEN_EVENTS) {
@@ -144,7 +197,7 @@ export const createAwsRumActions = (
       return flushPromise;
     }
 
-    if(!enabled || !appId || pendingEvents.size === 0) {
+    if(!enabled || !appId || hasPrivacySignal() || pendingEvents.size === 0) {
       return;
     }
 
@@ -193,7 +246,7 @@ export const createAwsRumActions = (
   };
 
   const track = (input: AwsRumTrackInput): void => {
-    if(!enabled || !appId) {
+    if(!enabled || !appId || hasPrivacySignal()) {
       return;
     }
 

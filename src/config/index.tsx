@@ -32,6 +32,7 @@ export interface ConfigAppType {
     readonly debounceMs?: number;
     readonly dedupeMs?: number;
     readonly enabled?: boolean;
+    readonly respectPrivacySignals?: boolean;
     readonly throttleMs?: number;
   };
   readonly session?: ConfigAppSessionType;

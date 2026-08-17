@@ -15,14 +15,18 @@ const buildActionOptions = (
   adapters?: MetropolisAdapters,
   config?: MetropolisEnvironmentConfiguration
 ): Partial<Record<ActionType, ActionOptions>> => {
+  const awsRumOptions = config?.app?.rum || config?.app?.name
+    ? {...config?.app?.rum, appId: config?.app?.rum?.appId || config?.app?.name}
+    : undefined;
+
   if (!adapters) {
-    return config?.app?.rum ? {awsRum: config.app.rum} : {};
+    return awsRumOptions ? {awsRum: awsRumOptions} : {};
   }
 
   const options: Partial<Record<ActionType, ActionOptions>> = {};
 
-  if(config?.app?.rum) {
-    options.awsRum = config.app.rum;
+  if(awsRumOptions) {
+    options.awsRum = awsRumOptions;
   }
 
   if (adapters.Content) {

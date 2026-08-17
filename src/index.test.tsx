@@ -22,6 +22,12 @@ const websocketMocks = vi.hoisted(() => ({
   sendNotification: vi.fn()
 }));
 
+const rumMocks = vi.hoisted(() => ({
+  destroy: vi.fn(),
+  flush: vi.fn(),
+  track: vi.fn()
+}));
+
 vi.mock('./utils/api.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./utils/api.js')>()),
   refreshSession: apiMocks.refreshSession
@@ -40,7 +46,7 @@ vi.mock('@nlabs/arkhamjs-utils-react', () => ({
 
 vi.mock('./utils/actionFactory.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./utils/actionFactory.js')>()),
-  createAction: vi.fn(() => websocketMocks)
+  createAction: vi.fn((actionType: string) => actionType === 'awsRum' ? rumMocks : websocketMocks)
 }));
 
 const createFlux = (initialState: Record<string, unknown> = {}) => {
@@ -72,6 +78,7 @@ describe('index onInit', () => {
     vi.clearAllMocks();
     reactFluxMocks.flux = undefined;
     reactFluxMocks.state = new Map<string, unknown>();
+    rumMocks.track.mockReset();
   });
 
   it('registers stores and session/tag handlers once', async () => {
@@ -169,6 +176,11 @@ describe('index onInit', () => {
     expect(contextValue.notifications).toHaveLength(1);
     expect(contextValue.isAuth()).toBe(true);
     expect(websocketMocks.wsInit).toHaveBeenCalledWith('token-1', 'persona-1');
+
+    window.dispatchEvent(new CustomEvent('nlabs:gotham:analytics', {
+      detail: {name: 'page_view', path: '/docs', type: 'page_view'}
+    }));
+    expect(rumMocks.track).toHaveBeenCalledWith({name: 'page_view', path: '/docs', type: 'page_view'});
 
     rendered.unmount();
     expect(websocketMocks.wsClose).toHaveBeenCalled();

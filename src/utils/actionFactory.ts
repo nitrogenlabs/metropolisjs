@@ -54,6 +54,7 @@ const createAwsRumOptionsKey = (options: AwsRumActionsOptions = {}): string => J
   debounceMs: options.debounceMs,
   dedupeMs: options.dedupeMs,
   enabled: options.enabled,
+  respectPrivacySignals: options.respectPrivacySignals,
   throttleMs: options.throttleMs
 });
 
