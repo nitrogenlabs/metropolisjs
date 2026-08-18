@@ -47,7 +47,7 @@ export {
 } from './validatorFactory.js';
 
 // Export React hooks
-export {MetropolisContext, MetropolisProvider} from './MetropolisProvider.js';
+export {MetropolisContext} from './MetropolisContext.js';
 export {
   PermissionGuard,
   PermissionLevel,

@@ -1,4 +1,4 @@
-import {formatTagOutput, parseTag, parseTagLegacy, TagValidationError, validateTagInput} from './tagAdapter';
+import {formatTagOutput, parseTag, TagValidationError, validateTagInput} from './tagAdapter';
 
 describe('tagAdapter', () => {
   describe('validateTagInput', () => {
@@ -130,7 +130,7 @@ describe('tagAdapter', () => {
       expect(result.modified).toBe(1234567890);
     });
 
-    it('parses ids, tag ownership, user ownership, and legacy output', () => {
+    it('parses ids, tag ownership, and user ownership', () => {
       const tag = {
         id: 'tags/tag-1',
         tagBy: 'personas/persona-1',
@@ -148,7 +148,6 @@ describe('tagAdapter', () => {
         userId: 'usersuser1'
       }));
       expect(formatTagOutput(result)).toBe(result);
-      expect(parseTagLegacy(tag).tagId).toBe('tag1');
     });
 
     it('preserves canonical id fields when parsed ids are unavailable', () => {

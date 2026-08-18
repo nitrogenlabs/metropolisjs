@@ -41,21 +41,10 @@ export interface MetropolisAdapters {
   readonly Video?: typeof parseVideo;
 }
 
-export interface MetropolisProviderProps {
-  readonly children?: React.ReactElement | React.ReactElement[];
-  readonly adapters?: MetropolisAdapters;
-  readonly isAuth?: () => boolean;
-  readonly messages?: MessageType[];
-  readonly notifications?: NotificationType[];
-  readonly session?: SessionType;
-  readonly updateMessage: (message: MessageType) => void;
-  readonly updateNotification: (notification: NotificationType) => void;
-}
-
 export interface MetropolisContextValue {
-  readonly adapters?: MetropolisAdapters;
-  readonly config?: MetropolisEnvironmentConfiguration;
-  readonly flux?: FluxFramework;
+  readonly adapters: MetropolisAdapters;
+  readonly config: MetropolisEnvironmentConfiguration;
+  readonly flux: FluxFramework;
   readonly isAuth: () => boolean;
   readonly messages: MessageType[];
   readonly notifications: NotificationType[];
@@ -64,40 +53,4 @@ export interface MetropolisContextValue {
   readonly updateNotification: (notification: NotificationType) => void;
 }
 
-const defaultContext: MetropolisContextValue = {
-  adapters: undefined,
-  config: undefined,
-  flux: undefined,
-  isAuth: () => true,
-  messages: [],
-  notifications: [],
-  session: {},
-  updateMessage: (message: MessageType) => message,
-  updateNotification: (notification: NotificationType) => notification
-};
-
-export const MetropolisContext = createContext<MetropolisContextValue>(defaultContext);
-
-export const MetropolisProvider = ({
-  adapters,
-  children,
-  isAuth,
-  messages,
-  notifications,
-  session,
-  updateMessage,
-  updateNotification
-}: MetropolisProviderProps) => (
-  <MetropolisContext.Provider
-    value={{
-      adapters,
-      isAuth: isAuth || (() => true),
-      messages: messages || [],
-      notifications: notifications || [],
-      session: session || {},
-      updateMessage,
-      updateNotification
-    }}>
-    {children}
-  </MetropolisContext.Provider>
-);
+export const MetropolisContext = createContext<MetropolisContextValue | undefined>(undefined);

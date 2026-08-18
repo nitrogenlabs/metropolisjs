@@ -30,7 +30,7 @@ export const useTranslations = (options: UseTranslationsOptions = {}): UseTransl
     processInterval = 1000
   } = options;
 
-  const {translationActions} = useMetropolis();
+  const {translationActions} = useMetropolis(['translation']);
   const processTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastProcessRef = useRef<number>(0);
 

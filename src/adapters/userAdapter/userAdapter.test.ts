@@ -3,7 +3,6 @@ import {
   formatUserOutput,
   getUserCacheSize,
   parseUser,
-  parseUserLegacy,
   userCache,
   UserValidationError,
   validateUserInput
@@ -235,7 +234,6 @@ describe('userAdapter', () => {
         verifiedEmailCode: 123,
         verifiedSmsCode: 456
       })).toEqual({userId: 'user-1'});
-      expect(parseUserLegacy({userId: 'user-1'}).userId).toBe('user1');
     });
   });
 

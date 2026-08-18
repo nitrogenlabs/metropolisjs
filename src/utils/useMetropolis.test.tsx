@@ -3,7 +3,7 @@ import {renderHook} from '@testing-library/react';
 import type {ReactNode} from 'react';
 import {describe, expect, it, vi} from 'vitest';
 
-import {MetropolisContext} from './MetropolisProvider.js';
+import {MetropolisContext} from './MetropolisContext.js';
 
 const flux = {
   dispatch: vi.fn(),
@@ -11,10 +11,6 @@ const flux = {
   on: vi.fn(),
   setState: vi.fn()
 };
-
-vi.mock('@nlabs/arkhamjs-utils-react', () => ({
-  useFlux: () => flux
-}));
 
 const wrapper = ({children}: {children: ReactNode}) => (
   <MetropolisContext.Provider
@@ -34,7 +30,7 @@ const wrapper = ({children}: {children: ReactNode}) => (
         User: (input: unknown) => input as any,
         Video: (input: unknown) => input as any
       },
-      config: {app: {name: 'Metropolis', rum: {appId: 'metropolis'}}, environment: 'test'},
+      config: {app: {name: 'Metropolis', rum: {analyticsId: 'metropolis'}}, environment: 'test'},
       flux: flux as any,
       isAuth: () => true,
       messages: [],
@@ -48,9 +44,29 @@ const wrapper = ({children}: {children: ReactNode}) => (
 );
 
 describe('useMetropolis', () => {
-  it('creates all mapped action groups with adapter options', async () => {
+  it('creates requested action groups with adapter options', async () => {
     const {useMetropolis} = await import('./useMetropolis.js');
-    const {result} = renderHook(() => useMetropolis(), {wrapper});
+    const {result} = renderHook(() => useMetropolis([
+      'awsRum',
+      'content',
+      'crm',
+      'event',
+      'group',
+      'image',
+      'location',
+      'message',
+      'permission',
+      'persona',
+      'post',
+      'reaction',
+      'rest',
+      'subscription',
+      'tag',
+      'translation',
+      'user',
+      'video',
+      'websocket'
+    ]), {wrapper});
 
     expect(result.current.contentActions).toBeDefined();
     expect(result.current.awsRum).toBeDefined();
@@ -106,8 +122,10 @@ describe('useMetropolis', () => {
   });
 
   it('throws when config is requested without provider config', async () => {
-    const {useMetropolisConfig} = await import('./useMetropolis.js');
+    const {useMetropolis, useMetropolisConfig, useMetropolisFlux} = await import('./useMetropolis.js');
 
     expect(() => renderHook(() => useMetropolisConfig())).toThrow('useMetropolisConfig must be used');
+    expect(() => renderHook(() => useMetropolisFlux())).toThrow('useMetropolisFlux must be used');
+    expect(() => renderHook(() => useMetropolis(['user']))).toThrow('useMetropolis must be used');
   });
 });

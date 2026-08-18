@@ -236,7 +236,6 @@ export interface UserApiResultsType {
     readonly signIn?: Partial<User>;
     readonly signUp?: Partial<User>;
     readonly deleteBillingCard?: Partial<User>;
-    readonly update?: Partial<User>;
     readonly updateUser?: Partial<User>;
     readonly updatePassword?: Partial<boolean>;
     readonly updatePlan?: Partial<User>;
@@ -258,7 +257,6 @@ export interface userActions {
   confirmCode: (code: number, {type, value}: {type: 'email' | 'phone'; value: string}, requestOptions?: ActionRequestOptions) => Promise<boolean>;
   confirmSignUp: (code: string, type: 'email' | 'phone', requestOptions?: ActionRequestOptions) => Promise<boolean>;
   currentAuthenticatedUser: (requestOptions?: ActionRequestOptions) => Promise<User>;
-  currentUser: (requestOptions?: ActionRequestOptions) => Promise<User>;
   list: (userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
   listByConnection: (userId: string, from?: number, to?: number, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
   itemById: (userId: string, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
@@ -480,9 +478,7 @@ export const createUserActions = (
 
     const onSuccess = (data: ApiResultsType = {}) => {
       const users = (data as unknown as UserApiResultsType)?.users;
-      const legacyUser = users?.update || {};
-      const updatedUser = users?.updateUser || {};
-      const user = hasSessionIdentity(updatedUser) ? updatedUser : legacyUser;
+      const user = users?.updateUser || {};
 
       if((user as any)?.userId && (user as any).userId === flux.getState('user.session.userId')) {
         syncStoredSession(flux, user as Record<string, unknown>);
@@ -1017,8 +1013,6 @@ export const createUserActions = (
     return (session || {}) as User;
   };
 
-  const currentUser = async (requestOptions: ActionRequestOptions = {}): Promise<User> => currentAuthenticatedUser(requestOptions);
-
   const refreshSessionAction = async (token?: string, expires?: number, requestOptions: ActionRequestOptions = {}): Promise<SessionType> => {
     const result = await refreshSession(flux, token, expires);
     return (result?.refreshSession || {}) as SessionType;
@@ -1031,8 +1025,6 @@ export const createUserActions = (
   ): Promise<SessionType> => {
     const {email, phone, username, password} = user;
     let userInput: Record<string, unknown> | undefined;
-    let legacyVariables: Record<string, {type: string; value: unknown}> | undefined;
-
     if(username && password) {
       userInput = {
         password,
@@ -1262,7 +1254,6 @@ export const createUserActions = (
     confirmSignUp,
     completePasswordReset,
     currentAuthenticatedUser,
-    currentUser,
     deleteBillingCard,
     list,
     forgotPassword,

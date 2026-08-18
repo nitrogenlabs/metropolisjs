@@ -101,8 +101,8 @@ const restActions = useRestActions();
 // Option 2: Selective creation
 const {userActions, postActions, restActions} = useMetropolis(['user', 'post', 'rest']);
 
-// Option 3: All actions (default behavior)
-const {userActions, postActions, messageActions} = useMetropolis();
+// Option 3: Create an explicit action group
+const {messageActions} = useMetropolis(['message']);
 ```
 
 ### External REST Endpoints
@@ -152,6 +152,29 @@ const profile = await restActions.request(
 ## Configuration
 
 The `Metropolis` component accepts three main props: `config`, `adapters`, and `translations`. Here's how to configure each:
+
+### RUM analytics
+
+Configure the public analytics identifier returned by Reaktor under `app.rum.analyticsId`. MetropolisJS sends it in the JSON `RumBatchInput.analyticsId` field; it is not placed in a URL or request header.
+
+```tsx
+<Metropolis
+  config={{
+    production: {
+      app: {
+        name: 'My App',
+        rum: {
+          analyticsId: '00000000-0000-4000-8000-000000000000',
+          enabled: true
+        }
+      }
+    }
+  }}>
+  <YourApp />
+</Metropolis>
+```
+
+`app.rum.analyticsId` is the identifier sent with each analytics batch.
 
 ### Configuration Object
 
@@ -487,7 +510,7 @@ MetropolisJS follows React best practices:
 
 ## Available Actions
 
-MetropolisJS provides comprehensive actions for all your needs. Access them using specialized hooks or the main `useMetropolis()` hook:
+MetropolisJS provides comprehensive actions for all your needs. Access them using specialized hooks or `useMetropolis(actionTypes)`:
 
 ### Specialized Hooks (Recommended)
 
@@ -516,13 +539,13 @@ const permissionActions = usePermissionActions();
 // Alternative: Selective creation
 const {userActions, postActions, permissionActions} = useMetropolis(['user', 'post', 'permission']);
 
-// Alternative: All actions (creates all action types)
-const {userActions, postActions, messageActions, permissionActions} = useMetropolis();
+// Create every action you use explicitly
+const {messageActions, permissionActions} = useMetropolis(['message', 'permission']);
 ```
 
 ## Factory Pattern Guide
 
-MetropolisJS has been refactored to use a **factory function pattern** for actions instead of class-based approaches. This provides better functional programming practices, improved testability, and enhanced flexibility through dependency injection.
+MetropolisJS uses a **factory function pattern** for actions. This provides functional composition, straightforward testing, and dependency injection.
 
 ### Key Benefits
 
@@ -530,20 +553,7 @@ MetropolisJS has been refactored to use a **factory function pattern** for actio
 2. **Better Testability**: Easier to mock and test individual functions
 3. **Composability**: Actions can be easily combined and extended
 4. **Dependency Injection**: Custom adapters can be injected and merged with defaults
-5. **Backward Compatibility**: Legacy class wrappers maintain existing API compatibility
-
 ### Basic Usage
-
-#### Before (Class-based)
-
-```typescript
-import {userActions} from '../actions/userActions';
-
-const userActions = new userActions(flux);
-const user = await userActions.add(userData);
-```
-
-#### After (Factory Pattern)
 
 ```typescript
 import {createUserActions} from '../actions/userActions';
@@ -775,7 +785,7 @@ describe('useUserActions', () => {
 
 ### Best Practices
 
-1. **Use Specialized Hooks**: Prefer `useUserActions()` over `useMetropolis()` when you only need one action type
+1. **Use Specialized Hooks**: Prefer `useUserActions()` over `useMetropolis(['user'])` when you only need one action type
 2. **Selective Creation**: Use `useMetropolis(['user', 'post'])` when you need multiple specific actions
 3. **Context-Based Config**: Use `useMetropolisConfig()` for accessing configuration
 4. **Leverage Adapter Injection**: Pass custom adapters through the `Metropolis` component
@@ -1077,9 +1087,9 @@ const ResourceProtectedComponent = () => {
 };
 ```
 
-### Backward Compatibility
+### Permission Levels
 
-The permission system is fully backward compatible with the existing `userAccess` field in the User model. The `userAccess` number (0-4) directly maps to the `PermissionLevel` enum values, ensuring seamless integration with existing code.
+The `userAccess` field uses the numeric `PermissionLevel` values from 0 through 4.
 
 ### Available Permission Actions
 

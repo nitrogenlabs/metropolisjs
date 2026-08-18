@@ -30,7 +30,7 @@ export interface AwsRumEvent extends AwsRumTrackInput {
 }
 
 export interface AwsRumActionsOptions {
-  readonly appId?: string;
+  readonly analyticsId?: string;
   readonly debounceMs?: number;
   readonly dedupeMs?: number;
   readonly enabled?: boolean;
@@ -145,7 +145,7 @@ export const createAwsRumActions = (
   flux: FluxFramework,
   options: AwsRumActionsOptions = {}
 ): AwsRumActions => {
-  const appId = normalizeText(options.appId, 128);
+  const analyticsId = normalizeText(options.analyticsId, 128);
   const debounceMs = Math.max(0, options.debounceMs ?? DEFAULT_DEBOUNCE_MS);
   const dedupeMs = Math.max(0, options.dedupeMs ?? DEFAULT_DEDUPE_MS);
   const enabled = options.enabled !== false;
@@ -197,7 +197,7 @@ export const createAwsRumActions = (
       return flushPromise;
     }
 
-    if(!enabled || !appId || hasPrivacySignal() || pendingEvents.size === 0) {
+    if(!enabled || !analyticsId || hasPrivacySignal() || pendingEvents.size === 0) {
       return;
     }
 
@@ -218,13 +218,13 @@ export const createAwsRumActions = (
           await rumMutation(flux, 'track', 'rum', {
             batch: {
               type: 'RumBatchInput!',
-              value: {appId, events: batchEvents}
+              value: {analyticsId, events: batchEvents}
             }
-          }, ['accepted', 'appId']);
-          await flux.dispatch({appId, events: batchEvents, type: AWS_RUM_CONSTANTS.TRACK_SUCCESS});
+          }, ['accepted', 'analyticsId']);
+          await flux.dispatch({analyticsId, events: batchEvents, type: AWS_RUM_CONSTANTS.TRACK_SUCCESS});
         } catch(error) {
           events.slice(index).forEach((event) => pendingEvents.set(eventFingerprint(event), event));
-          await flux.dispatch({appId, error, events: batchEvents, type: AWS_RUM_CONSTANTS.TRACK_ERROR});
+          await flux.dispatch({analyticsId, error, events: batchEvents, type: AWS_RUM_CONSTANTS.TRACK_ERROR});
           return;
         }
       }
@@ -246,7 +246,7 @@ export const createAwsRumActions = (
   };
 
   const track = (input: AwsRumTrackInput): void => {
-    if(!enabled || !appId || hasPrivacySignal()) {
+    if(!enabled || !analyticsId || hasPrivacySignal()) {
       return;
     }
 
@@ -277,7 +277,7 @@ export const createAwsRumActions = (
     };
 
     pendingEvents.set(fingerprint, queuedEvent);
-    void flux.dispatch({appId, event: queuedEvent, type: AWS_RUM_CONSTANTS.TRACK_QUEUED});
+    void flux.dispatch({analyticsId, event: queuedEvent, type: AWS_RUM_CONSTANTS.TRACK_QUEUED});
     scheduleFlush();
   };
 

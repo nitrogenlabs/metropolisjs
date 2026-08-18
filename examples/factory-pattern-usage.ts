@@ -268,21 +268,3 @@ export const allActionsExample = (flux: FluxFramework) => {
 
   return { allActions, comprehensiveWorkflow };
 };
-
-// Example 9: Migration from Old Pattern
-export const migrationExample = (flux: FluxFramework) => {
-  // New way (recommended)
-  const userActions = createAction('user', flux) as any;
-  const postActions = createAction('post', flux) as any;
-  const eventActions = createAction('event', flux) as any;
-
-  const createUser = async (userData: any) => {
-    return await userActions.add(userData);
-  };
-
-  const createPost = async (postData: any) => {
-    return await postActions.add(postData);
-  };
-
-  return { createUser, createPost };
-}; 

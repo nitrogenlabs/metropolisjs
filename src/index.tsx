@@ -34,18 +34,18 @@ import {
 import {refreshSession} from './utils/api.js';
 import {getConfigFromFlux} from './utils/configUtils.js';
 import {initI18n} from './utils/i18n.js';
-import {MetropolisContext} from './utils/MetropolisProvider.js';
+import {MetropolisContext} from './utils/MetropolisContext.js';
 import {getRefreshWindowMinutes, hydrateSessionFromStorage, parseJwtExpiryMs} from './utils/session.js';
 import {createAction} from './utils/actionFactory.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {MetropolisConfiguration, MetropolisEnvironmentConfiguration} from './config/index.js';
-import type {MetropolisAdapters} from './utils/MetropolisProvider.js';
+import type {MetropolisAdapters} from './utils/MetropolisContext.js';
 
-export {MetropolisContext, MetropolisProvider} from './utils/MetropolisProvider.js';
+export {MetropolisContext} from './utils/MetropolisContext.js';
 
 export type {MetropolisConfiguration} from './config/index.js';
-export type {MetropolisAdapters} from './utils/MetropolisProvider.js';
+export type {MetropolisAdapters} from './utils/MetropolisContext.js';
 
 export const GOTHAM_ANALYTICS_EVENT = 'nlabs:gotham:analytics';
 
@@ -196,7 +196,7 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
   const mergedAdapters = useMemo(() => ({...resolvedConfig.adapters, ...adapters}), [resolvedConfig.adapters, adapters]);
   const rumOptions = useMemo(() => ({
     ...resolvedConfig.app?.rum,
-    appId: resolvedConfig.app?.rum?.appId || resolvedConfig.app?.name
+    analyticsId: resolvedConfig.app?.rum?.analyticsId || resolvedConfig.app?.name
   }), [resolvedConfig.app?.name, resolvedConfig.app?.rum]);
   const sessionPersonaId = String(useFluxState('user.session.personaId', '') || '');
   const sessionToken = String(useFluxState('user.session.token', '') || '');

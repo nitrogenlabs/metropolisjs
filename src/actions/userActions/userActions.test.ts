@@ -135,7 +135,6 @@ describe('createUserActions', () => {
     expect(actions.confirmCode).toBeTypeOf('function');
     expect(actions.confirmSignUp).toBeTypeOf('function');
     expect(actions.currentAuthenticatedUser).toBeTypeOf('function');
-    expect(actions.currentUser).toBeTypeOf('function');
     expect(actions.forgotPassword).toBeTypeOf('function');
     expect(actions.getUserByAttribute).toBeTypeOf('function');
     expect(actions.itemById).toBeTypeOf('function');
@@ -333,7 +332,6 @@ describe('createUserActions', () => {
     hydrateSessionFromStorageMock.mockResolvedValue(session);
 
     await expect(actions.currentAuthenticatedUser()).resolves.toEqual(session);
-    await expect(actions.currentUser()).resolves.toEqual(session);
   });
 
   it('checks login state and refreshes the current session', async () => {
@@ -628,7 +626,7 @@ describe('createUserActions', () => {
     await expect(actions.confirmCode(123456, {type: 'email', value: user.email})).resolves.toBe(true);
     await expect(actions.session()).resolves.toEqual(expect.objectContaining({userId: 'user-1'}));
     await expect(actions.itemById('user-1', ['email'], {cacheTimeout: 5})).resolves.toEqual(expect.objectContaining({users: expect.any(Object)}));
-    await expect(actions.currentUser()).resolves.toEqual(expect.objectContaining({userId: 'user-1'}));
+    await expect(actions.currentAuthenticatedUser()).resolves.toEqual(expect.objectContaining({userId: 'user-1'}));
     await expect(actions.saveBillingCard({token: 'tok_123'})).resolves.toEqual(user);
     await expect(actions.deleteBillingCard()).resolves.toEqual(user);
     await expect(actions.remove('user-1')).resolves.toEqual(user);

@@ -1,11 +1,10 @@
-import {useFlux} from '@nlabs/arkhamjs-utils-react';
 import {useContext, useMemo} from 'react';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {MetropolisEnvironmentConfiguration} from '../config/index.js';
-import {createActions, createAllActions} from '../utils/actionFactory.js';
-import type {MetropolisAdapters} from './MetropolisProvider.js';
-import {MetropolisContext} from './MetropolisProvider.js';
+import {createActions} from '../utils/actionFactory.js';
+import type {MetropolisAdapters} from './MetropolisContext.js';
+import {MetropolisContext} from './MetropolisContext.js';
 import type {ActionOptions, ActionType} from '../utils/actionFactory.js';
 
 /**
@@ -16,7 +15,10 @@ const buildActionOptions = (
   config?: MetropolisEnvironmentConfiguration
 ): Partial<Record<ActionType, ActionOptions>> => {
   const awsRumOptions = config?.app?.rum || config?.app?.name
-    ? {...config?.app?.rum, appId: config?.app?.rum?.appId || config?.app?.name}
+    ? {
+      ...config?.app?.rum,
+      analyticsId: config?.app?.rum?.analyticsId || config?.app?.name
+    }
     : undefined;
 
   if (!adapters) {
@@ -143,46 +145,29 @@ const mapActionsToReturnKeys = (actions: Record<string, any>): Record<string, an
 /**
  * Main hook to access Metropolis actions.
  *
- * @param actionTypes - Optional array of action types to create. If not provided, creates all actions.
+ * @param actionTypes - Action types to create.
  * @returns Object containing the requested actions
  *
  * @example
  * ```tsx
- * // Get all actions (default behavior)
- * const {userActions, postActions} = useMetropolis();
- *
- * // Get only specific actions (more performant)
  * const {userActions} = useMetropolis(['user']);
  * const {userActions, postActions} = useMetropolis(['user', 'post']);
  * ```
  */
-export const useMetropolis = <T extends ActionType[] = ActionType[]>(
-  actionTypes?: T
-) => {
+export const useMetropolis = <T extends ActionType[]>(actionTypes: T) => {
   const context = useContext(MetropolisContext);
-  // Use flux from context if available, otherwise fall back to useFlux() for backward compatibility
-  const contextFlux = context?.flux;
-  const hookFlux = useFlux();
-  const flux = contextFlux || hookFlux;
 
-  const {adapters, config} = context;
+  if(!context) {
+    throw new Error('useMetropolis must be used within a Metropolis component.');
+  }
+
+  const {adapters, config, flux} = context;
   const actionOptions = useMemo(() => buildActionOptions(adapters, config), [adapters, config]);
 
   return useMemo(() => {
-    let actions: Record<string, any>;
-
-    if (actionTypes && actionTypes.length > 0) {
-      // Create only requested actions
-      actions = createActions(actionTypes, flux, actionOptions);
-    } else {
-      // Create all actions (default behavior for backward compatibility)
-      const allActions = createAllActions(flux, actionOptions);
-      actions = allActions;
-    }
-
-    // Map to return keys (contentActions, userActions, etc.)
+    const actions = createActions(actionTypes, flux, actionOptions);
     return mapActionsToReturnKeys(actions);
-  }, [flux, actionOptions, actionTypes?.join(',')]);
+  }, [flux, actionOptions, actionTypes.join(',')]);
 };
 
 /**
@@ -200,7 +185,7 @@ export const useMetropolis = <T extends ActionType[] = ActionType[]>(
 export const useMetropolisConfig = (): MetropolisEnvironmentConfiguration => {
   const context = useContext(MetropolisContext);
 
-  if (!context?.config) {
+  if(!context) {
     throw new Error(
       'useMetropolisConfig must be used within a Metropolis component. ' +
       'Make sure your component is wrapped with <Metropolis> provider.'
@@ -224,10 +209,12 @@ export const useMetropolisConfig = (): MetropolisEnvironmentConfiguration => {
  */
 export const useMetropolisFlux = (): FluxFramework => {
   const context = useContext(MetropolisContext);
-  const hookFlux = useFlux();
 
-  // Use flux from context if available, otherwise fall back to useFlux() for backward compatibility
-  return context?.flux || hookFlux;
+  if(!context) {
+    throw new Error('useMetropolisFlux must be used within a Metropolis component.');
+  }
+
+  return context.flux;
 };
 
 /**

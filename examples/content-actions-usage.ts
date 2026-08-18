@@ -102,7 +102,7 @@ import React, { useEffect, useState } from 'react';
 import { useMetropolis } from '@nlabs/metropolisjs';
 
 const WelcomeComponent = () => {
-  const { contentActions } = useMetropolis();
+  const { contentActions } = useMetropolis(['content']);
   const [welcomeMessage, setWelcomeMessage] = useState('Loading...');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -141,4 +141,3 @@ export {
   addContentExample, deleteContentExample, getContentByCategoryExample, getContentByKeyExample,
   updateContentExample
 };
-

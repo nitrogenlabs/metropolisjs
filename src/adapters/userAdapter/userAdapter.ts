@@ -331,5 +331,3 @@ export const clearUserCache = (): void => {
 export const getUserCacheSize = (): number => userCache.size;
 
 export {userCache};
-
-export const parseUserLegacy = (user: User): User => parseUser(user);

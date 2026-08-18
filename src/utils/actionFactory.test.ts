@@ -37,11 +37,11 @@ describe('actionFactory', () => {
     ]);
 
     expect(createAction('websocket', flux as any)).toBe(createAction('websocket', flux as any));
-    expect(createAction('awsRum', flux as any, {appId: 'metropolis'})).toBe(
-      createAction('awsRum', flux as any, {appId: 'metropolis'})
+    expect(createAction('awsRum', flux as any, {analyticsId: 'metropolis'})).toBe(
+      createAction('awsRum', flux as any, {analyticsId: 'metropolis'})
     );
-    expect(createAction('awsRum', flux as any, {appId: 'other'})).not.toBe(
-      createAction('awsRum', flux as any, {appId: 'metropolis'})
+    expect(createAction('awsRum', flux as any, {analyticsId: 'other'})).not.toBe(
+      createAction('awsRum', flux as any, {analyticsId: 'metropolis'})
     );
   });
 

@@ -150,9 +150,9 @@ describe('api utilities', () => {
 
   it('uses the shared Reaktor RUM URL for analytics mutations', async () => {
     const flux = createMockFlux();
-    graphqlQueryMock.mockResolvedValue({rum: {track: {accepted: 1, appId: 'gotham'}}});
+    graphqlQueryMock.mockResolvedValue({rum: {track: {accepted: 1, analyticsId: 'gotham'}}});
 
-    await rumMutation(flux as any, 'track', 'rum', {}, ['accepted', 'appId']);
+    await rumMutation(flux as any, 'track', 'rum', {}, ['accepted', 'analyticsId']);
 
     expect(graphqlQueryMock).toHaveBeenCalledWith(
       'https://rum.reaktor.io/public',

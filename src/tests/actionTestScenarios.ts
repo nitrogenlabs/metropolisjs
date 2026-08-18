@@ -597,7 +597,6 @@ export const runUserActionsScenario = async () => {
   await expect(actions.search('user')).resolves.toBeDefined();
   expect(actions.isLoggedIn()).toBe(false);
   await expect(actions.currentAuthenticatedUser()).resolves.toBeDefined();
-  await expect(actions.currentUser()).resolves.toBeDefined();
   await expect(actions.refreshSession('token-1', 15)).resolves.toBeDefined();
   await expect(actions.signIn({password: 'secret123', username: 'user'})).resolves.toBeDefined();
   await expect(actions.signOut()).resolves.toBeDefined();

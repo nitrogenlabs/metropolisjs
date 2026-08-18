@@ -115,5 +115,3 @@ const performTagTransformation = (tag: TagType): TagType => {
 
   return result;
 };
-
-export const parseTagLegacy = (tag: TagType): TagType => parseTag(tag);

@@ -50,7 +50,7 @@ const awsRumActionCache = new WeakMap<FluxFramework, {
 const websocketActionCache = new WeakMap<FluxFramework, ReturnType<typeof createWebsocketActions>>();
 
 const createAwsRumOptionsKey = (options: AwsRumActionsOptions = {}): string => JSON.stringify({
-  appId: options.appId,
+  analyticsId: options.analyticsId,
   debounceMs: options.debounceMs,
   dedupeMs: options.dedupeMs,
   enabled: options.enabled,

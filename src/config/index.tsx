@@ -4,7 +4,7 @@
  */
 import {merge} from '@nlabs/utils';
 
-import type {MetropolisAdapters} from '../utils/MetropolisProvider.js';
+import type {MetropolisAdapters} from '../utils/MetropolisContext.js';
 
 export interface ConfigAppSessionType {
   readonly maxMinutes?: number;
@@ -28,7 +28,7 @@ export interface ConfigAppType {
   readonly api?: ConfigAppApiType;
   readonly name?: string;
   readonly rum?: {
-    readonly appId?: string;
+    readonly analyticsId?: string;
     readonly debounceMs?: number;
     readonly dedupeMs?: number;
     readonly enabled?: boolean;
