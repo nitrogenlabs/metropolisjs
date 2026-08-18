@@ -328,7 +328,7 @@ export const createQuery = (
     }`;
   }
 
-  const updatedVariables: Record<string, unknown> = variableKeys.reduce((queryData, key) => {
+  const updatedVariables = variableKeys.reduce<Record<string, unknown>>((queryData, key) => {
     queryData[key] = queryVariables[key].value;
     return queryData;
   }, {});
@@ -415,7 +415,7 @@ export const rumMutation = <T>(
 
 export const uploadImage = (
   flux: FluxFramework,
-  image,
+  image: FormData | Record<string, unknown>,
   options: HunterOptionsType = {}
 ): Promise<ApiResultsType> => {
   const config = getConfigFromFlux(flux);

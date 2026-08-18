@@ -9,6 +9,7 @@ import {clearCachedRequest, getCachedRequest, setCachedRequest} from '../../util
 
 import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {TagType} from '../../adapters/tagAdapter/tagAdapter.js';
+import type {ApiQueryVariables} from '../../utils/api.js';
 import type {ActionRequestOptions} from '../../utils/requestCache.js';
 
 const DATA_TYPE = 'tags';
@@ -309,7 +310,7 @@ export const createTagActions = (
     }
 
     try {
-      const queryVariables = searchQuery
+      const queryVariables: ApiQueryVariables = searchQuery
         ? {
           searchQuery: {
             type: 'String',

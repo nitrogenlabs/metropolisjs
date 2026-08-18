@@ -46,7 +46,7 @@ export const createSSEActions = (
 ): SSEActions => {
   let eventSource: EventSource | null = null;
   let retryCount = 0;
-  let retryTimeout: NodeJS.Timeout | null = null;
+  let retryTimeout: ReturnType<typeof setTimeout> | null = null;
   let eventHandlers = new Map<string, Set<(event: SSEEvent) => void>>();
 
   const defaultOptions: SSEConnectionOptions = {

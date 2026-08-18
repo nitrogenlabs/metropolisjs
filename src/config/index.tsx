@@ -41,11 +41,19 @@ export interface ConfigAppType {
 }
 
 export interface MetropolisConfiguration {
+  readonly [environment: string]: MetropolisEnvironmentConfiguration | undefined;
   readonly local?: MetropolisEnvironmentConfiguration;
   readonly development?: MetropolisEnvironmentConfiguration;
   readonly production?: MetropolisEnvironmentConfiguration;
   readonly test?: MetropolisEnvironmentConfiguration;
 }
+
+const getRuntimeEnvironment = (): string | undefined => {
+  const runtimeProcess = (globalThis as {
+    process?: {env?: Record<string, string | undefined>};
+  }).process;
+  return runtimeProcess?.env?.stage || runtimeProcess?.env?.NODE_ENV;
+};
 
 export interface MetropolisEnvironmentConfiguration {
   readonly adapters?: MetropolisAdapters;
@@ -120,7 +128,7 @@ const DEFAULT_CONFIG: MetropolisConfiguration = {
  * Gets the default configuration for a specific environment.
  */
 export const getDefaultConfig = (environment?: string): MetropolisEnvironmentConfiguration => {
-  const targetEnvironment = environment || process.env.stage || process.env.NODE_ENV || 'local';
+  const targetEnvironment = environment || getRuntimeEnvironment() || 'local';
   const envConfig = DEFAULT_CONFIG[targetEnvironment] || DEFAULT_CONFIG.local || {};
   const localConfig = DEFAULT_CONFIG.local || {};
   return merge({}, localConfig, envConfig);
@@ -135,7 +143,7 @@ export const resolveEnvironmentConfig = (
   config: MetropolisConfiguration,
   environment?: string
 ): MetropolisEnvironmentConfiguration => {
-  const targetEnvironment = environment || process.env.stage || process.env.NODE_ENV || 'local';
+  const targetEnvironment = environment || getRuntimeEnvironment() || 'local';
   const baseConfig = DEFAULT_CONFIG;
 
   // Merge base config with provided config

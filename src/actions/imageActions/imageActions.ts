@@ -2,19 +2,19 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import { parseString } from '@nlabs/utils';
+import {parseString} from '@nlabs/utils';
 
-import { validateImageInput } from '../../adapters/imageAdapter/imageAdapter.js';
-import { getConfigFromFlux } from '../../utils/configUtils.js';
-import { IMAGE_CONSTANTS } from '../../stores/imageStore.js';
-import { appMutation, appQuery, uploadImage } from '../../utils/api.js';
-import { convertFileToUploadFile } from '../../utils/file.js';
-import { clearCachedRequest, getCachedRequest, setCachedRequest } from '../../utils/requestCache.js';
+import {validateImageInput} from '../../adapters/imageAdapter/imageAdapter.js';
+import {IMAGE_CONSTANTS} from '../../stores/imageStore.js';
+import {appMutation, appQuery, uploadImage} from '../../utils/api.js';
+import {getConfigFromFlux} from '../../utils/configUtils.js';
+import {convertFileToUploadFile} from '../../utils/file.js';
+import {clearCachedRequest, getCachedRequest, setCachedRequest} from '../../utils/requestCache.js';
 
-import type { FluxAction, FluxFramework } from '@nlabs/arkhamjs';
-import type { ImageType } from '../../adapters/imageAdapter/imageAdapter.js';
-import type { ApiResultsType } from '../../utils/api.js';
-import type { ActionRequestOptions } from '../../utils/requestCache.js';
+import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
+import type {ImageType} from '../../adapters/imageAdapter/imageAdapter.js';
+import type {ApiResultsType} from '../../utils/api.js';
+import type {ActionRequestOptions} from '../../utils/requestCache.js';
 
 const DATA_TYPE = 'images';
 
@@ -178,8 +178,10 @@ export const createImageActions = (
           uploadPayload.set('itemId', parsedItemId);
         }
 
-        if(uploadFile.type || fileType) {
-          uploadPayload.set('fileType', uploadFile.type || fileType);
+        const uploadFileType = uploadFile.type || fileType;
+
+        if(uploadFileType) {
+          uploadPayload.set('fileType', uploadFileType);
         }
 
         if(name) {

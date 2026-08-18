@@ -75,7 +75,7 @@
   "license": "MIT",
   "dependencies": {
     "@nlabs/rip-hunter": "3.1.1",
-    "@nlabs/utils": "^2.10.5",
+    "@nlabs/utils": "^2.10.7",
     "i18next": "^26.3.6",
     "luxon": "^3.7.2",
     "p-debounce": "^5.1.0",
@@ -87,7 +87,7 @@
     "@nlabs/arkhamjs": "3.31.11",
     "@nlabs/arkhamjs-storage-browser": "^3.30.8",
     "@nlabs/arkhamjs-utils-react": "^3.32.9",
-    "@nlabs/lex": "^1.59.5",
+    "@nlabs/lex": "^2.0.3",
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",
     "@vitest/coverage-v8": "^4.1.10",

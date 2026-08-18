@@ -31,7 +31,7 @@ export const useTranslations = (options: UseTranslationsOptions = {}): UseTransl
   } = options;
 
   const {translationActions} = useMetropolis();
-  const processTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const processTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastProcessRef = useRef<number>(0);
 
   const t = useCallback((key: string, fallback?: string): string => {

@@ -1,5 +1,9 @@
 {
   "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "types": []
+  },
   "include": [
     "./src/**/*.ts",
     "./src/**/*.tsx"
@@ -8,6 +12,7 @@
     "lib",
     "./node_modules",
     "./src/**/*.test.ts",
-    "./src/**/*.test.tsx"
+    "./src/**/*.test.tsx",
+    "./src/tests/**/*"
   ]
 }

@@ -81,7 +81,7 @@ interface UserData {
   readonly persona?: PersonaType;
   readonly reaction?: ReactionType;
   readonly session?: User;
-  readonly tag?: Record<string, unknown>;
+  readonly tag?: TagType;
   readonly user?: User;
 }
 
@@ -122,6 +122,11 @@ export const userStore = (type: string, data: UserData, state = defaultValues): 
     }
     case TAG_CONSTANTS.ADD_PERSONA_SUCCESS: {
       const {tag} = data;
+
+      if(!tag) {
+        return state;
+      }
+
       const session = {...state.session};
       const {tags = []} = session;
       const updatedTags = uniqBy([...tags, tag], (item: TagType) => item.tagId);
@@ -130,6 +135,11 @@ export const userStore = (type: string, data: UserData, state = defaultValues): 
     }
     case TAG_CONSTANTS.REMOVE_PERSONA_SUCCESS: {
       const {tag} = data;
+
+      if(!tag) {
+        return state;
+      }
+
       const session = {...state.session};
       const {tags = []} = session;
       session.tags = pullAllBy(tags, [tag], 'tagId');
