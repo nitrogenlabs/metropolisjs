@@ -2,7 +2,7 @@
  * Copyright (c) 2026-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {rumMutation} from '../../utils/api.js';
+import {rumRequest} from '../../utils/api.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 
@@ -215,12 +215,7 @@ export const createAwsRumActions = (
         const batchEvents = events.slice(index, index + MAX_BATCH_SIZE);
 
         try {
-          await rumMutation(flux, 'track', 'rum', {
-            batch: {
-              type: 'RumBatchInput!',
-              value: {analyticsId, events: batchEvents}
-            }
-          }, ['accepted', 'analyticsId']);
+          await rumRequest(flux, {analyticsId, events: batchEvents});
           await flux.dispatch({analyticsId, events: batchEvents, type: AWS_RUM_CONSTANTS.TRACK_SUCCESS});
         } catch(error) {
           events.slice(index).forEach((event) => pendingEvents.set(eventFingerprint(event), event));

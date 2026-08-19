@@ -101,6 +101,9 @@
     "@nlabs/arkhamjs-utils-react": "^3.32.0",
     "react": "^19.1.0"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "overrides": {
     "cross-spawn": "^7.0.6",
     "got": "^14.6.5",

@@ -34,6 +34,7 @@ const {
   publicMutation,
   publicQuery,
   rumMutation,
+  rumRequest,
   refreshSession,
   resolveRestEndpoint,
   restRequest,
@@ -49,7 +50,8 @@ const createMockFlux = () => ({
         app: {
           api: {
             endpoints: {
-              profile: 'https://external.example.com/profile'
+              profile: 'https://external.example.com/profile',
+              rum: 'https://events.reaktor.io/track'
             },
             public: 'http://localhost:3000/public',
             rum: 'https://rum.reaktor.io/public',
@@ -159,6 +161,24 @@ describe('api utilities', () => {
       expect.objectContaining({query: expect.stringContaining('mutation RumTrack')}),
       {token: ''}
     );
+  });
+
+  it('posts RUM batches to the configured event endpoint', async () => {
+    const flux = createMockFlux();
+    const batch = {analyticsId: 'gotham', events: [{name: 'page_view'}]};
+    postMock.mockResolvedValue({accepted: 1, analyticsId: 'gotham'});
+
+    await rumRequest(flux as any, batch);
+
+    expect(postMock).toHaveBeenCalledWith(
+      'https://events.reaktor.io/track',
+      batch,
+      {}
+    );
+  });
+
+  it('accepts a relative REST endpoint for local proxies', () => {
+    expect(resolveRestEndpoint(createMockFlux() as any, '/track')).toBe('/track');
   });
 
   it('uploads images with the bearer token header', async () => {

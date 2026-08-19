@@ -1,9 +1,9 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
-const rumMutationMock = vi.fn();
+const rumRequestMock = vi.fn();
 
 vi.mock('../../utils/api.js', () => ({
-  rumMutation: rumMutationMock
+  rumRequest: rumRequestMock
 }));
 
 const {AWS_RUM_CONSTANTS, createAwsRumActions} = await import('./awsRumActions.js');
@@ -17,7 +17,7 @@ describe('awsRumActions', () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-11T12:00:00.000Z'));
-    rumMutationMock.mockResolvedValue({rum: {track: {accepted: 1, analyticsId: 'gotham'}}});
+    rumRequestMock.mockResolvedValue({accepted: 1, analyticsId: 'gotham'});
   });
 
   afterEach(() => {
@@ -60,12 +60,12 @@ describe('awsRumActions', () => {
 
     await vi.advanceTimersByTimeAsync(100);
 
-    expect(rumMutationMock).toHaveBeenCalledTimes(1);
-    const variables = rumMutationMock.mock.calls[0][3];
-    const events = variables.batch.value.events;
+    expect(rumRequestMock).toHaveBeenCalledTimes(1);
+    const request = rumRequestMock.mock.calls[0][1];
+    const events = request.events;
 
-    expect(variables.batch.value).not.toHaveProperty('appId');
-    expect(variables.batch.value.analyticsId).toBe('gotham-analytics');
+    expect(request).not.toHaveProperty('appId');
+    expect(request.analyticsId).toBe('gotham-analytics');
     expect(events).toHaveLength(2);
     expect(events[0]).toMatchObject({name: 'page_view', path: '/docs', sequence: 1, type: 'page_view'});
     expect(events[0].properties).toEqual({title: 'Docs'});
@@ -89,22 +89,22 @@ describe('awsRumActions', () => {
 
     awsRum.track(event);
     await vi.advanceTimersByTimeAsync(100);
-    expect(rumMutationMock).toHaveBeenCalledTimes(1);
+    expect(rumRequestMock).toHaveBeenCalledTimes(1);
 
     await vi.advanceTimersByTimeAsync(150);
     awsRum.track(event);
     await vi.advanceTimersByTimeAsync(849);
-    expect(rumMutationMock).toHaveBeenCalledTimes(1);
+    expect(rumRequestMock).toHaveBeenCalledTimes(1);
 
     await vi.advanceTimersByTimeAsync(1);
-    expect(rumMutationMock).toHaveBeenCalledTimes(2);
+    expect(rumRequestMock).toHaveBeenCalledTimes(2);
   });
 
   it('restores a failed batch for an explicit retry', async () => {
     const flux = createFlux();
     const awsRum = createAwsRumActions(flux as any, {analyticsId: 'gotham', debounceMs: 0, throttleMs: 0});
     const error = new Error('offline');
-    rumMutationMock.mockRejectedValueOnce(error).mockResolvedValueOnce({});
+    rumRequestMock.mockRejectedValueOnce(error).mockResolvedValueOnce({});
 
     awsRum.track({name: 'page_view', path: '/home', type: 'page_view'});
     await vi.runAllTimersAsync();
@@ -112,7 +112,7 @@ describe('awsRumActions', () => {
     expect(flux.dispatch).toHaveBeenCalledWith(expect.objectContaining({error, type: AWS_RUM_CONSTANTS.TRACK_ERROR}));
 
     await awsRum.flush();
-    expect(rumMutationMock).toHaveBeenCalledTimes(2);
+    expect(rumRequestMock).toHaveBeenCalledTimes(2);
   });
 
   it('is disabled without an analytics id and flushes pending work when destroyed', async () => {
@@ -120,12 +120,12 @@ describe('awsRumActions', () => {
     const disabledRum = createAwsRumActions(flux as any);
     disabledRum.track({name: 'ignored', type: 'click'});
     await disabledRum.flush();
-    expect(rumMutationMock).not.toHaveBeenCalled();
+    expect(rumRequestMock).not.toHaveBeenCalled();
 
     const awsRum = createAwsRumActions(flux as any, {analyticsId: 'gotham', debounceMs: 5000});
     awsRum.track({name: 'saved', type: 'click'});
     await awsRum.destroy();
-    expect(rumMutationMock).toHaveBeenCalledTimes(1);
+    expect(rumRequestMock).toHaveBeenCalledTimes(1);
   });
 
   it('splits large queues into server-safe batches', async () => {
@@ -142,9 +142,9 @@ describe('awsRumActions', () => {
 
     await awsRum.flush();
 
-    expect(rumMutationMock).toHaveBeenCalledTimes(2);
-    expect(rumMutationMock.mock.calls[0][3].batch.value.events).toHaveLength(50);
-    expect(rumMutationMock.mock.calls[1][3].batch.value.events).toHaveLength(1);
+    expect(rumRequestMock).toHaveBeenCalledTimes(2);
+    expect(rumRequestMock.mock.calls[0][1].events).toHaveLength(50);
+    expect(rumRequestMock.mock.calls[1][1].events).toHaveLength(1);
   });
 
   it('honors browser privacy signals unless explicitly disabled', async () => {
@@ -158,7 +158,7 @@ describe('awsRumActions', () => {
     });
     privateRum.track({name: 'private', type: 'click'});
     await vi.runAllTimersAsync();
-    expect(rumMutationMock).not.toHaveBeenCalled();
+    expect(rumRequestMock).not.toHaveBeenCalled();
 
     const requiredRum = createAwsRumActions(flux as any, {
       analyticsId: 'gotham',
@@ -168,6 +168,6 @@ describe('awsRumActions', () => {
     });
     requiredRum.track({name: 'required', type: 'click'});
     await vi.runAllTimersAsync();
-    expect(rumMutationMock).toHaveBeenCalledTimes(1);
+    expect(rumRequestMock).toHaveBeenCalledTimes(1);
   });
 });

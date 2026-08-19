@@ -202,7 +202,7 @@ export const resolveRestEndpoint = (
     throw new ApiError([{ message: 'invalid_url' }], new Error('rest_endpoint_required'));
   }
 
-  if(/^https?:\/\//i.test(targetEndpoint)) {
+  if(/^https?:\/\//i.test(targetEndpoint) || targetEndpoint.startsWith('/')) {
     return targetEndpoint;
   }
 
@@ -411,6 +411,17 @@ export const rumMutation = <T>(
   const config = getConfigFromFlux(flux);
   const rumUrl: string = config.app?.api?.rum || config.app?.api?.public || '';
   return getGraphql(flux, rumUrl, false, query, options) as Promise<T>;
+};
+
+export const rumRequest = <T>(
+  flux: FluxFramework,
+  batch: Record<string, unknown>,
+  options: RestApiOptions = {}
+): Promise<T> => {
+  const config = getConfigFromFlux(flux);
+  const rumUrl: string = config.app?.api?.endpoints?.rum || config.app?.api?.rum || '';
+
+  return restRequest<T>(flux, rumUrl, 'POST', batch, {...options, authenticate: false});
 };
 
 export const uploadImage = (

@@ -11,6 +11,7 @@ export {
   publicMutation,
   publicQuery,
   rumMutation,
+  rumRequest,
   refreshSession,
   resolveRestEndpoint,
   restRequest,
