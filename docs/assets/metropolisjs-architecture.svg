@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="760" viewBox="0 0 1440 760" role="img" aria-labelledby="title desc">
+  <title id="title">How MetropolisJS connects a React application to state and backend services</title>
+  <desc id="desc">React components, hooks, configuration, and live experiences connect to MetropolisJS. MetropolisJS provides configuration, typed actions, adapters, caching, and real-time coordination, then integrates with ArkhamJS, Rip-Hunter, Reaktor, WebSocket, and server-sent event services.</desc>
+  <defs>
+    <style>
+      .canvas{fill:#fff}.heading{fill:#111827;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;font-size:21px;font-weight:700}.brand{fill:#2563eb;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;font-size:32px;font-weight:700}.label{fill:#111827;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;font-size:20px;font-weight:600}.detail{fill:#64748b;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;font-size:16px;font-weight:400}.feature{fill:#1f2937;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;font-size:18px;font-weight:500}.ink{fill:none;stroke:#374151;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}.blue{fill:none;stroke:#2563eb;stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round}.teal{fill:none;stroke:#14b8a6;stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round}.teal-fill{fill:#14b8a6}
+    </style>
+    <symbol id="window" viewBox="0 0 64 64"><rect class="ink" x="7" y="9" width="50" height="46" rx="5"/><path class="ink" d="M7 20h50M14 15h2m6 0h2M15 28h15v15H15zm22 0h12m-12 8h12m-12 8h8"/></symbol>
+    <symbol id="hook" viewBox="0 0 64 64"><path class="ink" d="M19 12v18c0 9 5 15 13 15s13-6 13-15V12M14 12h10m16 0h10M32 45v8"/><circle class="ink" cx="32" cy="55" r="3"/></symbol>
+    <symbol id="sliders" viewBox="0 0 64 64"><path class="ink" d="M11 17h42M11 32h42M11 47h42"/><circle class="canvas" cx="25" cy="17" r="6"/><circle class="ink" cx="25" cy="17" r="6"/><circle class="canvas" cx="42" cy="32" r="6"/><circle class="ink" cx="42" cy="32" r="6"/><circle class="canvas" cx="20" cy="47" r="6"/><circle class="ink" cx="20" cy="47" r="6"/></symbol>
+    <symbol id="pulse" viewBox="0 0 64 64"><path class="ink" d="M7 35h11l6-15 11 29 7-18 5 4h10"/></symbol>
+    <symbol id="database" viewBox="0 0 64 64"><ellipse class="ink" cx="32" cy="14" rx="20" ry="8"/><path class="ink" d="M12 14v34c0 4 9 8 20 8s20-4 20-8V14M12 31c0 4 9 8 20 8s20-4 20-8M12 47c0 4 9 8 20 8s20-4 20-8"/></symbol>
+    <symbol id="network" viewBox="0 0 64 64"><circle class="ink" cx="32" cy="13" r="6"/><circle class="ink" cx="13" cy="48" r="6"/><circle class="ink" cx="51" cy="48" r="6"/><path class="ink" d="M29 18 16 43m19-25 13 25M19 48h26"/></symbol>
+    <symbol id="server" viewBox="0 0 64 64"><rect class="ink" x="10" y="10" width="44" height="18" rx="4"/><rect class="ink" x="10" y="36" width="44" height="18" rx="4"/><circle class="ink" cx="18" cy="19" r="2"/><circle class="ink" cx="18" cy="45" r="2"/><path class="ink" d="M26 19h20M26 45h20"/></symbol>
+    <symbol id="broadcast" viewBox="0 0 64 64"><circle class="ink" cx="32" cy="32" r="4"/><path class="ink" d="M24 24a11 11 0 0 0 0 16m16-16a11 11 0 0 1 0 16M17 17a21 21 0 0 0 0 30m30-30a21 21 0 0 1 0 30"/></symbol>
+  </defs>
+
+  <rect class="canvas" width="1440" height="760"/>
+  <text class="heading" x="72" y="68">Your React application</text>
+  <text class="heading" x="525" y="68">MetropolisJS integration layer</text>
+  <text class="heading" x="1045" y="68">State + services</text>
+
+  <use href="#window" x="70" y="125" width="64" height="64"/>
+  <text class="label" x="160" y="153">React components</text><text class="detail" x="160" y="178">UI, routes, and views</text>
+  <use href="#hook" x="70" y="260" width="64" height="64"/>
+  <text class="label" x="160" y="288">Specialized hooks</text><text class="detail" x="160" y="313">Typed action access</text>
+  <use href="#sliders" x="70" y="395" width="64" height="64"/>
+  <text class="label" x="160" y="423">App configuration</text><text class="detail" x="160" y="448">Endpoints, auth, adapters</text>
+  <use href="#pulse" x="70" y="530" width="64" height="64"/>
+  <text class="label" x="160" y="558">Live experiences</text><text class="detail" x="160" y="583">Messages and notifications</text>
+
+  <path class="blue" d="M375 157h20q20 0 20 20v365q0 20-20 20h-20M375 292h40M375 427h40"/>
+  <path class="blue" d="M415 480h85m-13-13 13 13-13 13"/>
+
+  <circle cx="660" cy="174" r="82" fill="none" stroke="#2563eb" stroke-width="3"/>
+  <path fill="#2563eb" d="m630 169 30 18 30-18v38l-30 19-30-19z"/>
+  <path fill="#0f172a" d="m610 128 50 30 50-30v74l-20 12v-44l-30 18-30-18v44l-20-12z"/>
+  <text class="brand" x="660" y="300" text-anchor="middle">MetropolisJS</text>
+  <text class="detail" x="660" y="330" text-anchor="middle">Frontend API integration and reactive data</text>
+
+  <circle class="teal" cx="533" cy="360" r="12"/><path class="teal" d="m527 360 4 4 8-9"/><text class="feature" x="563" y="367">Provider + configuration context</text>
+  <circle class="teal" cx="533" cy="420" r="12"/><path class="teal" d="M527 420h12m-6-6v12"/><text class="feature" x="563" y="427">Typed actions + domain hooks</text>
+  <circle class="teal" cx="533" cy="480" r="12"/><path class="teal" d="m527 480 4 4 8-9"/><text class="feature" x="563" y="487">Adapters + validation</text>
+  <circle class="teal" cx="533" cy="540" r="12"/><path class="teal" d="M527 540h12"/><text class="feature" x="563" y="547">Request cache + Flux events</text>
+  <circle class="teal" cx="533" cy="600" r="12"/><path class="teal" d="M527 600h12m-6-6v12"/><text class="feature" x="563" y="607">Real-time coordination</text>
+
+  <path class="blue" d="M805 480h140m-13-13 13 13-13 13"/>
+  <path class="teal" d="M1011 157h-22q-20 0-20 20v365q0 20 20 20h22M969 292h42M969 427h42"/>
+
+  <circle class="teal-fill" cx="1011" cy="157" r="6"/><use href="#database" x="1040" y="125" width="64" height="64"/>
+  <text class="label" x="1130" y="153">ArkhamJS</text><text class="detail" x="1130" y="178">Reactive Flux state</text>
+  <circle class="teal-fill" cx="1011" cy="292" r="6"/><use href="#network" x="1040" y="260" width="64" height="64"/>
+  <text class="label" x="1130" y="288">Rip-Hunter</text><text class="detail" x="1130" y="313">GraphQL + REST transport</text>
+  <circle class="teal-fill" cx="1011" cy="427" r="6"/><use href="#server" x="1040" y="395" width="64" height="64"/>
+  <text class="label" x="1130" y="423">Reaktor</text><text class="detail" x="1130" y="448">Backend actions + APIs</text>
+  <circle class="teal-fill" cx="1011" cy="562" r="6"/><use href="#broadcast" x="1040" y="530" width="64" height="64"/>
+  <text class="label" x="1130" y="558">WebSocket + SSE</text><text class="detail" x="1130" y="583">Real-time event streams</text>
+</svg>

@@ -1,7 +1,7 @@
 # MetropolisJS: Seamless Frontend-Backend Integration Framework
 
 <p align="center">
-  <img src="docs/assets/metropolisjs-logo.png" alt="MetropolisJS logo" width="432">
+  <img src="https://raw.githubusercontent.com/nitrogenlabs/metropolisjs/main/docs/assets/metropolisjs-logo.png" alt="MetropolisJS logo" width="432">
 </p>
 
 > **The Ultimate Frontend Integration Library for Modern Web Applications**
@@ -465,28 +465,11 @@ const ChatComponent = () => {
 
 ## Architecture
 
-MetropolisJS is built on a powerful three-layer architecture with modern React patterns:
+MetropolisJS sits between React and your services. The provider supplies configuration and action access, adapters keep data typed, Rip-Hunter handles transport, and ArkhamJS keeps application state reactive.
 
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   React App     │    │   MetropolisJS  │    │   Reaktor       │
-│                 │◄──►│                 │◄──►│   Backend       │
-│   UI Layer      │    │   Integration   │    │   Services      │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │
-         │                       ▼
-         │              ┌─────────────────┐
-         │              │   ArkhamJS      │
-         │              │   Data Store    │
-         │              │                 │
-         │              └─────────────────┘
-         │
-         ▼
-┌─────────────────┐
-│  React Context   │
-│  (Config/Flux)   │
-└─────────────────┘
-```
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nitrogenlabs/metropolisjs/main/docs/assets/metropolisjs-architecture.png" alt="MetropolisJS architecture showing React components, the provider and hooks, actions, adapters, ArkhamJS state, Rip-Hunter transport, Reaktor services, and real-time updates" width="960">
+</p>
 
 ### Core Components
 
@@ -496,6 +479,14 @@ MetropolisJS is built on a powerful three-layer architecture with modern React p
 - **WebSocket Actions**: Handle real-time communication
 - **Configuration**: Context-based configuration (React best practices)
 - **Hooks**: Specialized hooks for accessing actions and configuration
+
+### Request and State Lifecycle
+
+Actions hide the full request lifecycle behind a typed method. They validate inputs, use the request cache when configured, communicate through Rip-Hunter, update the ArkhamJS store, and then dispatch Flux events to subscribers. WebSocket and SSE messages enter the same reactive state flow.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nitrogenlabs/metropolisjs/main/docs/assets/metropolisjs-request-lifecycle.svg" alt="Sequence diagram showing a React component calling a MetropolisJS action, input validation and caching, Rip-Hunter transport, a Reaktor response, and an ArkhamJS state update followed by a Flux event" width="960">
+</p>
 
 ### Modern Architecture Features
 
