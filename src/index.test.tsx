@@ -182,7 +182,18 @@ describe('index onInit', () => {
     }));
     expect(rumMocks.track).toHaveBeenCalledWith({name: 'page_view', path: '/docs', type: 'page_view'});
 
+    window.dispatchEvent(new Event('pagehide'));
+    expect(rumMocks.flush).toHaveBeenCalledWith({useBeacon: true});
+
+    const visibilityState = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(rumMocks.flush).toHaveBeenCalledTimes(2);
+    visibilityState.mockRestore();
+
     rendered.unmount();
     expect(websocketMocks.wsClose).toHaveBeenCalled();
+
+    window.dispatchEvent(new Event('pagehide'));
+    expect(rumMocks.flush).toHaveBeenCalledTimes(2);
   });
 });

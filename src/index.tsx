@@ -160,6 +160,7 @@ export {
   publicMutation,
   publicQuery,
   rumMutation,
+  rumBeaconRequest,
   rumRequest,
   refreshSession,
   resolveRestEndpoint,
@@ -229,11 +230,23 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
         awsRum.track(detail);
       }
     };
+    const flushTerminalEvents = (): void => {
+      void awsRum.flush({useBeacon: true});
+    };
+    const onVisibilityChange = (): void => {
+      if(globalThis.document?.visibilityState === 'hidden') {
+        flushTerminalEvents();
+      }
+    };
 
     globalThis.window.addEventListener(GOTHAM_ANALYTICS_EVENT, onGothamAnalytics);
+    globalThis.window.addEventListener('pagehide', flushTerminalEvents);
+    globalThis.document?.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
       globalThis.window.removeEventListener(GOTHAM_ANALYTICS_EVENT, onGothamAnalytics);
+      globalThis.window.removeEventListener('pagehide', flushTerminalEvents);
+      globalThis.document?.removeEventListener('visibilitychange', onVisibilityChange);
       void awsRum.destroy();
     };
   }, [awsRum]);

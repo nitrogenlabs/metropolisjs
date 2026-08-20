@@ -1,8 +1,10 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 const rumRequestMock = vi.fn();
+const rumBeaconRequestMock = vi.fn();
 
 vi.mock('../../utils/api.js', () => ({
+  rumBeaconRequest: rumBeaconRequestMock,
   rumRequest: rumRequestMock
 }));
 
@@ -18,6 +20,7 @@ describe('awsRumActions', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-11T12:00:00.000Z'));
     rumRequestMock.mockResolvedValue({accepted: 1, analyticsId: 'gotham'});
+    rumBeaconRequestMock.mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -169,5 +172,18 @@ describe('awsRumActions', () => {
     requiredRum.track({name: 'required', type: 'click'});
     await vi.runAllTimersAsync();
     expect(rumRequestMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses a beacon for hidden-page flushing without sending the batch twice', async () => {
+    const flux = createFlux();
+    const awsRum = createAwsRumActions(flux as any, {analyticsId: 'gotham', debounceMs: 5000});
+    rumBeaconRequestMock.mockReturnValue(true);
+    awsRum.track({name: 'view_performance', properties: {durationMs: 420, outcome: 'success', viewId: 'docs'}, type: 'view_performance'});
+
+    await awsRum.flush({useBeacon: true});
+
+    expect(rumBeaconRequestMock).toHaveBeenCalledWith(flux, expect.objectContaining({analyticsId: 'gotham'}));
+    expect(rumRequestMock).not.toHaveBeenCalled();
+    expect(flux.dispatch).toHaveBeenCalledWith(expect.objectContaining({type: AWS_RUM_CONSTANTS.TRACK_SUCCESS}));
   });
 });

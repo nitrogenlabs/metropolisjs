@@ -424,6 +424,30 @@ export const rumRequest = <T>(
   return restRequest<T>(flux, rumUrl, 'POST', batch, {...options, authenticate: false});
 };
 
+/**
+ * Attempts terminal RUM delivery with the Beacon API.
+ *
+ * Returns false when beacon delivery is unavailable or declined so callers
+ * can fall back to the standard request transport.
+ */
+export const rumBeaconRequest = (
+  flux: FluxFramework,
+  batch: Record<string, unknown>
+): boolean => {
+  const config = getConfigFromFlux(flux);
+  const rumUrl: string = config.app?.api?.endpoints?.rum || config.app?.api?.rum || '';
+
+  if(!rumUrl || typeof globalThis.navigator?.sendBeacon !== 'function') {
+    return false;
+  }
+
+  try {
+    return globalThis.navigator.sendBeacon(rumUrl, JSON.stringify(batch));
+  } catch {
+    return false;
+  }
+};
+
 export const uploadImage = (
   flux: FluxFramework,
   image: FormData | Record<string, unknown>,

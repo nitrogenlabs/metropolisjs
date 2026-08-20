@@ -34,6 +34,7 @@ const {
   publicMutation,
   publicQuery,
   rumMutation,
+  rumBeaconRequest,
   rumRequest,
   refreshSession,
   resolveRestEndpoint,
@@ -175,6 +176,16 @@ describe('api utilities', () => {
       batch,
       {}
     );
+  });
+
+  it('uses sendBeacon for terminal RUM delivery when available', () => {
+    const sendBeacon = vi.fn(() => true);
+    vi.stubGlobal('navigator', {sendBeacon});
+    const flux = createMockFlux();
+    const batch = {analyticsId: 'gotham', events: [{name: 'view_performance'}]};
+
+    expect(rumBeaconRequest(flux as any, batch)).toBe(true);
+    expect(sendBeacon).toHaveBeenCalledWith('https://events.reaktor.io/track', JSON.stringify(batch));
   });
 
   it('accepts a relative REST endpoint for local proxies', () => {

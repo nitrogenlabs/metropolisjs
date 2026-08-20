@@ -7,8 +7,9 @@ This reference documents every action family exposed by MetropolisJS, how to acc
 Use specialized hooks in React components:
 
 ```tsx
-import {useUserActions, usePostActions, useMessageActions, useRestActions} from '@nlabs/metropolisjs';
+import {useAwsRum, useUserActions, usePostActions, useMessageActions, useRestActions} from '@nlabs/metropolisjs';
 
+const rum = useAwsRum();
 const userActions = useUserActions();
 const postActions = usePostActions();
 const messageActions = useMessageActions();
@@ -37,7 +38,8 @@ Each row links to:
 These action families are available through specialized hooks when present, `useMetropolis([...])`, `createAction(...)`, `createActions(...)`, and direct creators.
 
 | Family | Hook | Factory Key | Creator | Typical Methods | Source |
-| --- | --- | --- | --- | --- |
+| --- | --- | --- | --- | --- | --- |
+| AWS RUM | `useAwsRum` | `awsRum` | `createAwsRumActions` | `track`, `flush`, `destroy` | [awsRumActions.ts](../src/actions/awsRumActions/awsRumActions.ts) |
 | Content | `useContentActions` | `content` | `createContentActions` | `add`, `itemById`, `itemByKey`, `listByCategory`, `list`, `update`, `delete` | [contentActions.ts](../src/actions/contentActions/contentActions.ts) |
 | CRM | `useCrmActions` | `crm` | `createCrmActions` | `mailingLists`, `createMailingList`, `createSupportTicket`, `supportTickets`, `customerOrdersByUser` | [crmActions.ts](../src/actions/crmActions/crmActions.ts) |
 | Event | `useEventActions` | `event` | `createEventActions` | `addEvent`, `getEvent`, `getEventsByTags`, `getEventsByReactions`, `updateEvent`, `deleteEvent` | [eventActions.ts](../src/actions/eventActions/eventActions.ts) |
@@ -67,6 +69,57 @@ These creators are exported directly from MetropolisJS, but are not currently pa
 | App | `createAppActions` | `add`, `itemById`, `list`, `update`, `delete` | [appActions.ts](../src/actions/appActions/appActions.ts) |
 | Connection | `createConnectionActions` | `addConnection`, `getConnections`, `removeConnection` | [connectionActions.ts](../src/actions/connectionActions/connectionActions.ts) |
 | Conversation | `createConversationActions` | `add`, `itemById`, `list`, `update`, `delete` | [conversationActions.ts](../src/actions/conversationActions/conversationActions.ts) |
+
+## AWS RUM Actions
+
+Use `useAwsRum()` to queue sanitized analytics events and flush them to the configured RUM endpoint:
+
+```tsx
+import {useAwsRum} from '@nlabs/metropolisjs';
+
+const AnalyticsExample = () => {
+  const rum = useAwsRum();
+
+  const trackCheckout = () => {
+    rum.track({
+      name: 'checkout_started',
+      path: '/checkout',
+      properties: {source: 'cart'},
+      type: 'click'
+    });
+  };
+
+  return <button onClick={trackCheckout}>Checkout</button>;
+};
+```
+
+Configure the action through the `Metropolis` provider:
+
+```tsx
+<Metropolis
+  config={{
+    production: {
+      app: {
+        api: {
+          endpoints: {
+            rum: 'https://events.example.com/track'
+          }
+        },
+        rum: {
+          analyticsId: 'my-public-analytics-id',
+          enabled: true
+        }
+      }
+    }
+  }}
+>
+  <App />
+</Metropolis>
+```
+
+`flush()` uses the normal asynchronous request path. `flush({useBeacon: true})` first asks the browser to queue the JSON batch with `navigator.sendBeacon()`, then falls back to the normal request if the Beacon API is unavailable or declines the payload.
+
+The `Metropolis` provider requests beacon delivery automatically on `pagehide` and when `document.visibilityState` changes to `hidden`. A batch accepted by the Beacon API is not submitted a second time. All RUM delivery remains subject to `enabled`, `respectPrivacySignals`, batching, throttling, deduplication, and event sanitization.
 
 ## REST Actions
 

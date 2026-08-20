@@ -155,7 +155,7 @@ The `Metropolis` component accepts three main props: `config`, `adapters`, and `
 
 ### RUM analytics
 
-Configure the public analytics identifier returned by Reaktor under `app.rum.analyticsId`. MetropolisJS sends it in the JSON `RumBatchInput.analyticsId` field; it is not placed in a URL or request header.
+Configure the public analytics identifier returned by Reaktor under `app.rum.analyticsId` and the collection endpoint under `app.api.endpoints.rum`. MetropolisJS sends the identifier in the JSON batch body; it is not placed in the URL or an authorization header.
 
 ```tsx
 <Metropolis
@@ -163,9 +163,18 @@ Configure the public analytics identifier returned by Reaktor under `app.rum.ana
     production: {
       app: {
         name: 'My App',
+        api: {
+          endpoints: {
+            rum: 'https://events.example.com/track'
+          }
+        },
         rum: {
           analyticsId: '00000000-0000-4000-8000-000000000000',
-          enabled: true
+          debounceMs: 250,
+          dedupeMs: 1000,
+          enabled: true,
+          respectPrivacySignals: true,
+          throttleMs: 1000
         }
       }
     }
@@ -174,7 +183,47 @@ Configure the public analytics identifier returned by Reaktor under `app.rum.ana
 </Metropolis>
 ```
 
-`app.rum.analyticsId` is the identifier sent with each analytics batch.
+The endpoint is resolved from `app.api.endpoints.rum`, falling back to `app.api.rum`. RUM delivery is unauthenticated and each batch contains `analyticsId` and up to 50 sanitized events.
+
+#### Beacon delivery
+
+When the page is hidden or receives `pagehide`, the `Metropolis` provider automatically flushes pending RUM events with `navigator.sendBeacon()`. This gives terminal analytics a chance to finish without delaying navigation or page shutdown.
+
+Beacon delivery is best-effort:
+
+- If `navigator.sendBeacon` is unavailable, throws, or declines the payload, MetropolisJS immediately falls back to its normal asynchronous RUM request.
+- A batch accepted by `sendBeacon` is not sent again through the normal request path.
+- Scheduled and explicit `flush()` calls continue to use the normal request path unless `useBeacon` is requested.
+- Privacy signals and the `enabled` option are respected for both delivery paths.
+
+Use the specialized hook when an application needs to track or flush events directly:
+
+```tsx
+import {useAwsRum} from '@nlabs/metropolisjs';
+
+const SaveButton = () => {
+  const rum = useAwsRum();
+
+  const onSave = () => {
+    rum.track({
+      name: 'settings_saved',
+      path: '/settings',
+      properties: {section: 'profile'},
+      type: 'click'
+    });
+  };
+
+  return <button onClick={onSave}>Save</button>;
+};
+```
+
+For an application-controlled terminal flush, request beacon delivery explicitly:
+
+```ts
+await rum.flush({useBeacon: true});
+```
+
+Calling `flush({useBeacon: true})` is safe in non-browser environments and older browsers because it falls back to the normal RUM request when the Beacon API cannot be used.
 
 ### Configuration Object
 
@@ -505,6 +554,7 @@ MetropolisJS provides comprehensive actions for all your needs. Access them usin
 
 ### Specialized Hooks (Recommended)
 
+- `useAwsRum()` - Analytics tracking, batching, and terminal beacon delivery
 - `useUserActions()` - Authentication, personas, user management
 - `useMessageActions()` - Real-time messaging and conversations
 - `usePermissionActions()` - Permission and role management (RBAC)
@@ -1256,6 +1306,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Additional Documentation
 
+- **[Actions Reference](./docs/ACTIONS.md)** - Action families, hooks, factories, and RUM beacon delivery
 - **[Factory Pattern Guide](./factoryPatternGuide.md)** - Detailed guide on using the factory pattern
 - **[Architecture Analysis](./ARCHITECTURE_ANALYSIS.md)** - Deep dive into the architecture
 - **[Changelog](./CHANGELOG.md)** - Complete list of changes and improvements

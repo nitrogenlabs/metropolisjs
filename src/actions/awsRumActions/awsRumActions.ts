@@ -2,7 +2,7 @@
  * Copyright (c) 2026-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {rumRequest} from '../../utils/api.js';
+import {rumBeaconRequest, rumRequest} from '../../utils/api.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 
@@ -40,8 +40,16 @@ export interface AwsRumActionsOptions {
 
 export interface AwsRumActions {
   readonly destroy: () => Promise<void>;
-  readonly flush: () => Promise<void>;
+  readonly flush: (options?: AwsRumFlushOptions) => Promise<void>;
   readonly track: (event: AwsRumTrackInput) => void;
+}
+
+export interface AwsRumFlushOptions {
+  /**
+   * Prefer navigator.sendBeacon for terminal delivery. Falls back to the
+   * standard RUM request when the Beacon API cannot accept the batch.
+   */
+  readonly useBeacon?: boolean;
 }
 
 const DEFAULT_DEBOUNCE_MS = 250;
@@ -192,7 +200,7 @@ export const createAwsRumActions = (
     }
   };
 
-  const flush = async (): Promise<void> => {
+  const flush = async ({useBeacon = false}: AwsRumFlushOptions = {}): Promise<void> => {
     if(flushPromise) {
       return flushPromise;
     }
@@ -215,7 +223,12 @@ export const createAwsRumActions = (
         const batchEvents = events.slice(index, index + MAX_BATCH_SIZE);
 
         try {
-          await rumRequest(flux, {analyticsId, events: batchEvents});
+          const batch = {analyticsId, events: batchEvents};
+          const sentByBeacon = useBeacon && rumBeaconRequest(flux, batch);
+
+          if(!sentByBeacon) {
+            await rumRequest(flux, batch);
+          }
           await flux.dispatch({analyticsId, events: batchEvents, type: AWS_RUM_CONSTANTS.TRACK_SUCCESS});
         } catch(error) {
           events.slice(index).forEach((event) => pendingEvents.set(eventFingerprint(event), event));
