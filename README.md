@@ -1,7 +1,7 @@
 # MetropolisJS: Seamless Frontend-Backend Integration Framework
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nitrogenlabs/metropolisjs/main/docs/assets/metropolisjs-logo.png" alt="MetropolisJS logo" width="432">
+  <img src="https://raw.githubusercontent.com/nitrogenlabs/metropolisjs/main/docs/assets/metropolisjs-mark.svg" alt="MetropolisJS winged V logo" width="432">
 </p>
 
 > **The Ultimate Frontend Integration Library for Modern Web Applications**

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
+  <title id="title">MetropolisJS</title>
+  <desc id="desc">Purple winged V mark representing the connection between frontend and backend systems.</desc>
+  <path
+    d="M600 280C585 280 575 270 565 250C525 170 480 100 415 70C318 25 205 60 125 155C82 206 55 278 40 340C95 250 170 205 245 205C365 205 470 360 555 505C570 532 582 548 600 548C618 548 630 532 645 505C730 360 835 205 955 205C1030 205 1105 250 1160 340C1145 278 1118 206 1075 155C995 60 882 25 785 70C720 100 675 170 635 250C625 270 615 280 600 280Z"
+    fill="#712CF9"/>
+</svg>
