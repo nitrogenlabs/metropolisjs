@@ -10,7 +10,6 @@ export {
   getGraphql,
   publicMutation,
   publicQuery,
-  rumMutation,
   rumRequest,
   refreshSession,
   resolveRestEndpoint,

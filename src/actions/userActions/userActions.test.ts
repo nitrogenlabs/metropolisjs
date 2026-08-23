@@ -134,6 +134,8 @@ describe('createUserActions', () => {
     expect(actions.addUser).toBeTypeOf('function');
     expect(actions.confirmCode).toBeTypeOf('function');
     expect(actions.confirmSignUp).toBeTypeOf('function');
+    expect(actions.completeBillingSetupSession).toBeTypeOf('function');
+    expect(actions.createBillingSetupSession).toBeTypeOf('function');
     expect(actions.currentAuthenticatedUser).toBeTypeOf('function');
     expect(actions.forgotPassword).toBeTypeOf('function');
     expect(actions.getUserByAttribute).toBeTypeOf('function');
@@ -492,7 +494,7 @@ describe('createUserActions', () => {
 
   it('updates the subscription plan with the canonical planId variable', async () => {
     const flux = createMockFlux();
-    flux.state.user.session = {userId: 'user-1'};
+    await flux.setState('user.session', {userId: 'user-1'});
     const actions = createUserActions(flux as any);
 
     appMutationMock.mockImplementation(async (_flux, _name, _type, _variables, _props, options) => {
@@ -582,7 +584,7 @@ describe('createUserActions', () => {
     const actions = createUserActions(flux as any);
     const user = {email: 'alpha@example.com', personaId: 'persona-1', token: 'token-1', userId: 'user-1', username: 'alpha'};
 
-    flux.state.user.session = {userId: 'user-1'};
+    await flux.setState('user.session', {userId: 'user-1'});
     publicMutationMock.mockImplementation(async (_flux, operation, _type, _variables, _props, options) => {
       const response = {
         users: {
@@ -599,9 +601,10 @@ describe('createUserActions', () => {
     appMutationMock.mockImplementation(async (_flux, operation, _type, _variables, _props, options) => {
       const response = {
         users: {
+          completeBillingSetupSession: user,
+          createBillingSetupSession: 'https://checkout.stripe.com/c/pay/cs_test_1',
           deleteBillingCard: user,
           remove: user,
-          saveBillingCard: user,
           updateUser: user
         }
       };
@@ -627,7 +630,8 @@ describe('createUserActions', () => {
     await expect(actions.session()).resolves.toEqual(expect.objectContaining({userId: 'user-1'}));
     await expect(actions.itemById('user-1', ['email'], {cacheTimeout: 5})).resolves.toEqual(expect.objectContaining({users: expect.any(Object)}));
     await expect(actions.currentAuthenticatedUser()).resolves.toEqual(expect.objectContaining({userId: 'user-1'}));
-    await expect(actions.saveBillingCard({token: 'tok_123'})).resolves.toEqual(user);
+    await expect(actions.createBillingSetupSession('https://example.com/subscriptions/payment-details')).resolves.toBe('https://checkout.stripe.com/c/pay/cs_test_1');
+    await expect(actions.completeBillingSetupSession('cs_test_1')).resolves.toEqual(user);
     await expect(actions.deleteBillingCard()).resolves.toEqual(user);
     await expect(actions.remove('user-1')).resolves.toEqual(user);
     await expect(actions.sendVerificationEmail(user.email, {subject: 'Verify', template: 'tpl', text: 'Hello'})).resolves.toBe(true);
@@ -641,6 +645,14 @@ describe('createUserActions', () => {
     expect(flux.dispatch).toHaveBeenCalledWith({confirmed: true, type: 'USER_CONFIRM_SIGN_UP_SUCCESS'});
     expect(flux.dispatch).toHaveBeenCalledWith({session: expect.objectContaining({userId: 'user-1'}), type: 'USER_GET_SESSION_SUCCESS'});
     expect(syncPersonaTagsToSessionMock).toHaveBeenCalledWith(flux, 'persona-1');
+  });
+
+  it('requires billing setup identifiers before making requests', async () => {
+    const actions = createUserActions(createMockFlux() as any);
+
+    await expect(actions.createBillingSetupSession('')).rejects.toThrow('returnUrl');
+    await expect(actions.completeBillingSetupSession('')).rejects.toThrow('sessionId');
+    expect(appMutationMock).not.toHaveBeenCalled();
   });
 
   it('throws for failed public recovery helpers and invalid sessions', async () => {

@@ -1,6 +1,6 @@
 import http from 'http';
 
-export const startSimpleServer = async (port = 3002) => {
+export const startSimpleServer = async (port = 3002): Promise<{port: number; server: http.Server}> => {
   const server = http.createServer((req, res) => {
     res.setHeader('Content-Type', 'application/json');
 
@@ -36,9 +36,9 @@ export const startSimpleServer = async (port = 3002) => {
   });
 };
 
-export const stopServer = (server) => {
+export const stopServer = (server: http.Server): Promise<void> => {
   return new Promise((resolve) => {
-    server.close(resolve);
+    server.close(() => resolve());
   });
 };
 

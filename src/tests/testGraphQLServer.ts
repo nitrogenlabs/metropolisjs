@@ -62,7 +62,7 @@ export const MOCK_SESSION = {
 /**
  * Start test GraphQL server
  */
-export const startTestServer = async (port = 3001) => {
+export const startTestServer = async (port = 3001): Promise<{port: number; server: http.Server}> => {
   const schema = buildSchema(typeDefs);
 
   const server = http.createServer(async (req, res) => {
@@ -200,8 +200,8 @@ describe('testGraphQLServer helper', () => {
 /**
  * Stop test server
  */
-export const stopTestServer = (server) => {
+export const stopTestServer = (server: http.Server): Promise<void> => {
   return new Promise((resolve) => {
-    server.close(resolve);
+    server.close(() => resolve());
   });
 };

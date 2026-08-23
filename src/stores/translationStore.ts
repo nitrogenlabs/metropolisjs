@@ -45,9 +45,7 @@ interface TranslationData {
   readonly isQueueing?: boolean;
 }
 
-const createTranslationKey = (key: string, locale: string, namespace?: string): string => {
-  return namespace ? `${namespace}:${key}:${locale}` : `${key}:${locale}`;
-};
+const createTranslationKey = (key: string, locale: string, namespace?: string): string => (namespace ? `${namespace}:${key}:${locale}` : `${key}:${locale}`);
 
 export const translationStore = (type: string, data: TranslationData, state = defaultValues): TranslationState => {
   switch(type) {

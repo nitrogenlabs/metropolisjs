@@ -1,3 +1,5 @@
+import type {FluxFramework} from '@nlabs/arkhamjs';
+
 import {resetActionScenarioMocks, runContentActionsScenario} from '../../tests/actionTestScenarios.js';
 import {createContentActions} from './contentActions';
 
@@ -39,7 +41,7 @@ describe('contentActions', () => {
 
   beforeEach(() => {
     resetActionScenarioMocks();
-    contentActions = createContentActions(mockFlux);
+    contentActions = createContentActions(mockFlux as unknown as FluxFramework);
   });
 
   it('should create contentActions with all required methods', () => {

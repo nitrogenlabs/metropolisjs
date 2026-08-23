@@ -1,6 +1,7 @@
 import {describe, expect, it} from 'vitest';
 
 import {
+  type FileType,
   FileValidationError,
   formatFileOutput,
   getFileType,
@@ -232,7 +233,7 @@ describe('fileAdapter', () => {
         name: 'test.txt'
       };
 
-      const result = parseFile(file);
+      const result = parseFile(file as unknown as FileType);
 
       expect(result).toHaveProperty('name');
       expect(result.name).toBe('test.txt');
@@ -256,7 +257,7 @@ describe('fileAdapter', () => {
         fileSize: '1024'
       };
 
-      const result = parseFile(file);
+      const result = parseFile(file as unknown as FileType);
 
       expect(result).toHaveProperty('fileSize');
       expect(typeof result.fileSize).toBe('number');

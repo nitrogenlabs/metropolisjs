@@ -1,6 +1,7 @@
 import {describe, expect, it} from 'vitest';
 
 import {
+  type SessionType,
   SessionValidationError,
   formatSessionOutput,
   parseSession,
@@ -146,7 +147,7 @@ describe('sessionAdapter', () => {
         sessionId: 'session-123'
       };
 
-      const result = parseSession(session);
+      const result = parseSession(session as unknown as SessionType);
 
       expect(result).toHaveProperty('sessionId');
       expect(result.sessionId).toBe('session123'); // parseId removes hyphens
@@ -243,7 +244,7 @@ describe('sessionAdapter', () => {
         issued: '1640991600000'
       };
 
-      const result = parseSession(session);
+      const result = parseSession(session as unknown as SessionType);
 
       expect(result).toHaveProperty('expires');
       expect(result).toHaveProperty('issued');

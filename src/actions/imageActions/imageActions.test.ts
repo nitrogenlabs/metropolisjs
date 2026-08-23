@@ -1,3 +1,5 @@
+import type {FluxFramework} from '@nlabs/arkhamjs';
+
 import {resetActionScenarioMocks, runImageActionsScenario} from '../../tests/actionTestScenarios.js';
 import {expect, it, vi} from 'vitest';
 import {createImageActions} from './imageActions';
@@ -40,7 +42,7 @@ describe('imageActions', () => {
 
   beforeEach(() => {
     resetActionScenarioMocks();
-    imageActions = createImageActions(mockFlux);
+    imageActions = createImageActions(mockFlux as unknown as FluxFramework);
   });
 
   it('should create imageActions with all required methods', () => {

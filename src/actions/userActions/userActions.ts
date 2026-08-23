@@ -6,6 +6,8 @@ import {validateUserInput} from '../../adapters/userAdapter/userAdapter.js';
 import {USER_CONSTANTS} from '../../stores/userStore.js';
 import {appMutation, appQuery, publicMutation, publicQuery, refreshSession} from '../../utils/api.js';
 import {createBaseActions} from '../../utils/baseActionFactory.js';
+import {getConfigFromFlux} from '../../utils/configUtils.js';
+import {clearCachedRequest, getCachedRequest, setCachedRequest} from '../../utils/requestCache.js';
 import {
   clearPersistedSession,
   hydrateSessionFromStorage,
@@ -13,15 +15,13 @@ import {
   normalizeSession,
   storeSession
 } from '../../utils/session.js';
-import {getConfigFromFlux} from '../../utils/configUtils.js';
-import {clearCachedRequest, getCachedRequest, setCachedRequest} from '../../utils/requestCache.js';
 import {syncPersonaTagsToSession} from '../personaActions/personaActions.js';
 
 import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {User} from '../../adapters/userAdapter/userAdapter.js';
 import type {ApiResultsType, SessionType} from '../../utils/api.js';
-import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
 import type {ActionRequestOptions} from '../../utils/requestCache.js';
+import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
 
 const DATA_TYPE = 'users';
 const DEFAULT_USER_QUERY_FIELDS = ['userId', 'username'];
@@ -34,10 +34,17 @@ const SENSITIVE_USER_FIELDS = new Set([
   'verifiedSmsCode'
 ]);
 const INVALID_FIELD_REGEX = /Cannot query field "([^"]+)"/g;
-const hasSessionIdentity = (user?: Partial<User> | null): boolean =>
-  !!(user && ((user as any)._id || (user as any).userId || (user as any).username || (user as any).email));
+const hasSessionIdentity = (user?: Partial<User> | null): boolean => {
+  const sessionUser = user as (Partial<User> & {readonly _id?: string}) | null | undefined;
+  return Boolean(sessionUser && (
+    Reflect.get(sessionUser, '_id') || sessionUser.userId || sessionUser.username || sessionUser.email
+  ));
+};
 
-const sanitizeUpdateUserInput = (userInput: Partial<User> = {}, currentSession: Record<string, unknown> = {}): Partial<User> => {
+const sanitizeUpdateUserInput = (
+  userInput: Partial<User> = {},
+  currentSession: Record<string, unknown> = {}
+): Partial<User> => {
   const nextUser = Object.entries(userInput).reduce((user: Record<string, unknown>, [field, value]) => {
     if(value === undefined || value === null) {
       return user;
@@ -70,7 +77,10 @@ const sanitizeUpdateUserInput = (userInput: Partial<User> = {}, currentSession: 
   return nextUser as Partial<User>;
 };
 
-const syncStoredSession = async (flux: FluxFramework, sessionPatch: Record<string, unknown> = {}): Promise<SessionType> => {
+const syncStoredSession = async (
+  flux: FluxFramework,
+  sessionPatch: Record<string, unknown> = {}
+): Promise<SessionType> => {
   const currentSession = (flux.getState('user.session', {}) || {}) as Record<string, unknown>;
   return storeSession(flux, {...currentSession, ...sessionPatch});
 };
@@ -147,10 +157,13 @@ const getPasswordResetIdentifier = (request: string | PasswordResetRequest): {
     ? String(request || '').trim()
     : String(request.email || request.phone || request.username || '').trim();
 
-  return {
-    identifier,
-    type: typeof request !== 'string' && request.phone ? 'phone' : identifier.includes('@') ? 'email' : 'username'
-  };
+  let type: 'email' | 'phone' | 'username' = identifier.includes('@') ? 'email' : 'username';
+
+  if(typeof request !== 'string' && request.phone) {
+    type = 'phone';
+  }
+
+  return {identifier, type};
 };
 
 const getPasswordResetType = (confirmation: PasswordResetConfirmation): 'email' | 'phone' =>
@@ -212,6 +225,8 @@ export interface UserApiResultsType {
     readonly activeCount?: number;
     readonly addUser?: Partial<User>;
     readonly confirmCode?: boolean;
+    readonly completeBillingSetupSession?: Partial<User>;
+    readonly createBillingSetupSession?: string;
     readonly deactivate?: Partial<User>;
     readonly forgotPassword?: boolean;
     readonly itemById?: Partial<User>;
@@ -230,7 +245,6 @@ export interface UserApiResultsType {
     readonly refreshSession?: SessionType;
     readonly remove?: Partial<User>;
     readonly resetPassword?: boolean;
-    readonly saveBillingCard?: Partial<User>;
     readonly sendVerificationEmail?: boolean;
     readonly session?: Partial<User>;
     readonly signIn?: Partial<User>;
@@ -252,13 +266,25 @@ const defaultUserValidator = (input: unknown, options?: UserAdapterOptions) => {
   return validated;
 };
 
-export interface userActions {
+export interface UserActions {
   addUser: (userInput: Partial<User>, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
   confirmCode: (code: number, {type, value}: {type: 'email' | 'phone'; value: string}, requestOptions?: ActionRequestOptions) => Promise<boolean>;
   confirmSignUp: (code: string, type: 'email' | 'phone', requestOptions?: ActionRequestOptions) => Promise<boolean>;
+  completeBillingSetupSession: (
+    sessionId: string,
+    userProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<User>;
+  createBillingSetupSession: (returnUrl: string, requestOptions?: ActionRequestOptions) => Promise<string>;
   currentAuthenticatedUser: (requestOptions?: ActionRequestOptions) => Promise<User>;
   list: (userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
-  listByConnection: (userId: string, from?: number, to?: number, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
+  listByConnection: (
+    userId: string,
+    from?: number,
+    to?: number,
+    userProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<User[]>;
   itemById: (userId: string, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
   getUserByAttribute: (
     attribute: 'email' | 'username',
@@ -267,7 +293,13 @@ export interface userActions {
     requestOptions?: ActionRequestOptions
   ) => Promise<User>;
   deleteBillingCard: (userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
-  listByLatest: (username?: string, from?: number, to?: number, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
+  listByLatest: (
+    username?: string,
+    from?: number,
+    to?: number,
+    userProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<User[]>;
   listByReactions: (
     username: string,
     reactionNames: string[],
@@ -285,12 +317,24 @@ export interface userActions {
     requestOptions?: ActionRequestOptions
   ) => Promise<User[]>;
   forgotPassword: (username: string, requestOptions?: ActionRequestOptions) => Promise<boolean>;
-  requestPasswordReset: (request: string | PasswordResetRequest, requestOptions?: ActionRequestOptions) => Promise<boolean>;
+  requestPasswordReset: (
+    request: string | PasswordResetRequest,
+    requestOptions?: ActionRequestOptions
+  ) => Promise<boolean>;
   isLoggedIn: () => boolean;
   refreshSession: (token?: string, expires?: number, requestOptions?: ActionRequestOptions) => Promise<SessionType>;
   remove: (userId: string, requestOptions?: ActionRequestOptions) => Promise<User>;
-  resetPassword: (username: string, password: string, code: string, type: 'email' | 'phone', requestOptions?: ActionRequestOptions) => Promise<boolean>;
-  completePasswordReset: (confirmation: PasswordResetConfirmation, requestOptions?: ActionRequestOptions) => Promise<boolean>;
+  resetPassword: (
+    username: string,
+    password: string,
+    code: string,
+    type: 'email' | 'phone',
+    requestOptions?: ActionRequestOptions
+  ) => Promise<boolean>;
+  completePasswordReset: (
+    confirmation: PasswordResetConfirmation,
+    requestOptions?: ActionRequestOptions
+  ) => Promise<boolean>;
   search: (query: string, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User[]>;
   sendVerificationEmail: (
     email: string,
@@ -298,7 +342,6 @@ export interface userActions {
     requestOptions?: ActionRequestOptions
   ) => Promise<boolean>;
   session: (userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
-  saveBillingCard: (card: Record<string, unknown>, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
   signIn: (user: Partial<User>, expires?: number, requestOptions?: ActionRequestOptions) => Promise<SessionType>;
   signOut: (requestOptions?: ActionRequestOptions) => Promise<boolean>;
   signUp: (userInput: Partial<User>, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
@@ -312,7 +355,7 @@ export interface userActions {
 export const createUserActions = (
   flux: FluxFramework,
   options?: UserActionsOptions
-): userActions => {
+): UserActions => {
   const userBase = createBaseActions(flux, defaultUserValidator, {
     adapter: options?.userAdapter,
     adapterOptions: options?.userAdapterOptions
@@ -378,7 +421,7 @@ export const createUserActions = (
         DATA_TYPE,
         queryVariables,
         returnProps,
-        {onSuccess}
+        {onSuccess, ...requestOptions}
       );
     } finally {
       await clearUserRequestCaches();
@@ -429,7 +472,7 @@ export const createUserActions = (
         DATA_TYPE,
         queryVariables,
         returnProps,
-        {onSuccess}
+        {onSuccess, ...requestOptions}
       );
     } catch(error) {
       flux.dispatch({error, type: USER_CONSTANTS.SIGN_UP_ERROR});
@@ -521,7 +564,7 @@ export const createUserActions = (
         DATA_TYPE,
         queryVariables,
         returnProps,
-        {onSuccess}
+        {onSuccess, ...requestOptions}
       );
     } finally {
       await clearUserRequestCaches(String(userId || ''));
@@ -531,7 +574,7 @@ export const createUserActions = (
   const confirmCode = async (
     code: number,
     {type, value}: {type: 'email' | 'phone'; value: string},
-    requestOptions: ActionRequestOptions = {}
+    _requestOptions: ActionRequestOptions = {}
   ): Promise<boolean> => {
     const queryVariables = {
       code: {
@@ -570,13 +613,16 @@ export const createUserActions = (
     };
 
     try {
-      return await appMutation(flux, 'remove', DATA_TYPE, queryVariables, [], {onSuccess});
+      return await appMutation(flux, 'remove', DATA_TYPE, queryVariables, [], {onSuccess, ...requestOptions});
     } finally {
       await clearUserRequestCaches(userId);
     }
   };
 
-  const session = async (userProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<User> => withInvalidFieldRetry(
+  const session = async (
+    userProps: string[] = [],
+    _requestOptions: ActionRequestOptions = {}
+  ): Promise<User> => withInvalidFieldRetry(
     async (sessionProps) => {
       const data = await appQuery(
         flux,
@@ -604,7 +650,11 @@ export const createUserActions = (
     DEFAULT_USER_QUERY_FIELDS
   );
 
-  const itemById = async (userId: string, userProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<User> => {
+  const itemById = async (
+    userId: string,
+    userProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<User> => {
     const cachedResult = getCachedRequest<User>(flux, `user.itemById:${userId}`, {userId, userProps}, requestOptions);
 
     if(cachedResult !== undefined) {
@@ -694,31 +744,64 @@ export const createUserActions = (
     );
   };
 
-  const saveBillingCard = async (
-    card: Record<string, unknown>,
+  const createBillingSetupSession = async (
+    returnUrl: string,
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<string> => {
+    const normalizedReturnUrl = String(returnUrl || '').trim();
+
+    if(!normalizedReturnUrl) {
+      throw new Error('A returnUrl is required to create a billing setup session');
+    }
+
+    let checkoutUrl = '';
+    const onSuccess = (data: ApiResultsType = {}) => {
+      checkoutUrl = String((data as unknown as UserApiResultsType)?.users?.createBillingSetupSession || '');
+      return flux.dispatch({checkoutUrl, type: USER_CONSTANTS.BILLING_SETUP_SESSION_SUCCESS});
+    };
+
+    await appMutation(
+      flux,
+      'createBillingSetupSession',
+      DATA_TYPE,
+      {
+        returnUrl: {
+          type: 'String!',
+          value: normalizedReturnUrl
+        }
+      },
+      [],
+      {onSuccess, ...requestOptions}
+    );
+
+    if(!checkoutUrl) {
+      throw new Error('Billing setup session did not return a checkout URL');
+    }
+
+    return checkoutUrl;
+  };
+
+  const completeBillingSetupSession = async (
+    sessionId: string,
     userProps: string[] = [],
     requestOptions: ActionRequestOptions = {}
   ): Promise<User> => {
-    const queryVariables = {
-      card: {
-        type: 'CreditCardInput!',
-        value: card
-      }
-    };
+    const normalizedSessionId = String(sessionId || '').trim();
 
+    if(!normalizedSessionId) {
+      throw new Error('A sessionId is required to complete a billing setup session');
+    }
+
+    let updatedUser: Partial<User> = {};
     const onSuccess = (data: ApiResultsType = {}) => {
-      const user = ((data as unknown as UserApiResultsType)?.users?.saveBillingCard) || {};
+      updatedUser = (data as unknown as UserApiResultsType)?.users?.completeBillingSetupSession || {};
 
-      if((user as any)?.userId && (user as any).userId === flux.getState('user.session.userId')) {
-        syncStoredSession(flux, user as Record<string, unknown>);
+      if((updatedUser as any)?.userId && (updatedUser as any).userId === flux.getState('user.session.userId')) {
+        syncStoredSession(flux, updatedUser as Record<string, unknown>);
       }
 
-      return flux.dispatch({
-        type: USER_CONSTANTS.UPDATE_ITEM_SUCCESS,
-        user
-      });
+      return flux.dispatch({type: USER_CONSTANTS.UPDATE_ITEM_SUCCESS, user: updatedUser});
     };
-
     const returnProps = sanitizeUserProps([
       'modified',
       'stripeCardBrand',
@@ -731,14 +814,21 @@ export const createUserActions = (
     const sessionUserId = String(flux.getState('user.session.userId') || '');
 
     try {
-      return await appMutation(
+      await appMutation(
         flux,
-        'saveBillingCard',
+        'completeBillingSetupSession',
         DATA_TYPE,
-        queryVariables,
+        {
+          sessionId: {
+            type: 'ID!',
+            value: normalizedSessionId
+          }
+        },
         returnProps,
-        {onSuccess}
+        {onSuccess, ...requestOptions}
       );
+
+      return updatedUser as User;
     } finally {
       await clearUserRequestCaches(sessionUserId);
     }
@@ -779,7 +869,7 @@ export const createUserActions = (
         DATA_TYPE,
         {},
         returnProps,
-        {onSuccess}
+        {onSuccess, ...requestOptions}
       );
     } finally {
       await clearUserRequestCaches(sessionUserId);
@@ -840,7 +930,7 @@ export const createUserActions = (
         DATA_TYPE,
         queryVariables,
         returnProps,
-        {onSuccess}
+        {onSuccess, ...requestOptions}
       );
     } finally {
       await clearUserRequestCaches(sessionUserId);
@@ -875,7 +965,8 @@ export const createUserActions = (
     userProps: string[] = [],
     requestOptions: ActionRequestOptions = {}
   ): Promise<User[]> => {
-    const cachedResult = getCachedRequest<User[]>(flux, 'user.listByLatest', {username, from, to, userProps}, requestOptions);
+    const cacheKey = {from, to, userProps, username};
+    const cachedResult = getCachedRequest<User[]>(flux, 'user.listByLatest', cacheKey, requestOptions);
 
     if(cachedResult !== undefined) {
       return cachedResult;
@@ -907,15 +998,15 @@ export const createUserActions = (
       DEFAULT_USER_QUERY_FIELDS
     );
 
-    return setCachedRequest<User[]>(flux, 'user.listByLatest', {username, from, to, userProps}, result as User[], requestOptions);
+    return setCachedRequest<User[]>(flux, 'user.listByLatest', cacheKey, result as User[], requestOptions);
   };
 
   const listByConnection = async (
     userId: string,
-    from: number = 0,
-    to: number = 10,
-    userProps: string[] = [],
-    requestOptions: ActionRequestOptions = {}
+    _from: number = 0,
+    _to: number = 10,
+    _userProps: string[] = [],
+    _requestOptions: ActionRequestOptions = {}
   ): Promise<User[]> =>
     []
   ;
@@ -923,10 +1014,10 @@ export const createUserActions = (
   const listByReactions = async (
     username: string,
     reactionNames: string[],
-    from: number = 0,
-    to: number = 10,
-    personaProps: string[] = [],
-    requestOptions: ActionRequestOptions = {}
+    _from: number = 0,
+    _to: number = 10,
+    _personaProps: string[] = [],
+    _requestOptions: ActionRequestOptions = {}
   ): Promise<User[]> =>
     []
   ;
@@ -939,7 +1030,8 @@ export const createUserActions = (
     personaProps: string[] = [],
     requestOptions: ActionRequestOptions = {}
   ): Promise<User[]> => {
-    const cachedResult = getCachedRequest<User[]>(flux, 'user.listByTags', {username, tagNames, from, to, personaProps}, requestOptions);
+    const cacheKey = {from, personaProps, tagNames, to, username};
+    const cachedResult = getCachedRequest<User[]>(flux, 'user.listByTags', cacheKey, requestOptions);
 
     if(cachedResult !== undefined) {
       return cachedResult;
@@ -975,10 +1067,14 @@ export const createUserActions = (
       DEFAULT_USER_QUERY_FIELDS
     );
 
-    return setCachedRequest<User[]>(flux, 'user.listByTags', {username, tagNames, from, to, personaProps}, result as User[], requestOptions);
+    return setCachedRequest<User[]>(flux, 'user.listByTags', cacheKey, result as User[], requestOptions);
   };
 
-  const search = async (query: string, userProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<User[]> => {
+  const search = async (
+    query: string,
+    userProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<User[]> => {
     const cachedResult = getCachedRequest<User[]>(flux, 'user.search', {query, userProps}, requestOptions);
 
     if(cachedResult !== undefined) {
@@ -1008,12 +1104,16 @@ export const createUserActions = (
 
   const isLoggedIn = (): boolean => isLoggedInWithStorage(flux);
 
-  const currentAuthenticatedUser = async (requestOptions: ActionRequestOptions = {}): Promise<User> => {
+  const currentAuthenticatedUser = async (_requestOptions: ActionRequestOptions = {}): Promise<User> => {
     const session = await hydrateSessionFromStorage(flux);
     return (session || {}) as User;
   };
 
-  const refreshSessionAction = async (token?: string, expires?: number, requestOptions: ActionRequestOptions = {}): Promise<SessionType> => {
+  const refreshSessionAction = async (
+    token?: string,
+    expires?: number,
+    _requestOptions: ActionRequestOptions = {}
+  ): Promise<SessionType> => {
     const result = await refreshSession(flux, token, expires);
     return (result?.refreshSession || {}) as SessionType;
   };
@@ -1058,13 +1158,15 @@ export const createUserActions = (
     };
 
     const onSuccess = async (data: ApiResultsType = {}): Promise<FluxAction> => {
-      const users = (data as any)?.users;
+      const users = (data as unknown as UserApiResultsType)?.users;
       const sessionData = normalizeSession(users?.signIn || {});
       const storedSession = await syncStoredSession(flux, sessionData);
-      return {
+      const action: FluxAction = {
         session: storedSession,
         type: USER_CONSTANTS.SIGN_IN_SUCCESS
-      } as FluxAction;
+      };
+
+      return action;
     };
 
     const performSignIn = async (queryVariables: any): Promise<SessionType> => {
@@ -1081,7 +1183,7 @@ export const createUserActions = (
       try {
         const hydratedSession = await session(['userId', 'personaId', 'userAccess', 'username'], requestOptions);
         await syncPersonaTagsToSession(flux, String((hydratedSession as any)?.personaId || ''));
-      } catch(error) {
+      } catch{
         const fallbackSession = await syncStoredSession(flux, baseSession as Record<string, unknown>);
         await flux.dispatch({
           session: fallbackSession,
@@ -1111,14 +1213,18 @@ export const createUserActions = (
     }
   };
 
-  const signOut = async (requestOptions: ActionRequestOptions = {}): Promise<boolean> => {
+  const signOut = async (_requestOptions: ActionRequestOptions = {}): Promise<boolean> => {
     await clearPersistedSession(flux);
     await flux.dispatch({session: {}, type: USER_CONSTANTS.SIGN_OUT_SUCCESS});
     await clearUserRequestCaches();
     return true;
   };
 
-  const confirmSignUp = async (code: string, type: 'email' | 'phone', requestOptions: ActionRequestOptions = {}): Promise<boolean> =>
+  const confirmSignUp = async (
+    _code: string,
+    _type: 'email' | 'phone',
+    _requestOptions: ActionRequestOptions = {}
+  ): Promise<boolean> =>
     true;
 
   const requestPasswordReset = async (
@@ -1127,7 +1233,13 @@ export const createUserActions = (
   ): Promise<boolean> => {
     let forgotPasswordSucceeded = false;
     const {identifier, type} = getPasswordResetIdentifier(request);
-    const attribute = type === 'phone' ? 'phone' : type === 'email' ? 'email' : 'username';
+    let attribute = 'username';
+
+    if(type === 'phone') {
+      attribute = 'phone';
+    } else if(type === 'email') {
+      attribute = 'email';
+    }
     const queryVariables = {
       user: {
         type: 'UserInput!',
@@ -1145,7 +1257,14 @@ export const createUserActions = (
       });
     };
 
-    await publicMutation<UserApiResultsType>(flux, 'forgotPassword', DATA_TYPE, queryVariables, [], {onSuccess});
+    await publicMutation<UserApiResultsType>(
+      flux,
+      'forgotPassword',
+      DATA_TYPE,
+      queryVariables,
+      [],
+      {onSuccess, ...requestOptions}
+    );
 
     if(!forgotPasswordSucceeded) {
       throw new Error('forgot_password_failed');
@@ -1187,7 +1306,7 @@ export const createUserActions = (
       DATA_TYPE,
       queryVariables,
       [],
-      {onSuccess}
+      {onSuccess, ...requestOptions}
     ).then((data) => {
       const success = !!data?.users?.sendVerificationEmail;
       if(!success) {
@@ -1226,7 +1345,14 @@ export const createUserActions = (
       });
     };
 
-    return publicMutation<UserApiResultsType>(flux, 'resetPassword', DATA_TYPE, queryVariables, [], {onSuccess}).then((data) => {
+    return publicMutation<UserApiResultsType>(
+      flux,
+      'resetPassword',
+      DATA_TYPE,
+      queryVariables,
+      [],
+      {onSuccess, ...requestOptions}
+    ).then((data) => {
       const success = !!data?.users?.resetPassword;
       if(!success) {
         throw new Error('reset_password_failed');
@@ -1244,22 +1370,28 @@ export const createUserActions = (
     return resetPassword(username, confirmation.password, confirmation.code, type, requestOptions);
   };
 
-  const updatePassword = async (password: string, newPassword: string, requestOptions: ActionRequestOptions = {}): Promise<boolean> =>
+  const updatePassword = async (
+    _password: string,
+    _newPassword: string,
+    _requestOptions: ActionRequestOptions = {}
+  ): Promise<boolean> =>
     true
   ;
 
   return {
     addUser,
+    completeBillingSetupSession,
+    completePasswordReset,
     confirmCode,
     confirmSignUp,
-    completePasswordReset,
+    createBillingSetupSession,
     currentAuthenticatedUser,
     deleteBillingCard,
-    list,
     forgotPassword,
+    getUserByAttribute,
     isLoggedIn,
     itemById,
-    getUserByAttribute,
+    list,
     listByConnection,
     listByLatest,
     listByReactions,
@@ -1268,7 +1400,6 @@ export const createUserActions = (
     remove,
     requestPasswordReset,
     resetPassword,
-    saveBillingCard,
     search,
     sendVerificationEmail,
     session,
@@ -1276,8 +1407,8 @@ export const createUserActions = (
     signOut,
     signUp,
     updatePassword,
-    updateUser,
     updatePlan,
+    updateUser,
     updateUserAdapter: userBase.updateAdapter,
     updateUserAdapterOptions: userBase.updateOptions
   };

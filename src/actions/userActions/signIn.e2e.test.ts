@@ -22,7 +22,7 @@ import { startSimpleServer, stopServer } from '../../tests/testGraphQLServerSimp
 // Polyfill fetch for Node.js environment
 if (typeof global.fetch === 'undefined') {
   globalThis.fetch = (url, options) => {
-    return new Promise((resolve, reject) => {
+    return new Promise<Response>((resolve, reject) => {
       try {
         const isHttps = url.startsWith('https');
         const client = isHttps ? https : http;
@@ -39,29 +39,11 @@ if (typeof global.fetch === 'undefined') {
           });
           res.on('end', () => {
             try {
-              const responseHeaders = {
-                get: (name: string) => {
-                  const headerName = (name || '').toLowerCase();
-                  const headers = res.headers || {};
-                  return headers[headerName] as string || null;
-                }
-              };
-
-              resolve({
-                ok: res.statusCode >= 200 && res.statusCode < 300,
+              resolve(new Response(data, {
+                headers: res.headers as HeadersInit,
                 status: res.statusCode,
-                statusText: res.statusMessage,
-                body: data,
-                headers: responseHeaders,
-                text: () => Promise.resolve(data),
-                json: () => {
-                  try {
-                    return Promise.resolve(JSON.parse(data));
-                  } catch (e) {
-                    return Promise.reject(new Error(`Failed to parse JSON: ${data}`));
-                  }
-                }
-              });
+                statusText: res.statusMessage
+              }));
             } catch (e) {
               reject(new Error(`Error in fetch response handler: ${e}`));
             }

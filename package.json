@@ -7,34 +7,34 @@
   "module": "lib/index.js",
   "exports": {
     ".": {
+      "types": "./lib/index.d.ts",
       "import": "./lib/index.js",
-      "require": "./lib/index.js",
-      "types": "./lib/index.d.ts"
+      "require": "./lib/index.js"
     },
     "./stores": {
+      "types": "./lib/stores/index.d.ts",
       "import": "./lib/stores/index.js",
-      "require": "./lib/stores/index.js",
-      "types": "./lib/stores/index.d.ts"
+      "require": "./lib/stores/index.js"
     },
     "./actions": {
+      "types": "./lib/actions/index.d.ts",
       "import": "./lib/actions/index.js",
-      "require": "./lib/actions/index.js",
-      "types": "./lib/actions/index.d.ts"
+      "require": "./lib/actions/index.js"
     },
     "./adapters": {
+      "types": "./lib/adapters/index.d.ts",
       "import": "./lib/adapters/index.js",
-      "require": "./lib/adapters/index.js",
-      "types": "./lib/adapters/index.d.ts"
+      "require": "./lib/adapters/index.js"
     },
     "./utils": {
+      "types": "./lib/utils/index.d.ts",
       "import": "./lib/utils/index.js",
-      "require": "./lib/utils/index.js",
-      "types": "./lib/utils/index.d.ts"
+      "require": "./lib/utils/index.js"
     },
     "./config": {
+      "types": "./lib/config/index.d.ts",
       "import": "./lib/config/index.js",
-      "require": "./lib/config/index.js",
-      "types": "./lib/config/index.d.ts"
+      "require": "./lib/config/index.js"
     }
   },
   "types": "./lib/index.d.ts",
@@ -45,7 +45,8 @@
     "clean": "lex clean",
     "dev": "lex dev --remove",
     "format": "npm run prettier && npm run lint",
-    "lint": "lex lint --fix",
+    "lint": "lex lint --fix && npm run lint:examples",
+    "lint:examples": "eslint --config node_modules/@nlabs/lex/eslint.config.mjs examples/factory-pattern-usage.ts --fix",
     "prettier": "prettier --write ./src",
     "production": "lex build",
     "publish:major": "npm version major && npm run publish:tags && npm publish",
@@ -54,6 +55,7 @@
     "publish:tags": "git push --tags && git push origin HEAD",
     "start": "lex dev -r -o",
     "test": "lex test",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json --noEmit && tsc -p tsconfig.lint.json --noEmit && tsc -p tsconfig.examples.json",
     "update": "lex update --interactive",
     "watch": "lex compile --watch"
   },

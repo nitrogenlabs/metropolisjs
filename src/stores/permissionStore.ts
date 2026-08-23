@@ -42,11 +42,11 @@ export const permissionStore = (
   data: PermissionData,
   state = defaultValues
 ): PermissionState => {
-  switch (type) {
+  switch(type) {
     case PERMISSION_CONSTANTS.ADD_ITEM_SUCCESS: {
       const {permission} = data;
 
-      if (!permission?.id) {
+      if(!permission?.id) {
         return state;
       }
 
@@ -62,7 +62,7 @@ export const permissionStore = (
     case PERMISSION_CONSTANTS.GET_ITEM_SUCCESS: {
       const {permission} = data;
 
-      if (!permission?.id) {
+      if(!permission?.id) {
         return state;
       }
 
@@ -78,7 +78,7 @@ export const permissionStore = (
     case PERMISSION_CONSTANTS.GET_LIST_SUCCESS: {
       const {list, userId} = data;
 
-      if (!list || !userId) {
+      if(!list || !userId) {
         return state;
       }
 
@@ -94,7 +94,7 @@ export const permissionStore = (
     case PERMISSION_CONSTANTS.UPDATE_ITEM_SUCCESS: {
       const {permission} = data;
 
-      if (!permission?.id) {
+      if(!permission?.id) {
         return state;
       }
 
@@ -113,7 +113,7 @@ export const permissionStore = (
     case PERMISSION_CONSTANTS.REMOVE_ITEM_SUCCESS: {
       const {permission} = data;
 
-      if (!permission?.id) {
+      if(!permission?.id) {
         return state;
       }
 

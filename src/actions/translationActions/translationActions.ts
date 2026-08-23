@@ -2,26 +2,19 @@
  * Copyright (c) 2025-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-
 import {TRANSLATION_CONSTANTS} from '../../stores/translationStore.js';
 import {appMutation, appQuery} from '../../utils/api.js';
 import {createBaseActions} from '../../utils/baseActionFactory.js';
+import {initI18n, updateI18nResources} from '../../utils/i18n.js';
 import {clearCachedRequest, getCachedRequest, setCachedRequest} from '../../utils/requestCache.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
+import type {TranslationInputType} from '../../adapters/translationAdapter/translationAdapter.js';
 import type {TranslationType} from '../../stores/translationStore.js';
-import {initI18n, updateI18nResources} from '../../utils/i18n.js';
-import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
 import type {ActionRequestOptions} from '../../utils/requestCache.js';
+import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
 
 const DATA_TYPE = 'translations';
-
-export interface TranslationInputType {
-  readonly key: string;
-  readonly locale: string;
-  readonly value: string;
-  readonly namespace?: string;
-}
 
 export interface TranslationActionsOptions {
   translationAdapter?: (input: unknown, options?: BaseAdapterOptions) => any;
@@ -37,7 +30,11 @@ export type TranslationApiResultsType = {
 };
 
 export interface TranslationActions {
-  addTranslations: (translations: TranslationInputType[], translationProps?: string[], requestOptions?: ActionRequestOptions) => Promise<TranslationType[]>;
+  addTranslations: (
+    translations: TranslationInputType[],
+    translationProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<TranslationType[]>;
   getTranslation: (key: string, locale: string, namespace?: string) => string | null;
   getTranslations: (
     keys: string[],
@@ -47,7 +44,11 @@ export interface TranslationActions {
     requestOptions?: ActionRequestOptions
   ) => Promise<TranslationType[]>;
   hasTranslation: (key: string, locale: string, namespace?: string) => boolean;
-  processPendingTranslations: (locale: string, namespace?: string, requestOptions?: ActionRequestOptions) => Promise<void>;
+  processPendingTranslations: (
+    locale: string,
+    namespace?: string,
+    requestOptions?: ActionRequestOptions
+  ) => Promise<void>;
   queueTranslationKey: (key: string, locale: string, namespace?: string) => void;
   syncWithI18n: () => void;
   updateTranslationAdapter: (adapter: (input: unknown, options?: BaseAdapterOptions) => any) => void;

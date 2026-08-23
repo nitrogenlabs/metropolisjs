@@ -26,6 +26,26 @@ const postActions = createPostActions(flux);
 const restActions = createRestActions(flux);
 ```
 
+### Typed Consolidated Factories
+
+The consolidated factories preserve the selected action types without casts:
+
+```ts
+import {createAction, createActions, createAllActions} from '@nlabs/metropolisjs';
+
+const userActions = createAction('user', flux);
+await userActions.addUser({username: 'ada'});
+
+const actions = createActions(['user', 'post', 'message'], flux);
+await actions.post.add({content: 'Hello!'});
+await actions.message.sendMessage({content: 'Welcome!'});
+
+const allActions = createAllActions(flux);
+await allActions.permission.list();
+```
+
+`createAction()` maps its key to the corresponding action interface, `createActions()` returns exactly the requested keys, and `createAllActions()` returns the complete exported `ActionMap`.
+
 ## Action Families
 
 Each row links to:
@@ -56,7 +76,7 @@ These action families are available through specialized hooks when present, `use
 | Subscription | `useSubscriptionActions` | `subscription` | `createSubscriptionActions` | `addPlan`, `getPlanByItem`, `addSubscription`, `getSubscriptionByItem`, `getSubscriptionListByUser`, `deleteSubscription` | [subscriptionActions.ts](../src/actions/subscriptionActions/subscriptionActions.ts) |
 | Tag | `useTagActions` | `tag` | `createTagActions` | `addTag`, `addTagToItem`, `getTags`, `updateTag`, `deleteTag`, `deleteTagFromItem` | [tagActions.ts](../src/actions/tagActions/tagActions.ts) |
 | Translation | `useTranslationActions` | `translation` | `createTranslationActions` | `addTranslations`, `getTranslation`, `getTranslations`, `hasTranslation`, `queueTranslationKey`, `processPendingTranslations` | [translationActions.ts](../src/actions/translationActions/translationActions.ts) |
-| User | `useUserActions` | `user` | `createUserActions` | `signIn`, `signUp`, `session`, `refreshSession`, `itemById`, `listByLatest`, `updateUser` | [userActions.ts](../src/actions/userActions/userActions.ts) |
+| User | `useUserActions` | `user` | `createUserActions` | `signIn`, `signUp`, `session`, `createBillingSetupSession`, `completeBillingSetupSession`, `deleteBillingCard`, `itemById`, `updateUser` | [userActions.ts](../src/actions/userActions/userActions.ts) |
 | Video | `useVideoActions` | `video` | `createVideoActions` | `add`, `itemById`, `list`, `update`, `delete` | [videoActions.ts](../src/actions/videoActions/videoActions.ts) |
 | Websocket | `useWebsocketActions` | `websocket` | `createWebsocketActions` | `wsInit`, `wsSend`, `onOpen`, `onReceive`, `onClose`, `onError` | [websocketActions.ts](../src/actions/websocketActions/websocketActions.ts) |
 
@@ -121,6 +141,34 @@ Configure the action through the `Metropolis` provider:
 
 The `Metropolis` provider requests beacon delivery automatically on `pagehide` and when `document.visibilityState` changes to `hidden`. A batch accepted by the Beacon API is not submitted a second time. All RUM delivery remains subject to `enabled`, `respectPrivacySignals`, batching, throttling, deduplication, and event sanitization.
 
+## User Billing Setup Sessions
+
+Use the authenticated user actions to collect a billing method through the hosted setup flow:
+
+```ts
+import {createUserActions} from '@nlabs/metropolisjs';
+
+const userActions = createUserActions(flux);
+const checkoutUrl = await userActions.createBillingSetupSession(
+  'https://app.example.com/settings/billing/complete'
+);
+
+window.location.assign(checkoutUrl);
+```
+
+After the billing provider redirects back, complete the session with its identifier:
+
+```ts
+const user = await userActions.completeBillingSetupSession(
+  setupSessionId,
+  ['stripeCardBrand', 'stripeCardLast4']
+);
+```
+
+`createBillingSetupSession(returnUrl)` validates the return URL and resolves to the hosted checkout URL. `completeBillingSetupSession(sessionId, userProps?, requestOptions?)` validates the identifier, returns the updated user, synchronizes the active session when it belongs to that user, dispatches `USER_UPDATE_ITEM_SUCCESS`, and clears related request caches. `deleteBillingCard(userProps?, requestOptions?)` removes the stored method through the same authenticated action family.
+
+These APIs exchange setup-session identifiers and sanitized billing metadata only. They do not accept raw card details.
+
 ## REST Actions
 
 Use REST actions for external APIs that are not represented in Reaktor. REST actions delegate to `@nlabs/rip-hunter`, share Metropolis network/session handling, and can target either a configured endpoint key or an absolute URL.
@@ -173,6 +221,18 @@ All action creators are re-exported from:
 
 - [src/actions/index.ts](../src/actions/index.ts)
 
+The package root also exports every creator, action interface, `ActionMap`, and the consolidated factory functions.
+
 All specialized hooks are exposed from:
 
 - [src/utils/useMetropolis.ts](../src/utils/useMetropolis.ts)
+
+## Development Type Checks
+
+Run the complete TypeScript gate with:
+
+```bash
+npm run typecheck
+```
+
+This validates the production source, tests, lint inputs, and examples. Run `npm run lint`, `npm test`, and `npm run build` before publishing.

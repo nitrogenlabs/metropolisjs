@@ -5,7 +5,7 @@ describe('reactionAdapter', () => {
     it('should validate valid reaction input', () => {
       const validReaction = {
         reactionId: 'reaction1',
-        type: 'images',
+        type: 'images' as const,
         userId: 'user1',
         itemId: 'post1',
         itemType: 'post'
@@ -18,7 +18,7 @@ describe('reactionAdapter', () => {
     it('should handle minimal reaction input', () => {
       const minimalReaction = {
         reactionId: 'reaction1',
-        type: 'images'
+        type: 'images' as const
       };
 
       const result = validateReactionInput(minimalReaction);
@@ -36,7 +36,7 @@ describe('reactionAdapter', () => {
     it('should handle additional properties', () => {
       const reactionWithExtra = {
         reactionId: 'react123',
-        type: 'images',
+        type: 'images' as const,
         customField: 'value'
       };
 
@@ -51,7 +51,7 @@ describe('reactionAdapter', () => {
         _id: 'reactions/reaction1',
         _key: 'reaction1',
         reactionId: 'reaction1',
-        type: 'images',
+        type: 'images' as const,
         userId: 'user1',
         user: {userId: 'user1', username: 'reactor'},
         postId: 'post1',
@@ -78,7 +78,7 @@ describe('reactionAdapter', () => {
     it('should handle reaction with minimal fields', () => {
       const minimalReaction = {
         reactionId: 'reaction1',
-        type: 'images'
+        type: 'images' as const
       };
 
       const result = parseReaction(minimalReaction);
@@ -93,7 +93,7 @@ describe('reactionAdapter', () => {
         _id: 'reactions/reaction1',
         _key: 'reaction1',
         reactionId: 'reaction1',
-        type: 'images'
+        type: 'images' as const
       };
 
       const result = parseReaction(reaction);
@@ -104,7 +104,7 @@ describe('reactionAdapter', () => {
     it('should handle numeric fields', () => {
       const reaction = {
         reactionId: 'reaction1',
-        type: 'images',
+        type: 'images' as const,
         cached: 1234567890,
         modified: 1234567890
       };

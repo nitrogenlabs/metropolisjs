@@ -1,244 +1,160 @@
 # MetropolisJS Factory Pattern Guide
 
-## Overview
+MetropolisJS exposes typed factory functions for creating action families with an ArkhamJS `FluxFramework` instance. Use a direct creator when you need one known family, `createActions()` for a selected set, or `createAllActions()` when an integration genuinely needs every family.
 
-MetropolisJS has been refactored to use a **factory function pattern** for actions instead of class-based approaches. This provides better functional programming practices, improved testability, and enhanced flexibility through dependency injection.
+## Create One Action Family
 
-## Key Benefits
-
-1. **Functional Programming**: Pure functions instead of classes with side effects
-2. **Better Testability**: Easier to mock and test individual functions
-3. **Composability**: Actions can be easily combined and extended
-4. **Dependency Injection**: Custom adapters can be injected and merged with defaults
-5. **Backward Compatibility**: Legacy class wrappers maintain existing API compatibility
-
-## Basic Usage
-
-### Before (Class-based)
+Use `createAction()` when the family is selected dynamically or when you want the consolidated factory API:
 
 ```typescript
-import {userActions} from '../actions/userActions';
+import {createAction} from '@nlabs/metropolisjs';
 
-const userActions = new userActions(flux);
-const user = await userActions.add(userData);
+const userActions = createAction('user', flux);
+const user = await userActions.addUser({
+  email: 'ada@example.com',
+  username: 'ada'
+});
 ```
 
-### After (Factory Pattern)
+The factory key determines the return type. In this example, `userActions` is inferred as `UserActions`; no cast or manual type annotation is required.
+
+Direct creators provide the same action interface:
 
 ```typescript
-import {createUserActions} from '../actions/userActions';
+import {createUserActions} from '@nlabs/metropolisjs';
 
 const userActions = createUserActions(flux);
-const user = await userActions.add(userData);
+const user = await userActions.itemById('user-1');
 ```
 
-## Advanced Usage with Custom Adapters
+## Create a Selected Set
 
-### Custom Validation Adapter
+`createActions()` returns an object whose keys and values are inferred from the requested tuple:
 
 ```typescript
-// Custom adapter that extends default behavior
-const customUserAdapter = (input: unknown, options?: UserAdapterOptions) => {
-  // input is already validated by default adapter
-  const user = input as any;
+import {createActions} from '@nlabs/metropolisjs';
 
-  // Add business-specific validation
-  if (user.email && !user.email.includes('@company.com')) {
-    throw new Error('Only company emails allowed');
+const actions = createActions(['user', 'post', 'message'], flux);
+
+const user = await actions.user.addUser({username: 'ada'});
+const post = await actions.post.add({
+  content: 'Hello, Metropolis!',
+  userId: user.userId
+});
+
+await actions.message.sendMessage({
+  content: `Created post ${post.postId}`,
+  recipientId: user.userId
+});
+```
+
+Only requested keys exist on the returned type. A call such as `actions.video` is therefore a TypeScript error unless `video` was included in the input tuple.
+
+## Create Every Action Family
+
+`createAllActions()` returns the complete `ActionMap`:
+
+```typescript
+import {createAllActions} from '@nlabs/metropolisjs';
+
+const actions = createAllActions(flux);
+
+const user = await actions.user.itemById('user-1');
+const posts = await actions.post.listByLatest();
+```
+
+Prefer `createAction()` or `createActions()` when only a few families are needed.
+
+## Custom Adapters
+
+Factory options let an application add validation or transformation rules while retaining the standard action interface:
+
+```typescript
+import {createUserActions, type User} from '@nlabs/metropolisjs';
+
+const companyUserAdapter = (input: unknown): User => {
+  const user = input as User;
+
+  if(user.email && !user.email.endsWith('@company.com')) {
+    throw new Error('A company email is required');
   }
 
-  // Add computed fields
   return {
     ...user,
-    fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-    isAdmin: user.userAccess >= 3
+    isAdmin: (user.userAccess || 0) >= 3
   };
 };
 
 const userActions = createUserActions(flux, {
-  userAdapter: customUserAdapter
-});
-```
-
-### Configuration-based Adapters
-
-```typescript
-const userActions = createUserActions(flux, {
+  userAdapter: companyUserAdapter,
   userAdapterOptions: {
-    strict: true,
     environment: 'production',
-    customValidation: (input) => {
-      // Additional validation logic
-      return input;
-    }
+    strict: true
   }
 });
 ```
 
-### Runtime Adapter Updates
+Adapters can also be replaced at runtime:
 
 ```typescript
-const userActions = createUserActions(flux);
-
-// Update adapter at runtime
-userActions.updateUserAdapter(customUserAdapter);
-
-// Update options at runtime
-userActions.updateUserAdapterOptions({
-  strict: true,
-  environment: 'production'
-});
+userActions.updateUserAdapter(companyUserAdapter);
+userActions.updateUserAdapterOptions({strict: true});
 ```
 
-## Available Actions
+## Request Caching
 
-All action files now export factory functions:
-
-- `createUserActions(flux, options?)` - User management
-- `createPostActions(flux, options?)` - Post management
-- `createEventActions(flux, options?)` - Event management
-- `createMessageActions(flux, options?)` - Messaging
-- `createImageActions(flux, options?)` - Image handling
-- `createLocationActions(flux, options?)` - Location services
-- `createReactionActions(flux, options?)` - Reactions
-- `createTagActions(flux, options?)` - Tag management
-- `createWebsocketActions(flux)` - WebSocket connections
-
-## Adapter Options Interface
-
-All adapters support the same options interface:
+Read actions that accept `ActionRequestOptions` can cache responses for a number of minutes:
 
 ```typescript
-interface AdapterOptions {
-  strict?: boolean;                    // Enable strict validation
-  allowPartial?: boolean;              // Allow partial data
-  environment?: 'development' | 'production' | 'test';
-  customValidation?: (input: unknown) => unknown;
-}
+const user = await userActions.itemById(
+  'user-1',
+  ['email', 'username'],
+  {cacheTimeout: 5}
+);
 ```
 
-## Migration Guide
+Mutations clear the related request caches after successful updates.
 
-### Step 1: Update Imports
+## Testing
 
-```typescript
-// Old
-import {userActions} from '../actions/userActions';
-
-// New
-import {createUserActions} from '../actions/userActions';
-```
-
-### Step 2: Update Instantiation
+Create actions with a test Flux instance and inject adapters when a test needs to observe validation:
 
 ```typescript
-// Old
-const userActions = new userActions(flux, customAdapter);
+import {createUserActions, type UserActions} from '@nlabs/metropolisjs';
 
-// New
-const userActions = createUserActions(flux, {
-  userAdapter: customAdapter
-});
-```
-
-### Step 3: Update useMetropolis Hook
-
-The `useMetropolis` hook has been updated to use the factory pattern:
-
-```typescript
-// Old
-return useMemo(() => ({
-  userActions: new userActions(flux, UserAdapter),
-  postActions: new PostActions(flux, PostAdapter),
-  // ...
-}), [flux, UserAdapter, PostAdapter]);
-
-// New
-return useMemo(() => ({
-  userActions: createUserActions(flux, {
-    userAdapter: UserAdapter
-  }),
-  postActions: createPostActions(flux, {
-    postAdapter: PostAdapter
-  }),
-  // ...
-}), [flux, UserAdapter, PostAdapter]);
-```
-
-## Backward Compatibility
-
-Legacy class wrappers are provided for backward compatibility:
-
-```typescript
-// Still works
-import {userActionsClass} from '../actions/userActions';
-const userActions = new userActionsClass(flux, options);
-```
-
-## Testing Examples
-
-### Unit Testing Actions
-
-```typescript
-import {createUserActions} from '../actions/userActions';
-
-describe('userActions', () => {
-  let flux: FluxFramework;
-  let userActions: userActions;
+describe('user actions', () => {
+  let userActions: UserActions;
 
   beforeEach(() => {
-    flux = createMockFlux();
-    userActions = createUserActions(flux);
+    userActions = createUserActions(createMockFlux());
   });
 
-  it('should add user with validation', async () => {
-    const userData = {username: 'test', email: 'test@example.com'};
-    const result = await userActions.add(userData);
-    expect(result).toBeDefined();
+  it('creates a user', async () => {
+    const user = await userActions.addUser({
+      email: 'test@example.com',
+      username: 'test'
+    });
+
+    expect(user.userId).toBeDefined();
   });
 });
 ```
 
-### Testing with Custom Adapters
+The complete runnable examples are in [`examples/factory-pattern-usage.ts`](./examples/factory-pattern-usage.ts).
 
-```typescript
-const mockAdapter = jest.fn((input) => ({
-  ...input,
-  validated: true
-}));
+## Development Checks
 
-const userActions = createUserActions(flux, {
-  userAdapter: mockAdapter
-});
+Run all source, test, lint-input, and example TypeScript configurations with:
 
-expect(mockAdapter).toHaveBeenCalled();
+```bash
+npm run typecheck
 ```
 
-## Best Practices
+Before publishing a change, run:
 
-1. **Use Factory Functions**: Prefer `createXxxActions()` over class constructors
-2. **Leverage Adapter Injection**: Use custom adapters for business logic
-3. **Runtime Updates**: Use update methods for dynamic behavior changes
-4. **Type Safety**: Always use TypeScript interfaces for better type checking
-5. **Error Handling**: Custom adapters should throw meaningful errors
-
-## Performance Considerations
-
-- Factory functions are lightweight and create minimal overhead
-- Adapter validation is only performed when needed
-- Options are merged efficiently without deep cloning
-- Legacy wrappers have minimal performance impact
-
-## Future Enhancements
-
-The factory pattern enables future enhancements:
-
-- **Middleware Support**: Chain multiple adapters
-- **Plugin System**: Load adapters dynamically
-- **Caching**: Cache validated results
-- **Async Adapters**: Support async validation logic
-- **Schema Evolution**: Handle multiple adapter versions
-
-## Conclusion
-
-The factory pattern provides a more functional, testable, and flexible approach to action management in MetropolisJS. While maintaining backward compatibility, it opens up new possibilities for customization and extension.
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```

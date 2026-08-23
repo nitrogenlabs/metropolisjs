@@ -2,8 +2,8 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {useCallback, useEffect, useState} from 'react';
 import {useFlux} from '@nlabs/arkhamjs-utils-react';
+import {useCallback, useEffect, useState} from 'react';
 
 import {
   hasPermission as checkPermission,
@@ -14,6 +14,7 @@ import {
   isUser as checkIsUser,
   PermissionLevel
 } from '../adapters/permissionAdapter/permissionAdapter.js';
+
 import type {Permission} from '../adapters/permissionAdapter/permissionAdapter.js';
 import type {User} from '../adapters/userAdapter/userAdapter.js';
 
@@ -62,18 +63,16 @@ export const usePermissions = (): UsePermissionsReturn => {
   }, [flux]);
 
   const hasPermissionLevel = useCallback(
-    (requiredLevel: PermissionLevel) => {
-      return checkPermission(userLevel, requiredLevel);
-    },
+    (requiredLevel: PermissionLevel) => checkPermission(userLevel, requiredLevel),
     [userLevel]
   );
 
   const checkResourcePermission = useCallback(
     (resource: string, requiredLevel: PermissionLevel): boolean => {
       const permissions: Permission[] = flux.getState(`permission.userPermissions.${flux.getState('user.session.userId')}`, []);
-      
+
       const resourcePermission = permissions.find((p) => p.resource === resource);
-      if (resourcePermission && resourcePermission.level !== undefined) {
+      if(resourcePermission && resourcePermission.level !== undefined) {
         return resourcePermission.level >= requiredLevel;
       }
 
@@ -102,11 +101,11 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
 }) => {
   const {hasPermission, checkResource} = usePermissions();
 
-  const hasAccess = resource 
-    ? checkResource(resource, requiredLevel) 
+  const hasAccess = resource
+    ? checkResource(resource, requiredLevel)
     : hasPermission(requiredLevel);
 
-  if (!hasAccess) {
+  if(!hasAccess) {
     return <>{fallback}</>;
   }
 

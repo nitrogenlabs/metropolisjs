@@ -56,7 +56,7 @@ describe('contentAdapter', () => {
       const invalidContent = {
         locale: 'en',
         content: 'Welcome to our application!'
-      } as ContentType;
+      } as unknown as ContentType;
 
       expect(() => parseContent(invalidContent)).toThrow(ContentValidationError);
     });
@@ -86,7 +86,7 @@ describe('contentAdapter', () => {
         key: 'welcome_message',
         locale: 'invalid',
         content: 'Welcome to our application!'
-      } as ContentType;
+      } as unknown as ContentType;
 
       expect(() => parseContent(invalidContent)).toThrow(ContentValidationError);
     });
@@ -203,7 +203,7 @@ describe('contentAdapter', () => {
       const invalidContentInput = {
         locale: 'en',
         content: 'Welcome to our application!'
-      } as ContentInputType;
+      } as unknown as ContentInputType;
 
       expect(() => parseContentInput(invalidContentInput)).toThrow(ContentValidationError);
     });
@@ -233,7 +233,7 @@ describe('contentAdapter', () => {
         key: 'welcome_message',
         locale: 'invalid',
         content: 'Welcome to our application!'
-      } as ContentInputType;
+      } as unknown as ContentInputType;
 
       expect(() => parseContentInput(invalidContentInput)).toThrow(ContentValidationError);
     });

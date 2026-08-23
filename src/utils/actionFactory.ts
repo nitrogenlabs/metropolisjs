@@ -2,8 +2,8 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {createContentActions} from '../actions/contentActions/contentActions.js';
 import {createAwsRumActions} from '../actions/awsRumActions/awsRumActions.js';
+import {createContentActions} from '../actions/contentActions/contentActions.js';
 import {createCrmActions} from '../actions/crmActions/crmActions.js';
 import {createEventActions} from '../actions/eventActions/eventActions.js';
 import {createGroupActions} from '../actions/groupActions/groupActions.js';
@@ -11,8 +11,8 @@ import {createImageActions} from '../actions/imageActions/imageActions.js';
 import {createLocationActions} from '../actions/locationActions/locationActions.js';
 import {createMessageActions} from '../actions/messageActions/messageActions.js';
 import {createPermissionActions} from '../actions/permissionActions/permissionActions.js';
-import {createPostActions} from '../actions/postActions/postActions.js';
 import {createPersonaActions} from '../actions/personaActions/personaActions.js';
+import {createPostActions} from '../actions/postActions/postActions.js';
 import {createReactionActions} from '../actions/reactionActions/reactionActions.js';
 import {createRestActions} from '../actions/restActions/restActions.js';
 import {createSSEActions} from '../actions/sseActions/sseActions.js';
@@ -24,8 +24,8 @@ import {createVideoActions} from '../actions/videoActions/videoActions.js';
 import {createWebsocketActions} from '../actions/websocketActions/websocketActions.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
-import type {ContentActionsOptions} from '../actions/contentActions/contentActions.js';
 import type {AwsRumActionsOptions} from '../actions/awsRumActions/awsRumActions.js';
+import type {ContentActionsOptions} from '../actions/contentActions/contentActions.js';
 import type {CrmActionsOptions} from '../actions/crmActions/crmActions.js';
 import type {EventActionsOptions} from '../actions/eventActions/eventActions.js';
 import type {GroupActionsOptions} from '../actions/groupActions/groupActions.js';
@@ -33,8 +33,8 @@ import type {ImageActionsOptions} from '../actions/imageActions/imageActions.js'
 import type {LocationActionsOptions} from '../actions/locationActions/locationActions.js';
 import type {MessageActionsOptions} from '../actions/messageActions/messageActions.js';
 import type {PermissionActionsOptions} from '../actions/permissionActions/permissionActions.js';
-import type {PostActionsOptions} from '../actions/postActions/postActions.js';
 import type {PersonaActionsOptions} from '../actions/personaActions/personaActions.js';
+import type {PostActionsOptions} from '../actions/postActions/postActions.js';
 import type {ReactionActionsOptions} from '../actions/reactionActions/reactionActions.js';
 import type {RestActionsOptions} from '../actions/restActions/restActions.js';
 import type {SSEActionsOptions} from '../actions/sseActions/sseActions.js';
@@ -80,6 +80,31 @@ export type ActionType =
   | 'video'
   | 'websocket';
 
+export interface ActionMap {
+  awsRum: ReturnType<typeof createAwsRumActions>;
+  content: ReturnType<typeof createContentActions>;
+  crm: ReturnType<typeof createCrmActions>;
+  event: ReturnType<typeof createEventActions>;
+  group: ReturnType<typeof createGroupActions>;
+  image: ReturnType<typeof createImageActions>;
+  location: ReturnType<typeof createLocationActions>;
+  message: ReturnType<typeof createMessageActions>;
+  permission: ReturnType<typeof createPermissionActions>;
+  persona: ReturnType<typeof createPersonaActions>;
+  post: ReturnType<typeof createPostActions>;
+  reaction: ReturnType<typeof createReactionActions>;
+  rest: ReturnType<typeof createRestActions>;
+  sse: ReturnType<typeof createSSEActions>;
+  subscription: ReturnType<typeof createSubscriptionActions>;
+  tag: ReturnType<typeof createTagActions>;
+  translation: ReturnType<typeof createTranslationActions>;
+  user: ReturnType<typeof createUserActions>;
+  video: ReturnType<typeof createVideoActions>;
+  websocket: ReturnType<typeof createWebsocketActions>;
+}
+
+export type ActionReturnType<T extends ActionType> = ActionMap[T];
+
 export type ActionOptions =
   | AwsRumActionsOptions
   | ContentActionsOptions
@@ -101,8 +126,8 @@ export type ActionOptions =
   | VideoActionsOptions
   | undefined;
 
-export const createAction = <T extends ActionType>(
-  actionType: T,
+const createActionByType = (
+  actionType: ActionType,
   flux: FluxFramework,
   options?: ActionOptions
 ) => {
@@ -191,25 +216,32 @@ export const createAction = <T extends ActionType>(
   }
 };
 
-export const createActions = (
-  actionTypes: ActionType[],
+export const createAction = <T extends ActionType>(
+  actionType: T,
+  flux: FluxFramework,
+  options?: ActionOptions
+): ActionReturnType<T> => createActionByType(actionType, flux, options) as ActionReturnType<T>;
+
+export const createActions = <const T extends readonly ActionType[]>(
+  actionTypes: T,
   flux: FluxFramework,
   options?: Partial<Record<ActionType, ActionOptions>>
-): Partial<Record<ActionType, ActionReturnType<ActionType>>> => {
-  const actions: Partial<Record<ActionType, ActionReturnType<ActionType>>> = {};
+): {[K in T[number]]: ActionReturnType<K>} => {
+  const actions: Partial<ActionMap> = {};
+  const mutableActions = actions as Record<ActionType, ActionReturnType<ActionType>>;
 
   actionTypes.forEach((type) => {
-    actions[type] = createAction(type, flux, options?.[type]) as ActionReturnType<ActionType>;
+    mutableActions[type] = createAction(type, flux, options?.[type]);
   });
 
-  return actions;
+  return actions as {[K in T[number]]: ActionReturnType<K>};
 };
 
 export const createAllActions = (
   flux: FluxFramework,
   options?: Partial<Record<ActionType, ActionOptions>>
-) => {
-  const allActionTypes: ActionType[] = [
+): ActionMap => {
+  const allActionTypes = [
     'awsRum',
     'content',
     'crm',
@@ -230,10 +262,9 @@ export const createAllActions = (
     'user',
     'video',
     'websocket'
-  ];
+  ] as const;
 
   return createActions(allActionTypes, flux, options);
 };
 
 export type ActionTypes = ReturnType<typeof createAllActions>;
-export type ActionReturnType<T extends ActionType> = ReturnType<typeof createAction<T>>;

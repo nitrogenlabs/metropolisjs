@@ -126,12 +126,10 @@ export const useConversationTyping = ({
     updateTypingState(conversationId, false, options);
   }, [clearTypingDebounce, clearTypingTimer, updateTypingState]);
 
-  useEffect(() => {
-    return () => {
-      clearTypingDebounce();
-      clearTypingTimer();
-      updateTypingState(typingConversationIdRef.current, false, typingOptionsRef.current);
-    };
+  useEffect(() => () => {
+    clearTypingDebounce();
+    clearTypingTimer();
+    updateTypingState(typingConversationIdRef.current, false, typingOptionsRef.current);
   }, [clearTypingDebounce, clearTypingTimer, updateTypingState]);
 
   return {

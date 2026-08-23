@@ -157,7 +157,7 @@ export const resolveEnvironmentConfig = (
   const resolved = merge({}, localConfig, envConfig);
 
   // Ensure environment is set (create new object to avoid mutating readonly)
-  if (!resolved.environment) {
+  if(!resolved.environment) {
     return {
       ...resolved,
       environment: targetEnvironment

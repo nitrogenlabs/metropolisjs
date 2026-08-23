@@ -2,10 +2,9 @@
  * Copyright (c) 2025-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import { init, t } from 'i18next';
+import {init, t} from 'i18next';
 
-// Import types from the main index
-import type { ComplexTranslations, SimpleTranslations } from '../index.js';
+import type {ComplexTranslations, SimpleTranslations} from '../index.js';
 
 let initialized = false;
 let currentResources: Record<string, Record<string, Record<string, string>>> = {};
@@ -64,11 +63,11 @@ export const initI18n = (
   let resources: Record<string, Record<string, Record<string, string>>> = {};
 
   // Check if it's a simple key-value format or complex format
-  if (translations && Object.keys(translations).length > 0) {
+  if(translations && Object.keys(translations).length > 0) {
     const firstKey = Object.keys(translations)[0];
     const firstValue = translations[firstKey];
 
-    if (typeof firstValue === 'string') {
+    if(typeof firstValue === 'string') {
       // Simple key-value format
       resources = buildSimpleI18nResources(translations as SimpleTranslations);
     } else {

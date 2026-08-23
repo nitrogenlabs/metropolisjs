@@ -183,7 +183,7 @@ Configure the public analytics identifier returned by Reaktor under `app.rum.ana
 </Metropolis>
 ```
 
-The endpoint is resolved from `app.api.endpoints.rum`, falling back to `app.api.rum`. RUM delivery is unauthenticated and each batch contains `analyticsId` and up to 50 sanitized events.
+Configure the endpoint at `app.api.endpoints.rum`. RUM delivery is unauthenticated and each batch contains `analyticsId` and up to 50 sanitized events.
 
 #### Beacon delivery
 
@@ -450,7 +450,7 @@ const LoginForm = () => {
 
   const handleLogin = async () => {
     try {
-      const session = await userActions.signIn(username, password);
+      const session = await userActions.signIn({password, username});
       console.log('User logged in successfully!', session);
     } catch (error) {
       console.error('Login failed:', error);
@@ -475,6 +475,41 @@ const LoginForm = () => {
   );
 };
 ```
+
+### Billing Setup Sessions
+
+Billing cards are collected through a hosted setup session, so raw card details never pass through application code. Start the flow with an authenticated user action and redirect the browser to the returned checkout URL:
+
+```tsx
+import {useUserActions} from '@nlabs/metropolisjs';
+
+const AddBillingCardButton = () => {
+  const userActions = useUserActions();
+
+  const addBillingCard = async () => {
+    const returnUrl = `${window.location.origin}/settings/billing/complete`;
+    const checkoutUrl = await userActions.createBillingSetupSession(returnUrl);
+    window.location.assign(checkoutUrl);
+  };
+
+  return <button onClick={addBillingCard}>Add billing card</button>;
+};
+```
+
+On the return page, read the provider's setup-session identifier and complete the flow. The action returns the updated user, refreshes the matching session data, dispatches the standard user update event, and clears related user request caches:
+
+```tsx
+const sessionId = new URLSearchParams(window.location.search).get('session_id');
+
+if(sessionId) {
+  const user = await userActions.completeBillingSetupSession(sessionId, [
+    'stripeCardBrand',
+    'stripeCardLast4'
+  ]);
+}
+```
+
+Use `deleteBillingCard()` to remove the saved billing method. Both completion and deletion return sanitized billing metadata; MetropolisJS does not accept raw card numbers or tokens.
 
 ### Real-Time Messaging
 
@@ -597,21 +632,34 @@ MetropolisJS uses a **factory function pattern** for actions. This provides func
 ### Basic Usage
 
 ```typescript
-import {createUserActions} from '../actions/userActions';
+import {createAction, createActions, createUserActions} from '@nlabs/metropolisjs';
 
 const userActions = createUserActions(flux);
-const user = await userActions.add(userData);
+const user = await userActions.addUser(userData);
+
+const postActions = createAction('post', flux);
+const post = await postActions.add({content: 'Hello!'});
+
+const actions = createActions(['user', 'post', 'message'], flux);
+await actions.message.sendMessage({
+  content: 'Welcome!',
+  recipientId: user.userId
+});
 ```
+
+Factory results preserve their selected types. `createAction('post', flux)` returns `PostActions`, while `createActions(['user', 'post'], flux)` returns only typed `user` and `post` keys. `createAllActions(flux)` returns the complete `ActionMap`.
 
 ### Advanced Usage with Custom Adapters
 
 #### Custom Validation Adapter
 
 ```typescript
+import type {User} from '@nlabs/metropolisjs';
+
 // Custom adapter that extends default behavior
-const customUserAdapter = (input: unknown, options?: UserAdapterOptions) => {
+const customUserAdapter = (input: unknown): User => {
   // input is already validated by default adapter
-  const user = input as any;
+  const user = input as User;
 
   // Add business-specific validation
   if (user.email && !user.email.includes('@company.com')) {
@@ -622,7 +670,7 @@ const customUserAdapter = (input: unknown, options?: UserAdapterOptions) => {
   return {
     ...user,
     fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-    isAdmin: user.userAccess >= 3
+    isAdmin: (user.userAccess || 0) >= 3
   };
 };
 
@@ -688,31 +736,7 @@ interface AdapterOptions {
 }
 ```
 
-### Migration Guide
-
-#### Step 1: Update Imports
-
-```typescript
-// Old
-import {userActions} from '../actions/userActions';
-
-// New
-import {createUserActions} from '../actions/userActions';
-```
-
-#### Step 2: Update Instantiation
-
-```typescript
-// Old
-const userActions = new userActions(flux, customAdapter);
-
-// New
-const userActions = createUserActions(flux, {
-  userAdapter: customAdapter
-});
-```
-
-#### Step 3: Using Actions in Components
+### Using Actions in Components
 
 The recommended approach is to use specialized hooks:
 
@@ -765,11 +789,11 @@ const apiUrl = config.app?.api?.url || '';
 #### Unit Testing Actions
 
 ```typescript
-import {createUserActions} from '@nlabs/metropolisjs';
+import {createUserActions, type UserActions} from '@nlabs/metropolisjs';
 
 describe('userActions', () => {
   let flux: FluxFramework;
-  let userActions: userActions;
+  let userActions: UserActions;
 
   beforeEach(() => {
     flux = createMockFlux();
@@ -782,7 +806,7 @@ describe('userActions', () => {
 
   it('should add user with validation', async () => {
     const userData = {username: 'test', email: 'test@example.com'};
-    const result = await userActions.add(userData);
+    const result = await userActions.addUser(userData);
     expect(result).toBeDefined();
   });
 });
@@ -791,7 +815,7 @@ describe('userActions', () => {
 #### Testing with Custom Adapters
 
 ```typescript
-const mockAdapter = jest.fn((input) => ({
+const mockAdapter = vi.fn((input) => ({
   ...input,
   validated: true
 }));
@@ -1267,8 +1291,8 @@ For more detailed examples, see [`examples/permission-system-usage.tsx`](./examp
 ### Prerequisites
 
 - Node.js 16+
-- React 18+
-- TypeScript 4.5+
+- React 19+
+- TypeScript 7+
 
 ### Full Installation
 
@@ -1292,7 +1316,18 @@ Configure your environment-specific settings in the `config` prop of the `Metrop
 
 ## Contributing
 
-We love contributions! Here's how you can help:
+Before opening a pull request, run the same quality gates used for source, tests, examples, and the published declarations:
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
+`npm run typecheck` checks the production source, unit and integration tests, lint inputs, and every file under `examples/`.
+
+To contribute:
 
 1. **Fork** the repository
 2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)

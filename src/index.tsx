@@ -353,7 +353,7 @@ export {
   useLocationActions,
   useMessageActions, useMetropolis,
   useMetropolisConfig,
-  useMetropolisFlux, usePostActions,
+  useMetropolisFlux, usePermissionActions, usePostActions,
   usePersonaActions,
   useReactionActions,
   useRestActions,
@@ -362,6 +362,10 @@ export {
   useUserActions,
   useWebsocketActions
 } from './utils/useMetropolis.js';
+export {
+  PermissionGuard,
+  usePermissions
+} from './utils/permissionUtils.js';
 export {useConversationTyping} from './utils/useConversationTyping.js';
 export type {
   ConversationTypingOptions,
@@ -381,12 +385,6 @@ export type {
 export type {BaseActionOptions} from './utils/baseActionFactory.js';
 export type {BaseAdapterOptions} from './utils/validatorFactory.js';
 
-export * from './actions/appActions/appActions.js';
-export * from './actions/awsRumActions/awsRumActions.js';
-export * from './actions/connectionActions/connectionActions.js';
-export * from './actions/conversationActions/conversationActions.js';
-export * from './actions/crmActions/crmActions.js';
-export * from './actions/restActions/restActions.js';
-export * from './actions/videoActions/videoActions.js';
+export * from './actions/index.js';
 export * from './constants/Collections.js';
 export * from './types/index.js';

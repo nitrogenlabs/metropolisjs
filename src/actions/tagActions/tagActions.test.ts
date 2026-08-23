@@ -267,7 +267,7 @@ describe('createTagActions', () => {
 
     appQueryMock.mockResolvedValue([]);
 
-    await tagActions.getTags('', ['description'], {forceRefresh: true});
+    await tagActions.getTags('', ['description']);
 
     expect(appQueryMock).toHaveBeenCalledWith(
       flux,

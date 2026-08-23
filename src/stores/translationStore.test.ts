@@ -70,7 +70,7 @@ describe('translationStore', () => {
       type: TRANSLATION_CONSTANTS.CLEAR_PENDING_KEYS
     };
 
-    const result = translationStore(action.type, action);
+    const result = translationStore(action.type, {});
 
     expect(result).toBeDefined();
     expect(typeof result).toBe('object');
@@ -100,7 +100,7 @@ describe('translationStore', () => {
       type: 'UNKNOWN_ACTION'
     };
 
-    const result = translationStore(action.type, action);
+    const result = translationStore(action.type, {});
 
     expect(result).toBeDefined();
     expect(typeof result).toBe('object');
@@ -181,7 +181,9 @@ describe('translationStore', () => {
       isQueueing: false,
       lastSync: 1000,
       pendingKeys: new Set(['existing-key']),
-      translations: {'existing-key:en': 'Existing Value'}
+      translations: {
+        'existing-key:en': {key: 'existing-key', locale: 'en', value: 'Existing Value'}
+      }
     };
     const action = {
       translations: [{key: 'new-key', locale: 'en', value: 'New Value'}],

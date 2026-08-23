@@ -2,15 +2,15 @@
  * Copyright (c) 2012-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import { FluxFramework } from '@nlabs/arkhamjs';
-import { isEmpty } from '@nlabs/utils';
+import {FluxFramework} from '@nlabs/arkhamjs';
+import {isEmpty} from '@nlabs/utils';
 import pDebounce from 'p-debounce';
 
-import { parseLocation } from '../adapters/locationAdapter/locationAdapter.js';
-import { appQuery } from '../utils/api.js';
+import {parseLocation} from '../adapters/locationAdapter/locationAdapter.js';
+import {appQuery} from '../utils/api.js';
 
-import type { LocationType } from '../adapters/locationAdapter/locationAdapter.js';
-import type { ReaktorDbCollection } from '../utils/api.js';
+import type {LocationType} from '../adapters/locationAdapter/locationAdapter.js';
+import type {ReaktorDbCollection} from '../utils/api.js';
 
 const DATA_TYPE: ReaktorDbCollection = 'locations';
 

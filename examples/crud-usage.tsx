@@ -700,7 +700,7 @@ export const EventManagerExample = () => {
             <p>
               {new Date(event.startDate!).toLocaleString()} - {new Date(event.endDate!).toLocaleString()}
             </p>
-            <p>Location: {event.location}</p>
+            <p>Location: {typeof event.location === 'string' ? event.location : event.location?.address}</p>
             <button onClick={() => handleDeleteEvent(event.eventId!)}>Delete</button>
           </div>
         ))}

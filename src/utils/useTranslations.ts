@@ -2,9 +2,9 @@
  * Copyright (c) 2025-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import {useCallback, useEffect, useMemo, useRef} from 'react';
 
-import { useMetropolis } from './useMetropolis.js';
+import {useMetropolis} from './useMetropolis.js';
 
 export interface UseTranslationsOptions {
   readonly locale?: string;
@@ -35,17 +35,17 @@ export const useTranslations = (options: UseTranslationsOptions = {}): UseTransl
   const lastProcessRef = useRef<number>(0);
 
   const t = useCallback((key: string, fallback?: string): string => {
-    if (!translationActions) {
+    if(!translationActions) {
       return fallback || key;
     }
 
     const translation = translationActions.getTranslation(key, locale, namespace);
 
-    if (translation) {
+    if(translation) {
       return translation;
     }
 
-    if (autoProcess && !translationActions.hasTranslation(key, locale, namespace)) {
+    if(autoProcess && !translationActions.hasTranslation(key, locale, namespace)) {
       translationActions.queueTranslationKey(key, locale, namespace);
     }
 
@@ -53,7 +53,7 @@ export const useTranslations = (options: UseTranslationsOptions = {}): UseTransl
   }, [translationActions, locale, namespace, autoProcess]);
 
   const hasTranslation = useCallback((key: string): boolean => {
-    if (!translationActions) {
+    if(!translationActions) {
       return false;
     }
 
@@ -61,15 +61,19 @@ export const useTranslations = (options: UseTranslationsOptions = {}): UseTransl
   }, [translationActions, locale, namespace]);
 
   const queueTranslation = useCallback((key: string): void => {
-    if (!translationActions) return;
+    if(!translationActions) {
+      return;
+    }
     translationActions.queueTranslationKey(key, locale, namespace);
   }, [translationActions, locale, namespace]);
 
   const processPending = useCallback(async (): Promise<void> => {
-    if (!translationActions) return;
+    if(!translationActions) {
+      return;
+    }
 
     const now = Date.now();
-    if (now - lastProcessRef.current < processInterval) {
+    if(now - lastProcessRef.current < processInterval) {
       return;
     }
 
@@ -78,33 +82,39 @@ export const useTranslations = (options: UseTranslationsOptions = {}): UseTransl
   }, [translationActions, locale, namespace, processInterval]);
 
   useEffect(() => {
-    if (!autoProcess || !translationActions) return;
+    if(!autoProcess || !translationActions) {
+      return;
+    }
 
     const processQueued = () => {
       processPending();
     };
 
-    if (processTimeoutRef.current) {
+    if(processTimeoutRef.current) {
       clearTimeout(processTimeoutRef.current);
     }
 
     processTimeoutRef.current = setTimeout(processQueued, processInterval);
 
     return () => {
-      if (processTimeoutRef.current) {
+      if(processTimeoutRef.current) {
         clearTimeout(processTimeoutRef.current);
       }
     };
   }, [autoProcess, translationActions, processPending, processInterval]);
 
   const isLoading = useMemo(() => {
-    if (!translationActions) return false;
+    if(!translationActions) {
+      return false;
+    }
     const state = (translationActions as any).flux?.getState('translations');
     return state?.isQueueing || false;
   }, [translationActions]);
 
   const error = useMemo(() => {
-    if (!translationActions) return null;
+    if(!translationActions) {
+      return null;
+    }
     const state = (translationActions as any).flux?.getState('translations');
     return state?.error || null;
   }, [translationActions]);

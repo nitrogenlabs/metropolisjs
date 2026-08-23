@@ -1,11 +1,12 @@
 import {useContext, useMemo} from 'react';
 
+import {createActions} from '../utils/actionFactory.js';
+import {MetropolisContext} from './MetropolisContext.js';
+
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {MetropolisEnvironmentConfiguration} from '../config/index.js';
-import {createActions} from '../utils/actionFactory.js';
-import type {MetropolisAdapters} from './MetropolisContext.js';
-import {MetropolisContext} from './MetropolisContext.js';
 import type {ActionOptions, ActionType} from '../utils/actionFactory.js';
+import type {MetropolisAdapters} from './MetropolisContext.js';
 
 /**
  * Builds action options from adapters in a type-safe way.
@@ -21,7 +22,7 @@ const buildActionOptions = (
     }
     : undefined;
 
-  if (!adapters) {
+  if(!adapters) {
     return awsRumOptions ? {awsRum: awsRumOptions} : {};
   }
 
@@ -31,43 +32,43 @@ const buildActionOptions = (
     options.awsRum = awsRumOptions;
   }
 
-  if (adapters.Content) {
+  if(adapters.Content) {
     options.content = {contentAdapter: adapters.Content};
   }
-  if (adapters.Event) {
+  if(adapters.Event) {
     options.event = {eventAdapter: adapters.Event};
   }
-  if (adapters.Image) {
+  if(adapters.Image) {
     options.image = {imageAdapter: adapters.Image};
   }
-  if (adapters.Location) {
+  if(adapters.Location) {
     options.location = {locationAdapter: adapters.Location};
   }
-  if (adapters.Message) {
+  if(adapters.Message) {
     options.message = {messageAdapter: adapters.Message};
   }
-  if (adapters.Permission) {
+  if(adapters.Permission) {
     options.permission = {permissionAdapter: adapters.Permission};
   }
-  if (adapters.Post) {
+  if(adapters.Post) {
     options.post = {postAdapter: adapters.Post};
   }
-  if (adapters.Persona) {
+  if(adapters.Persona) {
     options.persona = {personaAdapter: adapters.Persona};
   }
-  if (adapters.Reaction) {
+  if(adapters.Reaction) {
     options.reaction = {reactionAdapter: adapters.Reaction};
   }
-  if (adapters.Tag) {
+  if(adapters.Tag) {
     options.tag = {tagAdapter: adapters.Tag};
   }
-  if (adapters.Translation) {
+  if(adapters.Translation) {
     options.translation = {translationAdapter: adapters.Translation};
   }
-  if (adapters.User) {
+  if(adapters.User) {
     options.user = {userAdapter: adapters.User};
   }
-  if (adapters.Video) {
+  if(adapters.Video) {
     options.video = {videoAdapter: adapters.Video};
   }
 
@@ -84,58 +85,58 @@ const mapActionsToReturnKeys = (actions: Record<string, any>): Record<string, an
     mapped.awsRum = actions.awsRum;
   }
 
-  if (actions.content) {
+  if(actions.content) {
     mapped.contentActions = actions.content;
   }
-  if (actions.crm) {
+  if(actions.crm) {
     mapped.crmActions = actions.crm;
   }
-  if (actions.event) {
+  if(actions.event) {
     mapped.eventActions = actions.event;
   }
-  if (actions.group) {
+  if(actions.group) {
     mapped.groupActions = actions.group;
   }
-  if (actions.image) {
+  if(actions.image) {
     mapped.imageActions = actions.image;
   }
-  if (actions.location) {
+  if(actions.location) {
     mapped.locationActions = actions.location;
   }
-  if (actions.message) {
+  if(actions.message) {
     mapped.messageActions = actions.message;
   }
-  if (actions.permission) {
+  if(actions.permission) {
     mapped.permissionActions = actions.permission;
   }
-  if (actions.post) {
+  if(actions.post) {
     mapped.postActions = actions.post;
   }
-  if (actions.persona) {
+  if(actions.persona) {
     mapped.personaActions = actions.persona;
   }
-  if (actions.reaction) {
+  if(actions.reaction) {
     mapped.reactionActions = actions.reaction;
   }
-  if (actions.rest) {
+  if(actions.rest) {
     mapped.restActions = actions.rest;
   }
-  if (actions.subscription) {
+  if(actions.subscription) {
     mapped.subscriptionActions = actions.subscription;
   }
-  if (actions.tag) {
+  if(actions.tag) {
     mapped.tagActions = actions.tag;
   }
-  if (actions.translation) {
+  if(actions.translation) {
     mapped.translationActions = actions.translation;
   }
-  if (actions.user) {
+  if(actions.user) {
     mapped.userActions = actions.user;
   }
-  if (actions.video) {
+  if(actions.video) {
     mapped.videoActions = actions.video;
   }
-  if (actions.websocket) {
+  if(actions.websocket) {
     mapped.websocketActions = actions.websocket;
   }
 

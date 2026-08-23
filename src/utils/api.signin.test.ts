@@ -200,7 +200,10 @@ describe('SignIn GraphQL Mutation Generation', () => {
     });
 
     it('should handle missing users wrapper gracefully', () => {
-      const malformedResponse = {
+      const malformedResponse: {
+        signIn: {token: string};
+        users?: {signIn?: {token: string}};
+      } = {
         signIn: {
           token: 'auth-token-123'
         }

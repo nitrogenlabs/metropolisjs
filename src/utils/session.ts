@@ -1,6 +1,6 @@
 import type {FluxFramework} from '@nlabs/arkhamjs';
-import type {SessionType} from './api.js';
 import type {ConfigAppSessionType} from '../config/index.js';
+import type {SessionType} from './api.js';
 
 const MILLIS_THRESHOLD = 1_000_000_000_000;
 const SECONDS_THRESHOLD = 1_000_000_000;
@@ -48,9 +48,9 @@ const getSessionToken = (session: Record<string, unknown>): string =>
   );
 
 const buildTokenValue = (token: string, currentToken?: unknown) =>
-  currentToken && typeof currentToken === 'object'
+  (currentToken && typeof currentToken === 'object'
     ? currentToken
-    : {jwtToken: token};
+    : {jwtToken: token});
 
 const getNormalizedSessionTimestamps = (session: Record<string, unknown>, token: string) => {
   const payload = decodeJwtPayload(token);
@@ -117,19 +117,17 @@ export const getRefreshWindowMinutes = (
 export const storeSession = (
   flux: FluxFramework,
   session: Record<string, unknown> = {}
-): Promise<SessionType> => {
-  return (async () => {
-    const normalizedSession = normalizeSession(session) as SessionType;
+): Promise<SessionType> => (async () => {
+  const normalizedSession = normalizeSession(session) as SessionType;
 
-    if(!Object.keys(normalizedSession as Record<string, unknown>).length) {
-      await clearPersistedSession(flux);
-      return {} as SessionType;
-    }
+  if(!Object.keys(normalizedSession as Record<string, unknown>).length) {
+    await clearPersistedSession(flux);
+    return {} as SessionType;
+  }
 
-    await Promise.resolve(flux.setState('user.session', normalizedSession));
-    return normalizedSession;
-  })();
-};
+  await Promise.resolve(flux.setState('user.session', normalizedSession));
+  return normalizedSession;
+})();
 
 export const readStoredSession = async (flux: FluxFramework): Promise<SessionType> =>
   normalizeSession((flux.getState('user.session', {}) || {}) as Record<string, unknown>) as SessionType;

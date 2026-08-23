@@ -1,6 +1,7 @@
 import {describe, expect, it} from 'vitest';
 
 import {
+  type PersonaType,
   PersonaValidationError,
   formatPersonaOutput,
   parsePersona,
@@ -208,7 +209,7 @@ describe('personaAdapter', () => {
         _key: '123'
       };
 
-      const result = parsePersona(persona);
+      const result = parsePersona(persona as unknown as PersonaType);
 
       expect(result).toHaveProperty('id');
       expect(result).toHaveProperty('personaId');
@@ -222,7 +223,7 @@ describe('personaAdapter', () => {
         name: 'John Doe'
       };
 
-      const result = parsePersona(persona);
+      const result = parsePersona(persona as unknown as PersonaType);
 
       expect(result).toHaveProperty('active');
       expect(result).toHaveProperty('hasLike');
@@ -240,7 +241,7 @@ describe('personaAdapter', () => {
         viewCount: '150'
       };
 
-      const result = parsePersona(persona);
+      const result = parsePersona(persona as unknown as PersonaType);
 
       expect(result).toHaveProperty('imageCount');
       expect(result).toHaveProperty('likeCount');

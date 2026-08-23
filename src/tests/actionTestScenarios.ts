@@ -434,7 +434,7 @@ export const runPermissionActionsScenario = async () => {
   const permission = {level: 1, name: 'Read', permissionId: 'permission-1', resource: 'posts', userId: 'user-1'};
 
   await expect(actions.add(permission)).resolves.toBeDefined();
-  await expect(actions.check('user-1', 'posts', 'read')).resolves.toBeDefined();
+  await expect(actions.check('user-1', 'posts', 1)).resolves.toBeDefined();
   await expect(actions.itemById('permission-1')).resolves.toBeDefined();
   await expect(actions.list()).resolves.toBeDefined();
   await expect(actions.listByUser('user-1')).resolves.toBeDefined();
@@ -467,11 +467,11 @@ export const runTagActionsScenario = async () => {
   const tag = {itemId: 'post-1', itemType: 'posts', name: 'tag', tagId: 'tag-1'};
 
   await expect(actions.addTag(tag)).resolves.toBeDefined();
-  await expect(actions.addTagToItem('tag-1', 'post-1', 'posts')).resolves.toBeDefined();
+  await expect(actions.addTagToItem('tag-1', 'posts/post-1')).resolves.toBeDefined();
   await expect(actions.getTags()).resolves.toBeDefined();
-  await expect(actions.getTagsByItem('post-1', 'posts')).resolves.toBeDefined();
+  await expect(actions.getTagsByItem('posts/post-1')).resolves.toBeDefined();
   await expect(actions.updateTag(tag)).resolves.toBeDefined();
-  await expect(actions.deleteTagFromItem('tag-1', 'post-1', 'posts')).resolves.toBeDefined();
+  await expect(actions.deleteTagFromItem('tag-1', 'posts/post-1')).resolves.toBeDefined();
   await expect(actions.deleteTag('tag-1')).resolves.toBeDefined();
   actions.updateTagAdapter((input) => input);
   actions.updateTagAdapterOptions({strict: true});
@@ -517,7 +517,7 @@ export const runMessageActionsScenario = async () => {
 export const runContentActionsScenario = async () => {
   const {createContentActions} = await import('../actions/contentActions/contentActions.js');
   const actions = createContentActions(createFlux() as any);
-  const content = {content: 'Body', contentId: 'content-1', key: 'welcome', locale: 'en'};
+  const content = {content: 'Body', contentId: 'content-1', key: 'welcome', locale: 'en' as const};
 
   await expect(actions.list()).resolves.toBeDefined();
   await expect(actions.list(['description'], {cacheTimeout: 5})).resolves.toBeDefined();
@@ -558,7 +558,7 @@ export const runPersonaActionsScenario = async () => {
   await expect(actions.addPersona(persona)).resolves.toBeDefined();
   await expect(actions.getPersonaById('persona-1')).resolves.toBeDefined();
   await expect(actions.getPersonaListByIds(['persona-1'])).resolves.toBeDefined();
-  await expect(actions.listByTags(['creator'])).resolves.toBeDefined();
+  await expect(actions.listByTags('user', ['creator'])).resolves.toBeDefined();
   await expect(actions.listByRelation('follow' as any)).resolves.toBeDefined();
   await expect(actions.followPersona('persona-2')).resolves.toBeDefined();
   await expect(actions.unfollowPersona('persona-2')).resolves.toBeDefined();
@@ -581,19 +581,18 @@ export const runUserActionsScenario = async () => {
   await expect(actions.addUser(user)).resolves.toBeDefined();
   await expect(actions.signUp(user)).resolves.toBeDefined();
   await expect(actions.updateUser(user)).resolves.toBeDefined();
-  await expect(actions.confirmCode('123456', 'email')).resolves.toBeDefined();
+  await expect(actions.confirmCode(123456, {type: 'email', value: 'user@example.com'})).resolves.toBeDefined();
   await expect(actions.remove('user-1')).resolves.toBeDefined();
   await expect(actions.session()).rejects.toThrow('invalid_session');
   await expect(actions.itemById('user-1')).resolves.toBeDefined();
   await expect(actions.getUserByAttribute('email', 'user@example.com')).resolves.toBeDefined();
-  await expect(actions.saveBillingCard('tok_123' as any)).resolves.toBeDefined();
   await expect(actions.deleteBillingCard()).resolves.toBeDefined();
   await expect(actions.updatePlan('plan-1')).resolves.toBeDefined();
   await expect(actions.list()).resolves.toBeDefined();
   await expect(actions.listByLatest()).resolves.toBeDefined();
-  await expect(actions.listByConnection('follow' as any)).resolves.toBeDefined();
-  await expect(actions.listByReactions(['like'])).resolves.toBeDefined();
-  await expect(actions.listByTags(['creator'])).resolves.toBeDefined();
+  await expect(actions.listByConnection('user-1')).resolves.toBeDefined();
+  await expect(actions.listByReactions('user', ['like'])).resolves.toBeDefined();
+  await expect(actions.listByTags('user', ['creator'])).resolves.toBeDefined();
   await expect(actions.search('user')).resolves.toBeDefined();
   expect(actions.isLoggedIn()).toBe(false);
   await expect(actions.currentAuthenticatedUser()).resolves.toBeDefined();
@@ -603,7 +602,7 @@ export const runUserActionsScenario = async () => {
   await expect(actions.confirmSignUp('123456', 'email')).resolves.toBeDefined();
   await expect(actions.forgotPassword('user')).resolves.toBeDefined();
   await expect(actions.sendVerificationEmail('user@example.com')).resolves.toBeDefined();
-  await expect(actions.resetPassword('user', '123456', 'secret123')).resolves.toBeDefined();
+  await expect(actions.resetPassword('user', 'secret123', '123456', 'email')).resolves.toBeDefined();
   await expect(actions.updatePassword('secret123', 'secret456')).resolves.toBe(true);
   actions.updateUserAdapter((input) => input);
   actions.updateUserAdapterOptions({strict: true});

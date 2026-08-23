@@ -2,9 +2,9 @@
  * Copyright (c) 2021-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import { DateTime } from 'luxon';
+import {DateTime} from 'luxon';
 
-import type { TagType } from '../adapters/tagAdapter/tagAdapter.js';
+import type {TagType} from '../adapters/tagAdapter/tagAdapter.js';
 
 export const TAG_CONSTANTS = {
   ADD_LINK_SUCCESS: 'TAG_ADD_LINK_SUCCESS',
@@ -33,11 +33,15 @@ export const defaultValues: TagState = {
   list: []
 };
 
-export const tagStore = (type: string, data: {tags?: TagState['list']}, state = defaultValues): TagState => {
+export const tagStore = (
+  type: string,
+  data: {tag?: TagType; tags?: TagState['list']},
+  state = defaultValues
+): TagState => {
   switch(type) {
     case TAG_CONSTANTS.ADD_ITEM_SUCCESS:
     case TAG_CONSTANTS.UPDATE_ITEM_SUCCESS: {
-      const {tag} = data as {tag?: TagType};
+      const {tag} = data;
       const tagId = String(tag?.tagId || '').trim();
 
       if(!tagId) {
@@ -61,7 +65,7 @@ export const tagStore = (type: string, data: {tags?: TagState['list']}, state = 
     }
 
     case TAG_CONSTANTS.REMOVE_ITEM_SUCCESS: {
-      const {tag} = data as {tag?: TagType};
+      const {tag} = data;
       const tagId = String(tag?.tagId || '').trim();
 
       if(!tagId) {

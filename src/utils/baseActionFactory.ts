@@ -4,8 +4,8 @@
  */
 import {createValidatorManager} from './validatorFactory.js';
 
-import type {BaseAdapterOptions} from './validatorFactory.js';
 import type {FluxFramework} from '@nlabs/arkhamjs';
+import type {BaseAdapterOptions} from './validatorFactory.js';
 
 export interface BaseActionOptions<T extends BaseAdapterOptions = BaseAdapterOptions> {
   adapter?: (input: unknown, options?: T) => any;

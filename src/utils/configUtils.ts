@@ -2,9 +2,10 @@
  * Copyright (c) 2025-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import { getDefaultConfig } from '../config/index.js';
-import type { FluxFramework } from '@nlabs/arkhamjs';
-import type { MetropolisEnvironmentConfiguration } from '../config/index.js';
+import {getDefaultConfig} from '../config/index.js';
+
+import type {FluxFramework} from '@nlabs/arkhamjs';
+import type {MetropolisEnvironmentConfiguration} from '../config/index.js';
 
 /**
  * Gets configuration from flux state.
@@ -16,7 +17,7 @@ import type { MetropolisEnvironmentConfiguration } from '../config/index.js';
 export const getConfigFromFlux = (flux: FluxFramework): MetropolisEnvironmentConfiguration => {
   const config = flux.getState('app.config') as MetropolisEnvironmentConfiguration | undefined;
 
-  if (config) {
+  if(config) {
     return config;
   }
 

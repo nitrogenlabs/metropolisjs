@@ -1,3 +1,5 @@
+import type {FluxFramework} from '@nlabs/arkhamjs';
+
 import {resetActionScenarioMocks, runTranslationActionsScenario} from '../../tests/actionTestScenarios.js';
 import {createTranslationActions} from './translationActions';
 
@@ -42,7 +44,7 @@ describe('translationActions', () => {
 
   beforeEach(() => {
     resetActionScenarioMocks();
-    translationActions = createTranslationActions(mockFlux);
+    translationActions = createTranslationActions(mockFlux as unknown as FluxFramework);
   });
 
   it('should create translationActions with all required methods', () => {

@@ -126,7 +126,7 @@ describe('userStore', () => {
       type: USER_CONSTANTS.SIGN_OUT_SUCCESS
     };
 
-    const result = userStore(action.type, action);
+    const result = userStore(action.type, {});
 
     expect(result).toBeDefined();
     expect(typeof result).toBe('object');
@@ -176,7 +176,7 @@ describe('userStore', () => {
       type: 'UNKNOWN_ACTION'
     };
 
-    const result = userStore(action.type, action);
+    const result = userStore(action.type, {});
 
     expect(result).toBeDefined();
     expect(typeof result).toBe('object');
@@ -301,7 +301,7 @@ describe('userStore', () => {
       type: USER_CONSTANTS.HAS_USER_REACTIONS
     };
 
-    const result = userStore(action.type, action);
+    const result = userStore(action.type, {});
 
     expect(result).toBeDefined();
     expect(typeof result).toBe('object');
@@ -317,7 +317,7 @@ describe('userStore', () => {
       type: USER_CONSTANTS.GET_DETAILS_SUCCESS
     };
 
-    const result = userStore(action.type, action);
+    const result = userStore(action.type, {});
 
     expect(result).toBeDefined();
     expect(typeof result).toBe('object');
@@ -330,7 +330,7 @@ describe('userStore', () => {
       type: USER_CONSTANTS.AUTHENTICATION_UPDATE
     };
 
-    const result = userStore(action.type, action);
+    const result = userStore(action.type, {});
 
     expect(result).toBeDefined();
     expect(typeof result).toBe('object');
