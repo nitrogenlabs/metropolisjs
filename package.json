@@ -1,7 +1,7 @@
 {
   "name": "@nlabs/metropolisjs",
   "version": "1.1.0",
-  "description": "MetropolisJS is a library to connect users to Reaktor",
+  "description": "Type-safe frontend integration for authentication, data, messaging, realtime events, billing, and Reaktor APIs.",
   "type": "module",
   "main": "lib/index.js",
   "module": "lib/index.js",
@@ -61,13 +61,25 @@
   },
   "repository": {
     "type": "git",
-    "url": "github.com/nitrogenlabs/metropolisjs"
+    "url": "git+https://github.com/nitrogenlabs/metropolisjs.git"
   },
   "keywords": [
-    "nitrogenlabs",
-    "session",
+    "api-client",
+    "arkhamjs",
+    "authentication",
+    "billing",
+    "data-fetching",
+    "frontend",
     "messaging",
-    "reaktor"
+    "nitrogenlabs",
+    "react",
+    "reaktor",
+    "realtime",
+    "server-sent-events",
+    "session",
+    "state-management",
+    "typescript",
+    "websocket"
   ],
   "author": {
     "name": "Giraldo Rosales",
@@ -75,6 +87,10 @@
     "url": "http://nitrogenlabs.com"
   },
   "license": "MIT",
+  "homepage": "https://metropolisjs.nitrogenx.co",
+  "bugs": {
+    "url": "https://github.com/nitrogenlabs/metropolisjs/issues"
+  },
   "dependencies": {
     "@nlabs/rip-hunter": "3.1.1",
     "@nlabs/utils": "^2.10.7",

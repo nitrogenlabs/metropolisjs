@@ -8,6 +8,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@nlabs/metropolisjs.svg?style=flat-square)](https://www.npmjs.com/package/@nlabs/metropolisjs)
 [![npm downloads](https://img.shields.io/npm/dm/@nlabs/metropolisjs.svg?style=flat-square)](https://www.npmjs.com/package/@nlabs/metropolisjs)
+[![Documentation](https://img.shields.io/badge/docs-metropolisjs.nitrogenx.co-6d28d9?style=flat-square)](https://metropolisjs.nitrogenx.co)
 [![Issues](http://img.shields.io/github/issues/nitrogenlabs/metropolisjs.svg?style=flat-square)](https://github.com/nitrogenlabs/metropolisjs/issues)
 [![TypeScript](https://badges.frapsoft.com/typescript/version/typescript-next.svg?v=101)](https://github.com/ellerbrock/typescript-badges/)
 [![MIT license](http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square)](http://opensource.org/licenses/MIT)
