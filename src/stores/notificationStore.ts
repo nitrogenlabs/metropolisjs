@@ -2,6 +2,7 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
+import {withCacheIngestion} from '../utils/cacheIngestion.js';
 
 export const NOTIFICATION_CONSTANTS = {
   ADD_ITEM_SUCCESS: 'NOTIFICATION_ADD_ITEM_SUCCESS',
@@ -65,7 +66,7 @@ export const notificationStore = (
 };
 
 export const notifications = {
-  action: notificationStore,
+  action: withCacheIngestion('notification', notificationStore, defaultValues),
   initialState: defaultValues,
   name: 'notification'
 };

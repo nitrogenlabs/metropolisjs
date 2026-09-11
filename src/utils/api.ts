@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2022-Present, Nitrogen Labs, Inc.
+ * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
+ */
+
 import {ApiError, ajax, del, get, graphqlQuery, post, put} from '@nlabs/rip-hunter';
 import {camelCase, isEmpty, upperFirst} from '@nlabs/utils';
 
@@ -77,15 +82,23 @@ export interface SessionType {
   readonly username?: string;
 }
 
-const DEFAULT_REFRESH_WINDOW_MINUTES = 5;
 const DEFAULT_SESSION_MAX_MINUTES = 15;
 
 const getMinutesUntil = (expiresAt: number): number =>
   Math.round((expiresAt - Date.now()) / (1000 * 60));
 
+const getErrorCodes = (error: unknown): string[] => {
+  if(error instanceof ApiError) {
+    return error.errors;
+  }
+  if(error && typeof error === 'object' && 'errors' in error && Array.isArray(error.errors)) {
+    return error.errors.filter((value): value is string => typeof value === 'string');
+  }
+  return [];
+};
+
 const clearInvalidSessionState = async (flux: FluxFramework): Promise<void> => {
   await clearPersistedSession(flux);
-  await flux.clearAppData();
   await flux.dispatch({session: {}, type: USER_CONSTANTS.SIGN_OUT_SUCCESS});
 };
 
@@ -103,6 +116,9 @@ const resolveAuthToken = async (flux: FluxFramework): Promise<string> => {
     throw new ApiError([{message: 'invalid_session'}], new Error('invalid_session'));
   }
 
+  if(authExpires > 0 && Date.now() >= authExpires) {
+    throw new Error('expired_session');
+  }
   const tokenExpiresAt = parseJwtExpiryMs(token);
 
   if(tokenExpiresAt > 0 && Date.now() >= tokenExpiresAt) {
@@ -122,16 +138,14 @@ const resolveAuthToken = async (flux: FluxFramework): Promise<string> => {
   );
 
   if(minutesUntilExpiry > 0 && minutesUntilExpiry <= refreshWindowMinutes) {
-    const {
-      session: updatedSession = {}
-    }: ApiResultsType = (await refreshSession(flux, token, refreshExpiresMinutes)) || {};
-    const {token: newToken}: SessionType = (updatedSession || {});
-
-    if(!newToken) {
-      throw new ApiError([{message: 'invalid_session'}], new Error('invalid_session'));
+    await refreshSession(flux, token, refreshExpiresMinutes);
+    token = flux.getState<string>('user.session.token');
+    if(!token) {
+      throw new Error('invalid_session');
     }
-
-    token = newToken;
+    if(parseJwtExpiryMs(token) > 0 && Date.now() >= parseJwtExpiryMs(token)) {
+      throw new Error('expired_session');
+    }
   }
 
   return token;
@@ -144,50 +158,38 @@ export const getGraphql = async (
   query: HunterQueryType | HunterQueryType[],
   options: ApiOptions
 ): Promise<ApiResultsType> => {
+  const {onSuccess} = options;
+  const sessionGeneration = flux.getState('app.sessionGeneration', 0);
+  let token: string | undefined;
+  const retry = {query, responseMethod: onSuccess || (() => {})};
   try {
-    const {onSuccess} = options;
-    const retry: RetryType = {query, responseMethod: onSuccess || (() => {})};
-    const networkType: string = flux.getState('app.networkType') as string;
-
-    if(networkType === 'none') {
+    if(flux.getState('app.networkType') === 'none') {
       return flux.dispatch({retry, type: APP_CONSTANTS.API_NETWORK_ERROR});
     }
-
-    let token: string | undefined;
-
     if(authenticate) {
       token = await resolveAuthToken(flux);
     }
-
-    return graphqlQuery(url, query, {token: token || ''})
-      .then(async (results) => {
-        await flux.dispatch({type: APP_CONSTANTS.API_NETWORK_SUCCESS});
-
-        return results;
-      })
-      .then((data) => (onSuccess ? onSuccess(data) : data))
-      .catch(async (error) => {
-        const {errors = []} = error;
-
-        if(onSuccess && errors.includes('network_error')) {
-          await flux.dispatch({retry, type: APP_CONSTANTS.API_NETWORK_ERROR});
-          return Promise.reject(error);
-        } else if(errors.includes('invalid_session') || errors.includes('expired_session')) {
-          await clearInvalidSessionState(flux);
-          return Promise.resolve({});
-        }
-
-        return Promise.reject(error);
-      });
+    const data = await graphqlQuery(url, query, {token: token || ''});
+    if(authenticate && (sessionGeneration !== flux.getState('app.sessionGeneration', 0) || !flux.getState('user.session.token'))) {
+      throw new Error('session_changed');
+    }
+    await flux.dispatch({type: APP_CONSTANTS.API_NETWORK_SUCCESS});
+    return onSuccess ? onSuccess(data) : data;
   } catch(error) {
-    const errors = error instanceof ApiError ? error.errors : [];
+    const errors = getErrorCodes(error);
     const message = error instanceof Error ? error.message : '';
-
-    if(errors.includes('invalid_session') || errors.includes('expired_session') || message === 'invalid_session' || message === 'expired_session') {
-      await clearInvalidSessionState(flux);
+    if(authenticate && sessionGeneration !== flux.getState('app.sessionGeneration', 0)) {
+      throw new Error('session_changed');
+    }
+    if(authenticate && (errors.includes('invalid_session') || errors.includes('expired_session') || message === 'invalid_session' || message === 'expired_session')) {
+      if(!token || token === flux.getState('user.session.token')) {
+        await clearInvalidSessionState(flux);
+      }
       return {};
     }
-
+    if(errors.includes('network_error')) {
+      await flux.dispatch({retry, type: APP_CONSTANTS.API_NETWORK_ERROR});
+    }
     throw error;
   }
 };
@@ -224,6 +226,8 @@ export const restRequest = async <T = ApiResultsType>(
   options: RestApiOptions = {}
 ): Promise<T> => {
   const {authenticate = false, onSuccess, ...hunterOptions} = options;
+  const sessionGeneration = flux.getState('app.sessionGeneration', 0);
+  let token: string | undefined;
   const url = resolveRestEndpoint(flux, endpoint);
   const requestMethod = String(method || 'GET').toUpperCase();
   const retry: RetryType = {
@@ -238,7 +242,7 @@ export const restRequest = async <T = ApiResultsType>(
       return flux.dispatch({retry, type: APP_CONSTANTS.API_NETWORK_ERROR}) as Promise<T>;
     }
 
-    const token = authenticate ? await resolveAuthToken(flux) : hunterOptions.token;
+    token = authenticate ? await resolveAuthToken(flux) : hunterOptions.token;
     const requestOptions: HunterOptionsType = {
       ...hunterOptions,
       ...(token ? {token} : {})
@@ -269,13 +273,21 @@ export const restRequest = async <T = ApiResultsType>(
 
     await flux.dispatch({type: APP_CONSTANTS.API_NETWORK_SUCCESS});
 
+    if(authenticate && (sessionGeneration !== flux.getState('app.sessionGeneration', 0) || !flux.getState('user.session.token'))) {
+      throw new Error('session_changed');
+    }
     return onSuccess ? onSuccess(data) : data;
   } catch(error) {
-    const errors = error instanceof ApiError ? error.errors : [];
+    const errors = getErrorCodes(error);
     const message = error instanceof Error ? error.message : '';
 
-    if(errors.includes('invalid_session') || errors.includes('expired_session') || message === 'invalid_session' || message === 'expired_session') {
-      await clearInvalidSessionState(flux);
+    if(authenticate && sessionGeneration !== flux.getState('app.sessionGeneration', 0)) {
+      throw new Error('session_changed');
+    }
+    if(authenticate && (errors.includes('invalid_session') || errors.includes('expired_session') || message === 'invalid_session' || message === 'expired_session')) {
+      if(!token || token === flux.getState('user.session.token')) {
+        await clearInvalidSessionState(flux);
+      }
       return {} as T;
     }
 
@@ -448,18 +460,25 @@ export const rumBeaconRequest = (
   }
 };
 
-export const uploadImage = (
+export const uploadImage = async (
   flux: FluxFramework,
   image: FormData | Record<string, unknown>,
   options: HunterOptionsType = {}
 ): Promise<ApiResultsType> => {
   const config = getConfigFromFlux(flux);
   const uploadImageUrl: string = config.app?.api?.uploadImage || '';
-  const token = flux.getState('user.session.token');
+  const sessionGeneration = flux.getState('app.sessionGeneration', 0);
 
   if(isEmpty(uploadImageUrl)) {
     return Promise.reject(new ApiError([{message: 'invalid_url'}], new Error('upload_endpoint_not_configured')));
   }
+
+  const token = await resolveAuthToken(flux);
+  const checkSession = (): void => {
+    if(sessionGeneration !== flux.getState('app.sessionGeneration', 0) || !flux.getState('user.session.token')) {
+      throw new Error('session_changed');
+    }
+  };
 
   if(isEmpty(token)) {
     return Promise.reject(new ApiError([{message: 'invalid_session'}], new Error('missing_auth_token')));
@@ -488,11 +507,14 @@ export const uploadImage = (
         throw new ApiError([{message: 'upload_error'}], new Error(message));
       }
 
+      checkSession();
       return data as ApiResultsType;
     });
   }
 
-  return post(uploadImageUrl, image, {headers, ...options});
+  const result = await post(uploadImageUrl, image, {headers, ...options});
+  checkSession();
+  return result;
 };
 
 export const refreshSession = async (
@@ -531,7 +553,10 @@ export const refreshSession = async (
         value: refreshToken
       }
     };
-    const onSuccess = async (data: ApiResultsType = {}): Promise<FluxAction> => {
+    const onSuccess = async (data: ApiResultsType = {}): Promise<FluxAction | null> => {
+      if(flux.getState('user.session.token') !== refreshToken) {
+        return null;
+      }
       const rawSessionData = (data as {users?: {refreshSession?: Record<string, unknown>}})?.users?.refreshSession;
       const sessionData = rawSessionData && typeof rawSessionData === 'object'
         ? rawSessionData as Record<string, unknown>
@@ -547,7 +572,11 @@ export const refreshSession = async (
   } catch(error) {
     const errorMessage = error instanceof Error ? error.message : '';
 
-    if(errorMessage === 'invalid_session' || errorMessage === 'expired_session') {
+    const errors = getErrorCodes(error);
+    if(flux.getState('user.session.token') !== refreshToken) {
+      return null;
+    }
+    if(errors.includes('invalid_session') || errors.includes('expired_session') || errorMessage === 'invalid_session' || errorMessage === 'expired_session') {
       await clearInvalidSessionState(flux);
     }
 

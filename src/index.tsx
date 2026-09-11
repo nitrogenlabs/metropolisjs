@@ -8,37 +8,44 @@ import {DateTime} from 'luxon';
 import {useEffect, useMemo, useRef} from 'react';
 import {I18nextProvider} from 'react-i18next';
 
-import {createWebsocketActions} from './actions/websocketActions/websocketActions.js';
-import type {AwsRumActions, AwsRumTrackInput} from './actions/awsRumActions/awsRumActions.js';
 import {syncPersonaTagsToSession, syncPersonaToSession} from './actions/personaActions/personaActions.js';
+import {createWebsocketActions} from './actions/websocketActions/websocketActions.js';
 import {resolveEnvironmentConfig} from './config/index.js';
 import {
   app,
+  contents,
+  conversation,
   events,
+  groups,
   images,
   locations,
   messages,
-  notifications,
   NOTIFICATION_CONSTANTS,
+  notifications,
   permissions,
   PERSONA_CONSTANTS,
+  personas,
   posts,
+  reactions,
   subscriptions,
   TAG_CONSTANTS,
   tags,
+  translations as translationStore,
   USER_CONSTANTS,
   users,
   video,
   websocket
 } from './stores/index.js';
+import {createAction} from './utils/actionFactory.js';
 import {refreshSession} from './utils/api.js';
+import {cachedAction} from './utils/cacheIngestion.js';
 import {getConfigFromFlux} from './utils/configUtils.js';
 import {initI18n} from './utils/i18n.js';
 import {MetropolisContext} from './utils/MetropolisContext.js';
-import {getRefreshWindowMinutes, hydrateSessionFromStorage, parseJwtExpiryMs} from './utils/session.js';
-import {createAction} from './utils/actionFactory.js';
+import {getRefreshWindowMinutes, hydrateSessionFromStorage, isValidSession, parseJwtExpiryMs} from './utils/session.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
+import type {AwsRumActions, AwsRumTrackInput} from './actions/awsRumActions/awsRumActions.js';
 import type {MetropolisConfiguration, MetropolisEnvironmentConfiguration} from './config/index.js';
 import type {MetropolisAdapters} from './utils/MetropolisContext.js';
 
@@ -49,10 +56,19 @@ export type {MetropolisAdapters} from './utils/MetropolisContext.js';
 
 export const GOTHAM_ANALYTICS_EVENT = 'nlabs:gotham:analytics';
 
+const initializedFlux = new WeakSet<FluxFramework>();
+
 export const onInit = async (flux: FluxFramework) => {
-  if(!flux.getState('app.metropolisInitialized')) {
-    flux.addStores([
+  if(!initializedFlux.has(flux)) {
+    flux.addMiddleware([{name: 'metropolis-cache-events', postDispatch: async (action) => cachedAction(flux, action)}]);
+    await flux.addStores([
       app,
+      contents,
+      conversation,
+      groups,
+      personas,
+      reactions,
+      translationStore,
       events,
       images,
       locations,
@@ -65,7 +81,8 @@ export const onInit = async (flux: FluxFramework) => {
       users,
       video,
       websocket
-    ]);
+    ].filter((store) => !flux.getStore(store.name)));
+    initializedFlux.add(flux);
     flux.on(USER_CONSTANTS.SIGN_OUT_SUCCESS, () => {
       flux.dispatch({type: NOTIFICATION_CONSTANTS.CLEAR_ITEMS});
     });
@@ -128,9 +145,14 @@ export const onInit = async (flux: FluxFramework) => {
 
   if(token) {
     const session = (flux.getState('user.session', {}) || {}) as {expires?: number; issued?: number; token?: string};
+    if(!isValidSession(session)) {
+      await flux.dispatch({session: {}, type: USER_CONSTANTS.SIGN_OUT_SUCCESS});
+      return;
+    }
     const config = getConfigFromFlux(flux);
     const tokenExpiresAt = parseJwtExpiryMs(token);
-    const sessionLifetimeMinutes = Math.round((Number(session.expires || 0) - Number(session.issued || 0)) / (1000 * 60));
+    const sessionLifetimeMinutes =
+      Math.round((Number(session.expires || 0) - Number(session.issued || 0)) / (1000 * 60));
     const refreshWindowMinutes = getRefreshWindowMinutes(
       sessionLifetimeMinutes || 15,
       config.app?.session || {}
@@ -158,14 +180,9 @@ export {
   appMutation,
   appQuery,
   publicMutation,
-  publicQuery,
-  rumMutation,
-  rumBeaconRequest,
-  rumRequest,
-  refreshSession,
+  publicQuery, refreshSession,
   resolveRestEndpoint,
-  restRequest,
-  uploadImage,
+  restRequest, rumBeaconRequest, rumMutation, rumRequest, uploadImage,
   type ApiResultsType,
   type ReaktorDbCollection,
   type RestApiOptions,
@@ -192,10 +209,15 @@ export interface ComplexTranslation {
 
 export type ComplexTranslations = Record<string, ComplexTranslation>;
 
+// The styleguide's local hooks rule does not recognize exported arrow-function components.
+/* eslint-disable react-hooks/rules-of-hooks */
 export const Metropolis = ({adapters, children, config = {}, translations = {}}: MetropolisProps) => {
   const flux = useFlux();
   const resolvedConfig = useMemo<MetropolisEnvironmentConfiguration>(() => resolveEnvironmentConfig(config), [config]);
-  const mergedAdapters = useMemo(() => ({...resolvedConfig.adapters, ...adapters}), [resolvedConfig.adapters, adapters]);
+  const mergedAdapters = useMemo(
+    () => ({...resolvedConfig.adapters, ...adapters}),
+    [resolvedConfig.adapters, adapters]
+  );
   const rumOptions = useMemo(() => ({
     ...resolvedConfig.app?.rum,
     analyticsId: resolvedConfig.app?.rum?.analyticsId || resolvedConfig.app?.name
@@ -220,11 +242,11 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
 
   useEffect(() => {
     if(typeof globalThis.window === 'undefined') {
-      return;
+      return undefined;
     }
 
     const onGothamAnalytics = (event: Event): void => {
-      const detail = (event as CustomEvent<AwsRumTrackInput>).detail;
+      const {detail} = (event as CustomEvent<AwsRumTrackInput>);
 
       if(detail && typeof detail === 'object') {
         awsRum.track(detail);
@@ -294,10 +316,8 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
     }
   }, [sessionHydrated, sessionPersonaId, sessionToken, websockets]);
 
-  useEffect(() => {
-    return () => {
-      websockets.wsClose();
-    };
+  useEffect(() => () => {
+    websockets.wsClose();
   }, [websockets]);
 
   const isAuth = useMemo(() => resolvedConfig.isAuth || (() => {
@@ -324,6 +344,7 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
     </MetropolisContext.Provider>
   );
 };
+/* eslint-enable react-hooks/rules-of-hooks */
 
 export default Metropolis;
 
@@ -344,25 +365,6 @@ export * from './utils/dateUtils.js';
 export * from './utils/file.js';
 export * from './utils/location.js';
 export {
-  useContentActions,
-  useAwsRum,
-  useCrmActions,
-  useEventActions,
-  useGroupActions,
-  useImageActions,
-  useLocationActions,
-  useMessageActions, useMetropolis,
-  useMetropolisConfig,
-  useMetropolisFlux, usePermissionActions, usePostActions,
-  usePersonaActions,
-  useReactionActions,
-  useRestActions,
-  useTagActions,
-  useTranslationActions,
-  useUserActions,
-  useWebsocketActions
-} from './utils/useMetropolis.js';
-export {
   PermissionGuard,
   usePermissions
 } from './utils/permissionUtils.js';
@@ -371,6 +373,21 @@ export type {
   ConversationTypingOptions,
   UseConversationTypingOptions
 } from './utils/useConversationTyping.js';
+export {
+  useAwsRum, useContentActions, useCrmActions,
+  useEventActions,
+  useGroupActions,
+  useImageActions,
+  useLocationActions,
+  useMessageActions, useMetropolis,
+  useMetropolisConfig,
+  useMetropolisFlux, usePermissionActions, usePersonaActions, usePostActions, useReactionActions,
+  useRestActions,
+  useTagActions,
+  useTranslationActions,
+  useUserActions,
+  useWebsocketActions
+} from './utils/useMetropolis.js';
 export {
   createValidatorFactory,
   createValidatorManager

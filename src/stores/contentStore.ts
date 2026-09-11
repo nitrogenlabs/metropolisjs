@@ -2,6 +2,7 @@
  * Copyright (c) 2025-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
+import {withCacheIngestion} from '../utils/cacheIngestion.js';
 
 import type {ContentType} from '../adapters/contentAdapter/contentAdapter.js';
 
@@ -106,7 +107,7 @@ export const contentStore = (type: string, data: ContentData, state = defaultVal
 };
 
 export const contents = {
-  action: contentStore,
+  action: withCacheIngestion('content', contentStore, defaultValues),
   initialState: defaultValues,
   name: 'content'
 };

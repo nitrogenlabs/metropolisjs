@@ -1,3 +1,10 @@
+/**
+ * Copyright (c) 2022-Present, Nitrogen Labs, Inc.
+ * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
+ */
+
+import {withCacheIngestion} from '../utils/cacheIngestion.js';
+
 export const REACTION_CONSTANTS = {
   ADD_ITEM_ERROR: 'REACTION_ADD_ITEM_ERROR',
   ADD_ITEM_SUCCESS: 'REACTION_ADD_ITEM_SUCCESS',
@@ -29,7 +36,7 @@ export const reactionStore = (type: string, data: Partial<ReactionState>, state 
 };
 
 export const reactions = {
-  action: reactionStore,
+  action: withCacheIngestion('reaction', reactionStore, defaultValues),
   initialState: defaultValues,
   name: 'reaction'
 };

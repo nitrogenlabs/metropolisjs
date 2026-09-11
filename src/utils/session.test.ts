@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2026-Present, Nitrogen Labs, Inc.
+ * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
+ */
+
 import {describe, expect, it, vi} from 'vitest';
 
 import {
@@ -22,6 +27,7 @@ const createMockFlux = (initialSession: Record<string, unknown> = {}) => {
   };
 
   return {
+    dispatch: vi.fn(async (action) => action),
     getState: vi.fn((key?: string, fallback?: unknown) => {
       if(!key) {
         return state;

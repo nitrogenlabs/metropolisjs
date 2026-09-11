@@ -1,3 +1,11 @@
+/**
+ * Copyright (c) 2026-Present, Nitrogen Labs, Inc.
+ * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
+ */
+
+import {USER_CONSTANTS} from '../stores/userStore.js';
+import {mergeCachedRecord} from './cacheIngestion.js';
+
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {ConfigAppSessionType} from '../config/index.js';
 import type {SessionType} from './api.js';
@@ -49,7 +57,7 @@ const getSessionToken = (session: Record<string, unknown>): string =>
 
 const buildTokenValue = (token: string, currentToken?: unknown) =>
   (currentToken && typeof currentToken === 'object'
-    ? currentToken
+    ? {...currentToken, jwtToken: token}
     : {jwtToken: token});
 
 const getNormalizedSessionTimestamps = (session: Record<string, unknown>, token: string) => {
@@ -95,9 +103,9 @@ export const isValidSession = (session: Record<string, unknown> = {}): boolean =
 
   const sessionExpires = Number(normalized?.expires || 0);
   const tokenExpires = parseJwtExpiryMs(token);
-  const expiresAt = sessionExpires > 0 ? sessionExpires : tokenExpires;
+  const expiresAt = Math.min(...[sessionExpires, tokenExpires].filter((value) => value > 0));
 
-  return Boolean(expiresAt && Date.now() < expiresAt);
+  return Number.isFinite(expiresAt) && Date.now() < expiresAt;
 };
 
 export const getRefreshWindowMinutes = (
@@ -118,7 +126,10 @@ export const storeSession = (
   flux: FluxFramework,
   session: Record<string, unknown> = {}
 ): Promise<SessionType> => (async () => {
-  const normalizedSession = normalizeSession(session) as SessionType;
+  const previous = flux.getState<Record<string, unknown>>('user.session', {});
+  const sameUser = !session.userId || !previous.userId || session.userId === previous.userId;
+  const merged = Object.keys(session).length && sameUser ? mergeCachedRecord(previous, session) : session;
+  const normalizedSession = normalizeSession(merged) as SessionType;
 
   if(!Object.keys(normalizedSession as Record<string, unknown>).length) {
     await clearPersistedSession(flux);
@@ -145,6 +156,7 @@ export const hydrateSessionFromStorage = async (flux: FluxFramework): Promise<Se
   }
 
   await clearPersistedSession(flux);
+  await flux.dispatch({session: {}, type: USER_CONSTANTS.SIGN_OUT_SUCCESS});
   return {} as SessionType;
 };
 

@@ -2,6 +2,8 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
+import {withCacheIngestion} from '../utils/cacheIngestion.js';
+
 import type {LocationType} from '../adapters/locationAdapter/locationAdapter.js';
 
 export const LOCATION_CONSTANTS = {
@@ -39,7 +41,7 @@ export const locationStore = (type: string, data: {current?: LocationType}, stat
 };
 
 export const locations = {
-  action: locationStore,
+  action: withCacheIngestion('location', locationStore, defaultValues),
   initialState: defaultValues,
   name: 'location'
 };

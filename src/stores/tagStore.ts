@@ -4,19 +4,21 @@
  */
 import {DateTime} from 'luxon';
 
+import {withCacheIngestion} from '../utils/cacheIngestion.js';
+
 import type {TagType} from '../adapters/tagAdapter/tagAdapter.js';
 
 export const TAG_CONSTANTS = {
-  ADD_LINK_SUCCESS: 'TAG_ADD_LINK_SUCCESS',
   ADD_ITEM_ERROR: 'TAG_ADD_ITEM_ERROR',
   ADD_ITEM_SUCCESS: 'TAG_ADD_ITEM_SUCCESS',
+  ADD_LINK_SUCCESS: 'TAG_ADD_LINK_SUCCESS',
   ADD_PERSONA_ERROR: 'TAG_ADD_PERSONA_ERROR',
   ADD_PERSONA_SUCCESS: 'TAG_ADD_PERSONA_SUCCESS',
   GET_LIST_ERROR: 'TAG_GET_LIST_ERROR',
   GET_LIST_SUCCESS: 'TAG_GET_LIST_SUCCESS',
-  REMOVE_LINK_SUCCESS: 'TAG_REMOVE_LINK_SUCCESS',
   REMOVE_ITEM_ERROR: 'TAG_REMOVE_ITEM_ERROR',
   REMOVE_ITEM_SUCCESS: 'TAG_REMOVE_ITEM_SUCCESS',
+  REMOVE_LINK_SUCCESS: 'TAG_REMOVE_LINK_SUCCESS',
   REMOVE_PERSONA_ERROR: 'TAG_REMOVE_PERSONA_ERROR',
   REMOVE_PERSONA_SUCCESS: 'TAG_REMOVE_PERSONA_SUCCESS',
   UPDATE_ITEM_ERROR: 'TAG_UPDATE_ITEM_ERROR',
@@ -85,7 +87,7 @@ export const tagStore = (
 };
 
 export const tags = {
-  action: tagStore,
+  action: withCacheIngestion('tag', tagStore, defaultValues),
   initialState: defaultValues,
   name: 'tag'
 };

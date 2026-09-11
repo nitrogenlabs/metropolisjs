@@ -2,6 +2,8 @@
  * Copyright (c) 2026-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
+import {withCacheIngestion} from '../utils/cacheIngestion.js';
+
 import type {PaymentPlanType, PaymentSubscriptionType} from '../types/subscriptions.types.js';
 
 export const SUBSCRIPTION_CONSTANTS = {
@@ -94,7 +96,7 @@ export const subscriptionStore = (
 };
 
 export const subscriptions = {
-  action: subscriptionStore,
+  action: withCacheIngestion('subscription', subscriptionStore, initialSubscriptionState),
   initialState: initialSubscriptionState,
   name: 'subscription'
 };

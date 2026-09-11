@@ -2,6 +2,8 @@
  * Copyright (c) 2026-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
+import {withCacheIngestion} from '../utils/cacheIngestion.js';
+
 import type {GroupType} from '../types/groups.types.js';
 
 export const GROUP_CONSTANTS = {
@@ -58,7 +60,7 @@ export const groupStore = (type: string, data: {group?: GroupType; list?: GroupT
 };
 
 export const groups = {
-  action: groupStore,
+  action: withCacheIngestion('group', groupStore, defaultValues),
   initialState: defaultValues,
   name: 'group'
 };

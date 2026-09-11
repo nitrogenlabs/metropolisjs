@@ -301,6 +301,7 @@ export const createTagActions = (
     );
 
     if(cachedResult !== undefined) {
+      await flux.dispatch(Array.isArray(cachedResult) ? {tags: cachedResult, type: TAG_CONSTANTS.GET_LIST_SUCCESS} : cachedResult);
       return cachedResult as TagType[];
     }
 
@@ -357,6 +358,7 @@ export const createTagActions = (
       );
 
       if(cachedResult !== undefined) {
+        await flux.dispatch(Array.isArray(cachedResult) ? {tags: cachedResult, type: TAG_CONSTANTS.GET_LIST_SUCCESS} : cachedResult);
         return cachedResult as TagType[];
       }
 

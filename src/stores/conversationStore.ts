@@ -2,6 +2,7 @@
  * Copyright (c) 2026-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
+import {withCacheIngestion} from '../utils/cacheIngestion.js';
 
 export const CONVERSATION_CONSTANTS = {
   ADD_ITEM_ERROR: 'CONVERSATION_ADD_ITEM_ERROR',
@@ -96,7 +97,7 @@ export const conversationStore = (
 };
 
 export const conversation = {
-  action: conversationStore,
+  action: withCacheIngestion('conversation', conversationStore, defaultValues),
   initialState: defaultValues,
   name: 'conversation'
 };

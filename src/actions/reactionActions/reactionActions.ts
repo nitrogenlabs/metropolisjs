@@ -2,7 +2,6 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import {Flux} from '@nlabs/arkhamjs';
 
 import {validateReactionInput} from '../../adapters/reactionAdapter/reactionAdapter.js';
 import {REACTION_CONSTANTS} from '../../stores/reactionStore.js';
@@ -119,7 +118,7 @@ export const createReactionActions = (
 
       const onSuccess = (data: ReactionApiResultsType) => {
         const reaction = data?.reactions?.addReaction || {};
-        return Flux.dispatch({itemId, itemType, reaction, type: REACTION_CONSTANTS.ADD_ITEM_SUCCESS});
+        return flux.dispatch({itemId, itemType, reaction, type: REACTION_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
       return await appMutation<ReactionType>(flux, 'addReaction', DATA_TYPE, queryVariables, ['id', 'name', 'value', ...reactionProps], {
@@ -167,7 +166,7 @@ export const createReactionActions = (
 
       const onSuccess = (data: ReactionApiResultsType) => {
         const reaction = data?.reactions?.addPersonaReaction || {};
-        return Flux.dispatch({itemId, itemType, reaction, type: REACTION_CONSTANTS.ADD_ITEM_SUCCESS});
+        return flux.dispatch({itemId, itemType, reaction, type: REACTION_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
       return await appMutation<ReactionType>(flux, 'addPersonaReaction', DATA_TYPE, queryVariables, ['id', 'name', 'type', 'value', ...reactionProps], {
@@ -203,7 +202,7 @@ export const createReactionActions = (
 
       const onSuccess = (data: ReactionApiResultsType) => {
         const reaction = data?.reactions?.deleteReaction || {};
-        return Flux.dispatch({
+        return flux.dispatch({
           itemId,
           itemType,
           reaction,
@@ -249,7 +248,7 @@ export const createReactionActions = (
 
       const onSuccess = (data: ReactionApiResultsType) => {
         const reaction = data?.reactions?.deletePersonaReaction || {};
-        return Flux.dispatch({
+        return flux.dispatch({
           itemId,
           itemType,
           reaction,
@@ -366,7 +365,7 @@ export const createReactionActions = (
 
       const onSuccess = (data: ReactionApiResultsType) => {
         const hasReaction = data?.reactions?.hasReaction ?? false;
-        return Flux.dispatch({
+        return flux.dispatch({
           hasReaction,
           itemId: `${itemType}/${itemId}`,
           name: reactionName,
@@ -432,7 +431,7 @@ export const createReactionActions = (
 
       const onSuccess = (data: ReactionApiResultsType) => {
         const hasReaction = data?.reactions?.hasPersonaReaction ?? false;
-        return Flux.dispatch({
+        return flux.dispatch({
           hasReaction,
           itemId: `${itemType}/${itemId}`,
           name: reactionName,

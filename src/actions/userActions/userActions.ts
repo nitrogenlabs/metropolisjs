@@ -80,10 +80,7 @@ const sanitizeUpdateUserInput = (
 const syncStoredSession = async (
   flux: FluxFramework,
   sessionPatch: Record<string, unknown> = {}
-): Promise<SessionType> => {
-  const currentSession = (flux.getState('user.session', {}) || {}) as Record<string, unknown>;
-  return storeSession(flux, {...currentSession, ...sessionPatch});
-};
+): Promise<SessionType> => storeSession(flux, sessionPatch);
 
 const getSessionPayload = (payload: unknown): Record<string, unknown> => {
   if(payload && typeof payload === 'object' && 'session' in (payload as Record<string, unknown>)) {
@@ -519,12 +516,12 @@ export const createUserActions = (
       }
     };
 
-    const onSuccess = (data: ApiResultsType = {}) => {
+    const onSuccess = async (data: ApiResultsType = {}) => {
       const users = (data as unknown as UserApiResultsType)?.users;
       const user = users?.updateUser || {};
 
       if((user as any)?.userId && (user as any).userId === flux.getState('user.session.userId')) {
-        syncStoredSession(flux, user as Record<string, unknown>);
+        await syncStoredSession(flux, user as Record<string, unknown>);
       }
 
       return flux.dispatch({
@@ -668,13 +665,13 @@ export const createUserActions = (
       }
     };
 
-    const onSuccess = (data: ApiResultsType = {}) => {
+    const onSuccess = async (data: ApiResultsType = {}) => {
       const getUserById = ((data as unknown as UserApiResultsType & {
         users?: {getUserById?: Partial<User>};
       })?.users?.getUserById) || {};
 
       if(userId === flux.getState('user.session.userId')) {
-        syncStoredSession(flux, getUserById as Record<string, unknown>);
+        await syncStoredSession(flux, getUserById as Record<string, unknown>);
       }
 
       return flux.dispatch({type: USER_CONSTANTS.GET_ITEM_SUCCESS, user: getUserById});
@@ -793,11 +790,11 @@ export const createUserActions = (
     }
 
     let updatedUser: Partial<User> = {};
-    const onSuccess = (data: ApiResultsType = {}) => {
+    const onSuccess = async (data: ApiResultsType = {}) => {
       updatedUser = (data as unknown as UserApiResultsType)?.users?.completeBillingSetupSession || {};
 
       if((updatedUser as any)?.userId && (updatedUser as any).userId === flux.getState('user.session.userId')) {
-        syncStoredSession(flux, updatedUser as Record<string, unknown>);
+        await syncStoredSession(flux, updatedUser as Record<string, unknown>);
       }
 
       return flux.dispatch({type: USER_CONSTANTS.UPDATE_ITEM_SUCCESS, user: updatedUser});
@@ -838,11 +835,11 @@ export const createUserActions = (
     userProps: string[] = [],
     requestOptions: ActionRequestOptions = {}
   ): Promise<User> => {
-    const onSuccess = (data: ApiResultsType = {}) => {
+    const onSuccess = async (data: ApiResultsType = {}) => {
       const user = ((data as unknown as UserApiResultsType)?.users?.deleteBillingCard) || {};
 
       if((user as any)?.userId && (user as any).userId === flux.getState('user.session.userId')) {
-        syncStoredSession(flux, user as Record<string, unknown>);
+        await syncStoredSession(flux, user as Record<string, unknown>);
       }
 
       return flux.dispatch({
@@ -894,11 +891,11 @@ export const createUserActions = (
       }
     };
 
-    const onSuccess = (data: ApiResultsType = {}) => {
+    const onSuccess = async (data: ApiResultsType = {}) => {
       const user = ((data as unknown as UserApiResultsType)?.users?.updatePlan) || {};
 
       if((user as any)?.userId && (user as any).userId === flux.getState('user.session.userId')) {
-        syncStoredSession(flux, user as Record<string, unknown>);
+        await syncStoredSession(flux, user as Record<string, unknown>);
       }
 
       return flux.dispatch({
@@ -1160,6 +1157,7 @@ export const createUserActions = (
     const onSuccess = async (data: ApiResultsType = {}): Promise<FluxAction> => {
       const users = (data as unknown as UserApiResultsType)?.users;
       const sessionData = normalizeSession(users?.signIn || {});
+      await flux.dispatch({session: {}, type: USER_CONSTANTS.SIGN_OUT_SUCCESS});
       const storedSession = await syncStoredSession(flux, sessionData);
       const action: FluxAction = {
         session: storedSession,

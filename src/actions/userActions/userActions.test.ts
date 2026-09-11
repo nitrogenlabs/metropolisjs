@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2025-Present, Nitrogen Labs, Inc.
+ * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
+ */
+
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 
 const appMutationMock = vi.fn();
@@ -9,8 +14,9 @@ const clearPersistedSessionMock = vi.fn();
 const hydrateSessionFromStorageMock = vi.fn();
 const normalizeSessionMock = vi.fn((session = {}) => session);
 const storeSessionMock = vi.fn((flux, session = {}) => {
-  void flux.setState('user.session', session);
-  return session;
+  const merged = Object.keys(session).length ? {...flux.getState('user.session', {}), ...session} : {};
+  void flux.setState('user.session', merged);
+  return merged;
 });
 const syncPersonaTagsToSessionMock = vi.fn(async () => undefined);
 
@@ -26,6 +32,7 @@ vi.mock('../../utils/session.js', () => ({
   clearPersistedSession: clearPersistedSessionMock,
   hydrateSessionFromStorage: hydrateSessionFromStorageMock,
   isLoggedIn: vi.fn(() => false),
+  isValidSession: vi.fn(() => true),
   normalizeSession: normalizeSessionMock,
   storeSession: storeSessionMock
 }));

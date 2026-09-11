@@ -2,6 +2,8 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
+import {withCacheIngestion} from '../utils/cacheIngestion.js';
+
 import type {EventType} from '../adapters/eventAdapter/eventAdapter.js';
 
 export const EVENT_CONSTANTS = {
@@ -46,7 +48,7 @@ export const eventStore = (type: string, data: {
 };
 
 export const events = {
-  action: eventStore,
+  action: withCacheIngestion('event', eventStore, defaultValues),
   initialState: defaultValues,
   name: 'event'
 };

@@ -573,6 +573,33 @@ Actions hide the full request lifecycle behind a typed method. They validate inp
   <img src="https://raw.githubusercontent.com/nitrogenlabs/metropolisjs/main/docs/assets/metropolisjs-request-lifecycle.svg" alt="Sequence diagram showing a React component calling a MetropolisJS action, input validation and caching, Rip-Hunter transport, a Reaktor response, and an ArkhamJS state update followed by a Flux event" width="960">
 </p>
 
+### Cached data and sessions
+
+Metropolis initializes its stores per Flux instance, including after a reload.
+Identified response objects merge recursively into canonical domain maps before
+success listeners run. Missing or undefined fields preserve existing values;
+explicit null clears a field. Arrays replace membership, while partial objects
+inside an array merge by ID. Dispatch `replace: true` with a success action to
+replace its incoming record instead. `mergeCachedRecord` and its
+`CacheIngestionOptions` type are also exported from `@nlabs/metropolisjs/utils`.
+
+Read persistent data through `flux.getState` or `useFluxState`. The configured
+Arkham storage adapter hydrates and persists that state. Entity ingestion always
+runs; `cacheTimeout` separately controls request reuse. Reused results resolve
+against canonical records where available. Image/video item lists and reaction
+lists use separate keys so one response cannot replace another query's list.
+
+Authentication reads `user.session.token` at request time. Session patches merge
+without losing credentials, and token wrappers update together on rotation.
+Temporary refresh failures retain a valid session. Expiry, logout, and a new login
+clear prior account caches while retaining app configuration. Responses from a
+previous login, including uploads and refreshes, cannot restore its credentials.
+
+Use an ArkhamJS release containing the cache invalidation and immediate-write
+fixes with this behavior. Configure `storageWait: 0` if session persistence must
+complete before listeners run. Storage choice, inactivity UI monitoring, and
+application-specific optimistic rollback remain the application's responsibility.
+
 ### Modern Architecture Features
 
 MetropolisJS follows React best practices:

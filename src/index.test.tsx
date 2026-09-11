@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2026-Present, Nitrogen Labs, Inc.
+ * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
+ */
+
 // @vitest-environment jsdom
 import {render, waitFor} from '@testing-library/react';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
@@ -54,7 +59,9 @@ const createFlux = (initialState: Record<string, unknown> = {}) => {
   const handlers = new Map<string, Array<(payload?: any) => void | Promise<void>>>();
 
   return {
+    addMiddleware: vi.fn(),
     addStores: vi.fn(),
+    getStore: vi.fn(),
     dispatch: vi.fn(async (action) => action),
     getState: vi.fn((path: string, fallback?: unknown) => state.get(path) ?? fallback),
     on: vi.fn((type: string, handler: (payload?: any) => void | Promise<void>) => {
@@ -109,7 +116,7 @@ describe('index onInit', () => {
     expect(flux.addStores).toHaveBeenCalledTimes(1);
   });
 
-  it('refreshes missing and expired sessions', async () => {
+  it('clears missing-expiry and expired sessions instead of renewing inactivity', async () => {
     const {onInit} = await import('./index.js');
     const missingExpiresFlux = createFlux({
       'app.metropolisInitialized': true,
@@ -134,7 +141,9 @@ describe('index onInit', () => {
 
     await onInit(expiredFlux as any);
 
-    expect(apiMocks.refreshSession).toHaveBeenCalledTimes(2);
+    expect(apiMocks.refreshSession).not.toHaveBeenCalled();
+    expect(missingExpiresFlux.dispatch).toHaveBeenCalledWith({session: {}, type: 'USER_SIGN_OUT_SUCCESS'});
+    expect(expiredFlux.dispatch).toHaveBeenCalledWith({session: {}, type: 'USER_SIGN_OUT_SUCCESS'});
   });
 
   it('renders the provider, hydrates session state, and manages websocket lifecycle', async () => {

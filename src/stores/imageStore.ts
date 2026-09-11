@@ -2,6 +2,8 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
+import {withCacheIngestion} from '../utils/cacheIngestion.js';
+
 import type {ImageType} from '../adapters/imageAdapter/imageAdapter.js';
 
 export const IMAGE_CONSTANTS = {
@@ -52,7 +54,7 @@ export const imageStore = (type: string, data: {
 };
 
 export const images = {
-  action: imageStore,
+  action: withCacheIngestion('image', imageStore, defaultValues),
   initialState: defaultValues,
   name: 'image'
 };

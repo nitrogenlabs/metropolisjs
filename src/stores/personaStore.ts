@@ -4,6 +4,8 @@
  */
 import {parseId} from '@nlabs/utils';
 
+import {withCacheIngestion} from '../utils/cacheIngestion.js';
+
 import type {PersonaType} from '../adapters/personaAdapter/personaAdapter.js';
 
 export const PERSONA_CONSTANTS = {
@@ -107,7 +109,7 @@ export const personaStore = (state = initialPersonaState, action = {}, _next = {
 };
 
 export const personas = {
-  action: personaStore,
+  action: withCacheIngestion('persona', (type, data, state) => personaStore(state, {...data, type}), initialPersonaState),
   initialState: initialPersonaState,
   name: 'persona'
 };

@@ -1,3 +1,10 @@
+/**
+ * Copyright (c) 2026-Present, Nitrogen Labs, Inc.
+ * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
+ */
+
+import {withCacheIngestion} from '../utils/cacheIngestion.js';
+
 import type {Permission} from '../adapters/permissionAdapter/permissionAdapter.js';
 
 export const PERMISSION_CONSTANTS = {
@@ -144,7 +151,7 @@ export const permissionStore = (
 };
 
 export const permissions = {
-  action: permissionStore,
+  action: withCacheIngestion('permission', permissionStore, defaultValues),
   initialState: defaultValues,
   name: 'permission'
 };

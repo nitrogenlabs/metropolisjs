@@ -19,42 +19,97 @@ const DATA_TYPE = 'videos';
 
 export type VideoAdapterOptions = BaseAdapterOptions;
 
-export interface VideoActionsOptions {
-  readonly videoAdapter?: (input: unknown, options?: VideoAdapterOptions) => any;
-  readonly videoAdapterOptions?: VideoAdapterOptions;
-}
+export type VideoActionsOptions = Readonly<{
+  videoAdapter?: (input: unknown, options?: VideoAdapterOptions) => any;
+  videoAdapterOptions?: VideoAdapterOptions;
+}>
 
-export type VideoApiResultsType = {
-  readonly videos: {
-    readonly add?: VideoType;
-    readonly abortMultipartUpload?: boolean;
-    readonly completeMultipartUpload?: VideoType;
-    readonly createMultipartUpload?: VideoMultipartUploadType;
-    readonly getMultipartUploadPartUrls?: VideoUploadPartUrl[];
-    readonly getVideoById?: VideoType;
-    readonly getVideoListByItem?: VideoType[];
-    readonly getVideoListByReactions?: VideoType[];
-    readonly list?: VideoType[];
-    readonly remove?: VideoType;
-    readonly update?: VideoType;
-  };
-};
+export type VideoApiResultsType = Readonly<{
+  videos: Readonly<{
+    add?: VideoType;
+    abortMultipartUpload?: boolean;
+    completeMultipartUpload?: VideoType;
+    createMultipartUpload?: VideoMultipartUploadType;
+    getMultipartUploadPartUrls?: VideoUploadPartUrl[];
+    getVideoById?: VideoType;
+    getVideoListByItem?: VideoType[];
+    getVideoListByReactions?: VideoType[];
+    list?: VideoType[];
+    remove?: VideoType;
+    update?: VideoType;
+  }>;
+}>;
 
-export interface VideoActions {
-  readonly add: (videoData: Partial<VideoType>, videoProps?: string[], requestOptions?: ActionRequestOptions) => Promise<VideoType>;
-  readonly abortMultipartUpload: (videoId: string, uploadId: string, requestOptions?: ActionRequestOptions) => Promise<boolean>;
-  readonly completeMultipartUpload: (videoId: string, uploadId: string, parts: VideoUploadPartInput[], videoProps?: string[], requestOptions?: ActionRequestOptions) => Promise<VideoType>;
-  readonly createMultipartUpload: (videoData: Partial<VideoType>, partCount: number, videoProps?: string[], requestOptions?: ActionRequestOptions) => Promise<VideoMultipartUploadType>;
-  readonly delete: (videoId: string, videoProps?: string[], requestOptions?: ActionRequestOptions) => Promise<VideoType>;
-  readonly getMultipartUploadPartUrls: (videoId: string, uploadId: string, partNumbers: number[], requestOptions?: ActionRequestOptions) => Promise<VideoUploadPartUrl[]>;
-  readonly getVideoById: (videoId: string, videoProps?: string[], requestOptions?: ActionRequestOptions) => Promise<VideoType>;
-  readonly list: (from?: number, to?: number, videoProps?: string[], requestOptions?: ActionRequestOptions) => Promise<VideoType[]>;
-  readonly listByItem: (itemId: string, from?: number, to?: number, videoProps?: string[], requestOptions?: ActionRequestOptions) => Promise<VideoType[]>;
-  readonly listByReactions: (reactions: string[], from?: number, to?: number, videoProps?: string[], requestOptions?: ActionRequestOptions) => Promise<VideoType[]>;
-  readonly update: (video: Partial<VideoType>, videoProps?: string[], requestOptions?: ActionRequestOptions) => Promise<VideoType>;
-  readonly updateVideoAdapter: (adapter: (input: unknown, options?: VideoAdapterOptions) => any) => void;
-  readonly updateVideoAdapterOptions: (options: VideoAdapterOptions) => void;
-}
+export type VideoActions = Readonly<{
+  add: (
+    videoData: Partial<VideoType>,
+    videoProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<VideoType>;
+  abortMultipartUpload: (
+    videoId: string,
+    uploadId: string,
+    requestOptions?: ActionRequestOptions
+  ) => Promise<boolean>;
+  completeMultipartUpload: (
+    videoId: string,
+    uploadId: string,
+    parts: VideoUploadPartInput[],
+    videoProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<VideoType>;
+  createMultipartUpload: (
+    videoData: Partial<VideoType>,
+    partCount: number,
+    videoProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<VideoMultipartUploadType>;
+  delete: (
+    videoId: string,
+    videoProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<VideoType>;
+  getMultipartUploadPartUrls: (
+    videoId: string,
+    uploadId: string,
+    partNumbers: number[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<VideoUploadPartUrl[]>;
+  getVideoById: (
+    videoId: string,
+    videoProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<VideoType>;
+  list: (
+    from?: number,
+    to?: number,
+    videoProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<VideoType[]>;
+  listByItem: (
+    itemId: string,
+    from?: number,
+    to?: number,
+    videoProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<VideoType[]>;
+  listByReactions: (
+    reactions: string[],
+    from?: number,
+    to?: number,
+    videoProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<VideoType[]>;
+  update: (
+    video: Partial<VideoType>,
+    videoProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<VideoType>;
+  updateVideoAdapter: (
+    adapter: (input: unknown, options?: VideoAdapterOptions) => any
+  ) => void;
+  updateVideoAdapterOptions: (options: VideoAdapterOptions) => void;
+}>
 
 const defaultVideoValidator = (input: unknown, options?: VideoAdapterOptions) =>
   validateVideoInput(input);
@@ -105,7 +160,11 @@ export const createVideoActions = (
     }
   };
 
-  const getVideoById = async (videoId: string, videoProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<VideoType> => {
+  const getVideoById = async (
+    videoId: string,
+    videoProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<VideoType> => {
     try {
       const cachedResult = getCachedRequest<VideoType>(flux, `video.getVideoById:${videoId}`, {videoId, videoProps}, requestOptions);
 
@@ -360,6 +419,7 @@ export const createVideoActions = (
         const list = data?.videos?.list || [];
         await flux.dispatch({
           list,
+          listKey: 'all',
           type: VIDEO_CONSTANTS.GET_LIST_SUCCESS
         });
         return list;
@@ -428,6 +488,7 @@ export const createVideoActions = (
         const list = data?.videos?.getVideoListByItem || [];
         await flux.dispatch({
           list,
+          listKey: `item:${itemId}`,
           type: VIDEO_CONSTANTS.GET_LIST_SUCCESS
         });
         return list;
@@ -498,6 +559,7 @@ export const createVideoActions = (
         const list = data?.videos?.getVideoListByReactions || [];
         await flux.dispatch({
           list,
+          listKey: `reactions:${[...reactions].sort().join(',')}`,
           type: VIDEO_CONSTANTS.GET_LIST_SUCCESS
         });
         return list;

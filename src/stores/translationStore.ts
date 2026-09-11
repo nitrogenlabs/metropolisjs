@@ -2,6 +2,7 @@
  * Copyright (c) 2025-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
+import {withCacheIngestion} from '../utils/cacheIngestion.js';
 
 export interface TranslationType {
   readonly key: string;
@@ -142,7 +143,7 @@ export const translationStore = (type: string, data: TranslationData, state = de
 };
 
 export const translations = {
-  action: translationStore,
+  action: withCacheIngestion('translations', translationStore, defaultValues),
   initialState: defaultValues,
   name: 'translations'
 };

@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2025-Present, Nitrogen Labs, Inc.
+ * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
+ */
+
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 
 const graphqlQueryMock = vi.fn();
@@ -321,7 +326,7 @@ describe('api utilities', () => {
 
     expect(result).toEqual({});
     expect(flux.setState).toHaveBeenCalledWith('user.session', {});
-    expect(flux.clearAppData).toHaveBeenCalledTimes(1);
+    expect(flux.clearAppData).not.toHaveBeenCalled();
     expect(flux.dispatch).toHaveBeenCalledWith({
       session: {},
       type: 'USER_SIGN_OUT_SUCCESS'
@@ -364,13 +369,14 @@ describe('api utilities', () => {
     const noTokenFlux = {
       ...createMockFlux(),
       getState: vi.fn((key: string, fallback?: unknown) => {
+        if(key === 'user.session') return {};
         if(key === 'user.session.token') {
           return '';
         }
         return createMockFlux().getState(key, fallback);
       })
     };
-    await expect(uploadImage(noTokenFlux as any, {base64: 'abc'})).rejects.toThrow('missing_auth_token');
+    await expect(uploadImage(noTokenFlux as any, {base64: 'abc'})).rejects.toThrow('invalid_session');
 
     const okResponse = {
       headers: {get: vi.fn(() => 'application/json')},
@@ -398,6 +404,7 @@ describe('api utilities', () => {
     const missingTokenFlux = {
       ...createMockFlux(),
       getState: vi.fn((key: string, fallback?: unknown) => {
+        if(key === 'user.session') return {};
         if(key === 'user.session.token') {
           return '';
         }
@@ -414,7 +421,7 @@ describe('api utilities', () => {
     const expiredFlux = createMockFlux();
 
     await expect(refreshSession(expiredFlux as any, expiredToken)).resolves.toBeNull();
-    expect(expiredFlux.clearAppData).toHaveBeenCalled();
+    expect(expiredFlux.dispatch).toHaveBeenCalledWith({session: {}, type: 'USER_SIGN_OUT_SUCCESS'});
     expect(expiredFlux.dispatch).toHaveBeenCalledWith(expect.objectContaining({
       type: 'USER_GET_SESSION_ERROR'
     }));

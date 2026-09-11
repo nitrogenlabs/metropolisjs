@@ -2,6 +2,7 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
+import {withCacheIngestion} from '../utils/cacheIngestion.js';
 
 export const WEBSOCKET_CONSTANTS = {
   CLOSE: 'WEBSOCKET_CLOSE',
@@ -38,7 +39,7 @@ export const websocketStore = (type: string, data: Partial<WebSocketState>, stat
 };
 
 export const websocket = {
-  action: websocketStore,
+  action: withCacheIngestion('websocket', websocketStore, defaultValues),
   initialState: defaultValues,
   name: 'websocket'
 };

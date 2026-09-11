@@ -9,12 +9,9 @@ export {
   appQuery,
   getGraphql,
   publicMutation,
-  publicQuery,
-  rumRequest,
-  refreshSession,
+  publicQuery, refreshSession,
   resolveRestEndpoint,
-  restRequest,
-  uploadImage,
+  restRequest, rumRequest, uploadImage,
   type ApiResultsType,
   type ReaktorDbCollection,
   type RestApiOptions,
@@ -56,10 +53,9 @@ export {
   type PermissionGuardProps,
   type UsePermissionsReturn
 } from './permissionUtils.js';
+export {useConversationTyping, type ConversationTypingOptions, type UseConversationTypingOptions} from './useConversationTyping.js';
 export {
-  useContentActions,
-  useAwsRum,
-  useCrmActions,
+  useAwsRum, useContentActions, useCrmActions,
   useEventActions,
   useGroupActions,
   useImageActions,
@@ -79,7 +75,6 @@ export {
   useVideoActions,
   useWebsocketActions
 } from './useMetropolis.js';
-export {useConversationTyping, type ConversationTypingOptions, type UseConversationTypingOptions} from './useConversationTyping.js';
 export {useTranslations} from './useTranslations.js';
 
 // Export utility functions
@@ -89,3 +84,5 @@ export * from './file.js';
 export * from './i18n.js';
 export * from './location.js';
 export * from './session.js';
+
+export {mergeCachedRecord, type CacheIngestionOptions} from './cacheIngestion.js';

@@ -12,7 +12,7 @@ describe('reactionStore', () => {
 
   it('exports the reaction store descriptor', () => {
     expect(reactions).toEqual({
-      action: reactionStore,
+      action: expect.any(Function),
       initialState: defaultValues,
       name: 'reaction'
     });

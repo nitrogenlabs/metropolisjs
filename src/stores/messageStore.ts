@@ -2,6 +2,8 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
+import {withCacheIngestion} from '../utils/cacheIngestion.js';
+
 import type {MessageType} from '../adapters/messageAdapter/messageAdapter.js';
 
 export const MESSAGE_CONSTANTS = {
@@ -157,7 +159,7 @@ export const messageStore = (type: string, data: {
 };
 
 export const messages = {
-  action: messageStore,
+  action: withCacheIngestion('message', messageStore, defaultValues),
   initialState: defaultValues,
   name: 'message'
 };

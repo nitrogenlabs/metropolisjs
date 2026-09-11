@@ -545,6 +545,7 @@ export const createImageActions = (
           ? imagesData.imagesByReactions || []
           : [];
         return flux.dispatch({
+          itemId: `reactions:${[...reactions].sort().join(',')}`,
           list: imagesByReactions,
           type: IMAGE_CONSTANTS.GET_LIST_SUCCESS
         });

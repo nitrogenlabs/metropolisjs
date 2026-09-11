@@ -2,6 +2,8 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
+import {withCacheIngestion} from '../utils/cacheIngestion.js';
+
 import type {PostType} from '../adapters/postAdapter/postAdapter.js';
 
 export const POST_CONSTANTS = {
@@ -46,7 +48,7 @@ export const postStore = (type: string, data: {post?: PostType}, state = default
 };
 
 export const posts = {
-  action: postStore,
+  action: withCacheIngestion('post', postStore, defaultValues),
   initialState: defaultValues,
   name: 'post'
 };

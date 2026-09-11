@@ -2,6 +2,7 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
+import {withCacheIngestion} from '../utils/cacheIngestion.js';
 
 export const APP_CONSTANTS = {
   ADD_ITEM_ERROR: 'APP_ADD_ITEM_ERROR',
@@ -36,7 +37,7 @@ export const appStore = (type: string, data: Partial<AppState>, state = defaultV
 };
 
 export const app = {
-  action: appStore,
+  action: withCacheIngestion('app', appStore, defaultValues),
   initialState: defaultValues,
   name: 'app'
 };

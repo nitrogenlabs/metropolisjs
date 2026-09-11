@@ -4,6 +4,7 @@
  */
 import {capitalize, orderBy, pullAllBy, uniqBy} from '@nlabs/utils';
 
+import {withCacheIngestion} from '../utils/cacheIngestion.js';
 import {REACTION_CONSTANTS} from './reactionStore.js';
 import {TAG_CONSTANTS} from './tagStore.js';
 
@@ -236,7 +237,7 @@ export const userStore = (type: string, data: UserData, state = defaultValues): 
 };
 
 export const users = {
-  action: userStore,
+  action: withCacheIngestion('user', userStore, defaultValues),
   initialState: defaultValues,
   name: 'user'
 };

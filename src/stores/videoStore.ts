@@ -2,6 +2,7 @@
  * Copyright (c) 2026-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
+import {withCacheIngestion} from '../utils/cacheIngestion.js';
 
 export const VIDEO_CONSTANTS = {
   ADD_ITEM_ERROR: 'VIDEO_ADD_ITEM_ERROR',
@@ -10,9 +11,9 @@ export const VIDEO_CONSTANTS = {
   GET_ITEM_SUCCESS: 'VIDEO_GET_ITEM_SUCCESS',
   GET_LIST_ERROR: 'VIDEO_GET_LIST_ERROR',
   GET_LIST_SUCCESS: 'VIDEO_GET_LIST_SUCCESS',
+  PROCESSING_COMPLETE: 'VIDEO_PROCESSING_COMPLETE',
   REMOVE_ITEM_ERROR: 'VIDEO_REMOVE_ITEM_ERROR',
   REMOVE_ITEM_SUCCESS: 'VIDEO_REMOVE_ITEM_SUCCESS',
-  PROCESSING_COMPLETE: 'VIDEO_PROCESSING_COMPLETE',
   UPDATE_ITEM_ERROR: 'VIDEO_UPDATE_ITEM_ERROR',
   UPDATE_ITEM_SUCCESS: 'VIDEO_UPDATE_ITEM_SUCCESS'
 } as const;
@@ -104,7 +105,7 @@ export const videoStore = (
 };
 
 export const video = {
-  action: videoStore,
+  action: withCacheIngestion('video', videoStore, defaultValues),
   initialState: defaultValues,
   name: 'video'
 };

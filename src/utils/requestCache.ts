@@ -1,3 +1,11 @@
+/**
+ * Copyright (c) 2026-Present, Nitrogen Labs, Inc.
+ * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
+ */
+
+import {readCachedResponse} from './cacheIngestion.js';
+import {isValidSession} from './session.js';
+
 import type {FluxFramework} from '@nlabs/arkhamjs';
 
 export interface ActionRequestOptions {
@@ -47,6 +55,10 @@ export const getCachedRequest = <T>(
     return undefined;
   }
 
+  const session = flux.getState<Record<string, unknown>>('user.session', {});
+  if(session?.token && !isValidSession(session)) {
+    return undefined;
+  }
   const entry = flux.getState<RequestCacheEntry<T> | undefined>(getCachePath(scope));
 
   if(!entry) {
@@ -61,7 +73,7 @@ export const getCachedRequest = <T>(
     return undefined;
   }
 
-  return entry.data;
+  return readCachedResponse(flux, scope, entry.data);
 };
 
 export const setCachedRequest = async <T>(
