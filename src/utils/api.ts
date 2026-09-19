@@ -22,6 +22,8 @@ export interface ApiOptions {
 export type RestMethod = 'DELETE' | 'GET' | 'PATCH' | 'POST' | 'PUT' | (string & {});
 
 export interface RestApiOptions extends HunterOptionsType {
+  /** Disable legacy offline retry events for secrets or caller-owned outboxes. */
+  readonly queueOffline?: boolean;
   readonly authenticate?: boolean;
   readonly onSuccess?: (data: any) => any;
 }
@@ -225,7 +227,7 @@ export const restRequest = async <T = ApiResultsType>(
   params?: unknown,
   options: RestApiOptions = {}
 ): Promise<T> => {
-  const {authenticate = false, onSuccess, ...hunterOptions} = options;
+  const {authenticate = false, onSuccess, queueOffline = true, ...hunterOptions} = options;
   const sessionGeneration = flux.getState('app.sessionGeneration', 0);
   let token: string | undefined;
   const url = resolveRestEndpoint(flux, endpoint);
@@ -239,6 +241,9 @@ export const restRequest = async <T = ApiResultsType>(
     const networkType: string = flux.getState('app.networkType') as string;
 
     if(networkType === 'none') {
+      if(!queueOffline) {
+        throw new Error('network_unavailable');
+      }
       return flux.dispatch({retry, type: APP_CONSTANTS.API_NETWORK_ERROR}) as Promise<T>;
     }
 

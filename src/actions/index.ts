@@ -4,6 +4,7 @@ export * from './connectionActions/connectionActions.js';
 export * from './contentActions/contentActions.js';
 export * from './conversationActions/conversationActions.js';
 export * from './crmActions/crmActions.js';
+export * from './durableChatActions/durableChatActions.js';
 export * from './eventActions/eventActions.js';
 export * from './groupActions/groupActions.js';
 export * from './imageActions/imageActions.js';

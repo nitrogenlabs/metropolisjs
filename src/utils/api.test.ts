@@ -364,18 +364,22 @@ describe('api utilities', () => {
         return createMockFlux().getState(key, fallback);
       })
     };
+
     await expect(uploadImage(noUrlFlux as any, {base64: 'abc'})).rejects.toThrow('upload_endpoint_not_configured');
 
     const noTokenFlux = {
       ...createMockFlux(),
       getState: vi.fn((key: string, fallback?: unknown) => {
-        if(key === 'user.session') return {};
+        if(key === 'user.session') {
+          return {};
+        }
         if(key === 'user.session.token') {
           return '';
         }
         return createMockFlux().getState(key, fallback);
       })
     };
+
     await expect(uploadImage(noTokenFlux as any, {base64: 'abc'})).rejects.toThrow('invalid_session');
 
     const okResponse = {
@@ -404,13 +408,16 @@ describe('api utilities', () => {
     const missingTokenFlux = {
       ...createMockFlux(),
       getState: vi.fn((key: string, fallback?: unknown) => {
-        if(key === 'user.session') return {};
+        if(key === 'user.session') {
+          return {};
+        }
         if(key === 'user.session.token') {
           return '';
         }
         return createMockFlux().getState(key, fallback);
       })
     };
+
     await expect(refreshSession(missingTokenFlux as any)).resolves.toBeNull();
 
     const expiredToken = [
@@ -425,5 +432,25 @@ describe('api utilities', () => {
     expect(expiredFlux.dispatch).toHaveBeenCalledWith(expect.objectContaining({
       type: 'USER_GET_SESSION_ERROR'
     }));
+  });
+});
+
+
+describe('REST offline queue opt-out', () => {
+  it('rejects without dispatching payload or sending a request when explicitly disabled', async () => {
+    const base = createMockFlux();
+    const flux = {...base, getState: vi.fn((key: string, fallback?: unknown) => (key === 'app.networkType' ? 'none' : base.getState(key, fallback)))};
+
+    await expect(restRequest(flux as any, 'https://example.test/private', 'POST', {password: 'private'}, {queueOffline: false, token: 'private'})).rejects.toThrow('network_unavailable');
+    expect(flux.dispatch).not.toHaveBeenCalled();
+    expect(postMock).not.toHaveBeenCalled();
+  });
+
+  it('retains the legacy default offline retry event', async () => {
+    const base = createMockFlux();
+    const flux = {...base, getState: vi.fn((key: string, fallback?: unknown) => (key === 'app.networkType' ? 'none' : base.getState(key, fallback)))};
+    await restRequest(flux as any, 'https://example.test/items', 'POST', {item: 'safe'});
+
+    expect(flux.dispatch).toHaveBeenCalledWith(expect.objectContaining({retry: expect.objectContaining({request: {method: 'POST', params: {item: 'safe'}, url: 'https://example.test/items'}}), type: 'APP_API_NETWORK_ERROR'}));
   });
 });

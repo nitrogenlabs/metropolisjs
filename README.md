@@ -1506,3 +1506,56 @@ For comprehensive guides and examples, see:
 - [CRUD Examples](./examples/crud-usage.tsx) - Practical code examples
 - [Connection Examples](./examples/connections-usage.tsx) - Relationship management examples
 - [Extensibility Examples](./examples/extensibility-usage.tsx) - Custom field examples
+
+### Durable chat protocol (opt-in)
+
+`createDurableChatActions` extends the existing actions API for a top-level GraphQL
+conversation, membership, message, receipt, invitation, and replay protocol. Existing
+collection-based message and conversation actions keep their behavior. The new
+factory accepts a fixed endpoint, platform request adapter, and mandatory response
+projector; it does not establish sessions, persist results, or dispatch raw payloads.
+
+```ts
+import {FluxFramework} from '@nlabs/arkhamjs';
+import {createDurableChatActions} from '@nlabs/metropolisjs/actions';
+import {restRequest} from '@nlabs/metropolisjs/utils';
+import type {AppChatProtocol} from './chatContracts';
+
+// Replace each operation's input/result with your application's validated DTOs.
+// AppChatProtocol must structurally satisfy DurableChatProtocol.
+const chat = createDurableChatActions<AppChatProtocol, string>({
+  endpoint: 'https://api.example.com/chat',
+  fields: appChatSelectionSets,
+  project: projectAuthorizedChatResult,
+  request: (endpoint, body, token) => restRequest(
+    new FluxFramework(), endpoint, 'POST', body,
+    {authenticate: false, cache: false, queueOffline: false, token}
+  )
+});
+
+const page = await chat.request('history', {conversationId: 'conversation-id'}, token);
+```
+
+`AppChatProtocol` maps every operation to `{input, result}` and preserves operation-specific
+types at the call site. `createDurableChatDocuments(fields)` and
+`createDurableChatVariables(operation, input)` are also available for existing action
+adapters. Selection overrides are trusted application configuration, not user input.
+The selection keys are `attachment`, `conversation`, `invite`, `membership`, `message`,
+`reaction`, and `receipt`; authorization and product-specific moderation fields remain
+in the application's projector and server.
+
+The request adapter receives private context only for the current call. A mobile
+adapter can supply an explicit audience-bound bearer without enabling web session
+refresh. Keep tokens out of stores/events and persist only authorized projected data
+through the application's Flux actions before dispatching events. The factory checks
+known operations and GraphQL envelope shape, masks transport failures, and preserves
+only `conflict`, `forbidden`, `invalid_request`, `rate_limited`, and `unavailable` errors.
+It does not replace server authorization, response validation, session-generation
+checks, optimistic queues, or one-use socket-ticket lifecycle handling.
+
+`restRequest` now accepts `queueOffline: false`: when the store reports offline it
+rejects with `network_unavailable` without dispatching a retry payload. The default
+remains the existing offline retry behavior. Disable retry queuing and caching for
+credentials, private raw payloads, and requests whose durable outbox is managed by
+the caller. An isolated request Flux, as above, also keeps transport events separate
+from application listeners.
