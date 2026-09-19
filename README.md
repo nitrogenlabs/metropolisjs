@@ -1501,6 +1501,7 @@ For comprehensive guides and examples, see:
 
 - [CRUD Integration Guide](./docs/CRUD_INTEGRATION.md) - Complete guide to CRUD operations
 - [Actions Reference](./docs/ACTIONS.md) - Action families, hooks, creators, and method map
+- [Durable Chat Protocol](#durable-chat-protocol-opt-in) - Typed shared chat operations, transport adapters, and privacy boundaries
 - [Collections Reference](./docs/COLLECTIONS.md) - Detailed information about each collection
 - [Connections Guide](./docs/CONNECTIONS.md) - Managing relationships between collections
 - [CRUD Examples](./examples/crud-usage.tsx) - Practical code examples
@@ -1509,20 +1510,46 @@ For comprehensive guides and examples, see:
 
 ### Durable chat protocol (opt-in)
 
-`createDurableChatActions` extends the existing actions API for a top-level GraphQL
-conversation, membership, message, receipt, invitation, and replay protocol. Existing
-collection-based message and conversation actions keep their behavior. The new
-factory accepts a fixed endpoint, platform request adapter, and mandatory response
-projector; it does not establish sessions, persist results, or dispatch raw payloads.
+**Available in 1.2.0.** `createDurableChatActions` provides 26 typed operations for
+apps using the top-level durable-chat GraphQL protocol, including Reaktor 1.9.0's
+shared chat capabilities. It is an explicit factory exported from
+`@nlabs/metropolisjs/actions`; it is not a `createAction()` key or a
+`useMetropolis()` hook. Existing collection-based message and conversation actions
+keep their behavior, and clients do not need to install Reaktor.
+
+| Area | Operations |
+| --- | --- |
+| Conversations and inbox | `createDirect`, `createGroup`, `inbox`, `setInboxState`, `leaveConversation` |
+| Membership and invitations | `participants`, `invitations`, `inviteMember`, `acceptInvite`, `declineInvite`, `changeMemberRole`, `removeMember`, `transferOwnership` |
+| Messages | `history`, `sendMessage`, `editMessage`, `deleteMessage` |
+| Reactions and receipts | `reactions`, `setReaction`, `receipts`, `updateReceipt` |
+| Presence and reconnect | `typing`, `setTyping`, `replayEvents`, `socketTicket` |
+| Contacts | `chatContacts` |
+
+The factory creates documents and variables, sends JSON through an injected
+transport, checks the GraphQL envelope, and returns the application's projected
+result. It does not establish sessions, open sockets, persist results, or dispatch
+raw responses.
+
+| Option | Responsibility |
+| --- | --- |
+| `endpoint` | A fixed endpoint selected by trusted application configuration. |
+| `fields` | Optional selection overrides for `attachment`, `conversation`, `invite`, `membership`, `message`, `reaction`, and `receipt`. These strings become GraphQL selections; never accept them from users. |
+| `project(operation, value)` | Required synchronous validation and projection of the operation's untrusted response. Return only the application's validated result type. |
+| `request(endpoint, body, context)` | Required platform transport returning the GraphQL envelope. The body contains `query` and `variables`; the per-call context can carry an audience-bound bearer. |
 
 ```ts
 import {FluxFramework} from '@nlabs/arkhamjs';
 import {createDurableChatActions} from '@nlabs/metropolisjs/actions';
 import {restRequest} from '@nlabs/metropolisjs/utils';
+import {
+  appChatSelectionSets,
+  projectAuthorizedChatResult
+} from './chatContracts';
 import type {AppChatProtocol} from './chatContracts';
 
-// Replace each operation's input/result with your application's validated DTOs.
-// AppChatProtocol must structurally satisfy DurableChatProtocol.
+// Define every operation's {input, result} in AppChatProtocol and validate
+// responses in projectAuthorizedChatResult. Both are application-owned.
 const chat = createDurableChatActions<AppChatProtocol, string>({
   endpoint: 'https://api.example.com/chat',
   fields: appChatSelectionSets,
@@ -1533,29 +1560,46 @@ const chat = createDurableChatActions<AppChatProtocol, string>({
   )
 });
 
-const page = await chat.request('history', {conversationId: 'conversation-id'}, token);
+// Call from an application action with its current, privately held token.
+const loadHistory = (conversationId: string, token: string) =>
+  chat.request('history', {conversationId}, token);
 ```
 
-`AppChatProtocol` maps every operation to `{input, result}` and preserves operation-specific
-types at the call site. `createDurableChatDocuments(fields)` and
-`createDurableChatVariables(operation, input)` are also available for existing action
-adapters. Selection overrides are trusted application configuration, not user input.
-The selection keys are `attachment`, `conversation`, `invite`, `membership`, `message`,
-`reaction`, and `receipt`; authorization and product-specific moderation fields remain
-in the application's projector and server.
+`AppChatProtocol` must structurally satisfy `DurableChatProtocol`: every operation
+maps to `{input, result}`, preserving operation-specific types at each call site.
+`createDurableChatDocuments(fields)` and
+`createDurableChatVariables(operation, input)` are also exported from the actions
+entry point for existing transport adapters. `sendMessage` forwards only
+`attachmentIds`, `clientMessageId`, `content`, `conversationId`, and
+`replyToMessageId`; the server derives the sender identity. Inputs still need the
+application's schema validation.
 
-The request adapter receives private context only for the current call. A mobile
-adapter can supply an explicit audience-bound bearer without enabling web session
-refresh. Keep tokens out of stores/events and persist only authorized projected data
-through the application's Flux actions before dispatching events. The factory checks
-known operations and GraphQL envelope shape, masks transport failures, and preserves
-only `conflict`, `forbidden`, `invalid_request`, `rate_limited`, and `unavailable` errors.
-It does not replace server authorization, response validation, session-generation
-checks, optimistic queues, or one-use socket-ticket lifecycle handling.
+**Privacy and state boundary.** The request context is passed to the transport for
+the current call; the factory does not store it. Keep tokens out of application
+stores and events. The projector receives `unknown`, including possible `null`
+values, and must validate the complete result before it reaches a store. Product
+moderation and visibility rules remain in the application and server; projection
+does not replace server authorization. Before committing results, application
+actions must reject responses from an old session, update the Flux store, and then
+dispatch events. Encrypted outboxes, optimistic updates, replay-cursor recovery,
+and one-use socket-ticket lifecycle handling remain caller responsibilities.
 
-`restRequest` now accepts `queueOffline: false`: when the store reports offline it
-rejects with `network_unavailable` without dispatching a retry payload. The default
-remains the existing offline retry behavior. Disable retry queuing and caching for
-credentials, private raw payloads, and requests whose durable outbox is managed by
-the caller. An isolated request Flux, as above, also keeps transport events separate
-from application listeners.
+The factory rejects unknown operations and malformed GraphQL envelopes. Transport
+failures become `DurableChatError('unavailable')`, and GraphQL failures retain only
+`conflict`, `forbidden`, `invalid_request`, `rate_limited`, or `unavailable`. Raw
+server error messages are not forwarded. Errors thrown by the application projector
+propagate unchanged, so its validation errors must also avoid private payloads.
+
+**Offline retry opt-out.** `restRequest` accepts `queueOffline: false`. If its Flux
+store reports `app.networkType === 'none'`, it rejects with `network_unavailable`
+without sending a request or dispatching a retry payload. Through the durable-chat
+factory, this transport rejection becomes `unavailable`. The default remains
+`queueOffline: true`, preserving existing REST retry events. Disable retry queuing
+and caching for private raw payloads and requests whose durable outbox is managed
+by the caller. `authenticate: false` with an explicit `token` avoids browser-session
+refresh; it does not provide session-generation checks for that token.
+
+The example uses an isolated request Flux to keep transport events separate from
+application listeners. Its network state is not automatically connected to the
+application's connectivity state; supply that integration in the adapter if offline
+short-circuiting is needed. Network failures still reject normally.

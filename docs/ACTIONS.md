@@ -89,6 +89,9 @@ These creators are exported directly from MetropolisJS, but are not currently pa
 | App | `createAppActions` | `add`, `itemById`, `list`, `update`, `delete` | [appActions.ts](../src/actions/appActions/appActions.ts) |
 | Connection | `createConnectionActions` | `addConnection`, `getConnections`, `removeConnection` | [connectionActions.ts](../src/actions/connectionActions/connectionActions.ts) |
 | Conversation | `createConversationActions` | `add`, `itemById`, `list`, `update`, `delete` | [conversationActions.ts](../src/actions/conversationActions/conversationActions.ts) |
+| Durable chat (1.2.0+) | `createDurableChatActions` | `request(operation, input, context)` for 26 operations | [Durable chat guide](../README.md#durable-chat-protocol-opt-in) |
+
+`createDurableChatActions` is imported from `@nlabs/metropolisjs/actions`. It accepts endpoint, selection, projection, and transport options instead of a Flux instance. Its caller owns authentication, response validation, state updates, and event dispatch; existing message/conversation creators remain unchanged.
 
 ## AWS RUM Actions
 
