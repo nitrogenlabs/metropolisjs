@@ -1,6 +1,6 @@
 {
   "name": "@nlabs/metropolisjs",
-  "version": "1.2.0-durable-chat.0",
+  "version": "1.2.0",
   "description": "Type-safe frontend integration for authentication, data, messaging, realtime events, billing, and Reaktor APIs.",
   "type": "module",
   "main": "lib/index.js",
@@ -102,7 +102,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@nlabs/arkhamjs": "3.31.11",
+    "@nlabs/arkhamjs": "3.31.16",
     "@nlabs/arkhamjs-storage-browser": "^3.30.8",
     "@nlabs/arkhamjs-utils-react": "^3.32.9",
     "@nlabs/lex": "^2.0.3",
@@ -133,5 +133,13 @@
       "minimatch": "^3.1.5"
     },
     "semver-regex": "^4.0.5"
-  }
+  },
+  "files": [
+    "lib",
+    "docs",
+    "examples",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ]
 }

@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased
+## 1.2.0 — 2026-09-19
+
+- Add opt-in durable group-chat actions for membership, paginated messages, receipts, reactions, and reconnect synchronization.
+- Add private REST transport controls that keep conversation credentials and content out of shared caches.
+- Preserve existing messaging actions and export the new durable-chat protocol without requiring backend packages in clients.
+- Limit published files to runtime modules, declarations, documentation, and examples.
+- Validate the client against ArkhamJS 3.31.16 while retaining the existing compatible peer range.
 
 - Register missing stores on each Flux instance instead of trusting a persisted initialization flag.
 - Deeply ingest partial records before success notifications; support explicit replacement, null clearing, and authoritative list membership.
