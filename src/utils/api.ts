@@ -15,6 +15,7 @@ import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {HunterOptionsType, HunterQueryType} from '@nlabs/rip-hunter';
 
 export interface ApiOptions {
+  readonly queueOffline?: boolean;
   readonly onSuccess?: (data: any) => Promise<FluxAction>;
   readonly variables?: Record<string, unknown>;
 }
@@ -22,6 +23,7 @@ export interface ApiOptions {
 export type RestMethod = 'DELETE' | 'GET' | 'PATCH' | 'POST' | 'PUT' | (string & {});
 
 export interface RestApiOptions extends HunterOptionsType {
+  readonly queueOffline?: boolean;
   readonly authenticate?: boolean;
   readonly onSuccess?: (data: any) => any;
 }
@@ -138,7 +140,8 @@ const resolveAuthToken = async (flux: FluxFramework): Promise<string> => {
     Number(config.app?.session?.maxMinutes || sessionLifetimeMinutes || DEFAULT_SESSION_MAX_MINUTES)
   );
 
-  if(minutesUntilExpiry > 0 && minutesUntilExpiry <= refreshWindowMinutes) {
+  if(config.app?.session?.autoRefresh !== false
+    && minutesUntilExpiry > 0 && minutesUntilExpiry <= refreshWindowMinutes) {
     await refreshSession(flux, token, refreshExpiresMinutes);
     token = flux.getState<string>('user.session.token');
     if(!token) {
@@ -165,12 +168,15 @@ export const getGraphql = async (
   const retry = {query, responseMethod: onSuccess || (() => {})};
   try {
     if(flux.getState('app.networkType') === 'none') {
+      if(options.queueOffline === false) {
+        throw new Error('network_unavailable');
+      }
       return flux.dispatch({retry, type: APP_CONSTANTS.API_NETWORK_ERROR});
     }
     if(authenticate) {
       token = await resolveAuthToken(flux);
     }
-    const data = await graphqlQuery(url, query, {token: token || ''});
+    const data = await graphqlQuery(url, query, {...(options.queueOffline === false ? {cache: false} : {}), token: token || ''});
     if(authenticate && (sessionGeneration !== flux.getState('app.sessionGeneration', 0) || !flux.getState('user.session.token'))) {
       throw new Error('session_changed');
     }
@@ -188,7 +194,7 @@ export const getGraphql = async (
       }
       return {};
     }
-    if(errors.includes('network_error')) {
+    if(errors.includes('network_error') && options.queueOffline !== false) {
       await flux.dispatch({retry, type: APP_CONSTANTS.API_NETWORK_ERROR});
     }
     throw error;
@@ -226,7 +232,7 @@ export const restRequest = async <T = ApiResultsType>(
   params?: unknown,
   options: RestApiOptions = {}
 ): Promise<T> => {
-  const {authenticate = false, onSuccess, ...hunterOptions} = options;
+  const {authenticate = false, onSuccess, queueOffline = true, ...hunterOptions} = options;
   const sessionGeneration = flux.getState('app.sessionGeneration', 0);
   let token: string | undefined;
   const url = resolveRestEndpoint(flux, endpoint);
@@ -240,6 +246,9 @@ export const restRequest = async <T = ApiResultsType>(
     const networkType: string = flux.getState('app.networkType') as string;
 
     if(networkType === 'none') {
+      if(!queueOffline) {
+        throw new Error('network_unavailable');
+      }
       return flux.dispatch({retry, type: APP_CONSTANTS.API_NETWORK_ERROR}) as Promise<T>;
     }
 

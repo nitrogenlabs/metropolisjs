@@ -19,6 +19,12 @@ export interface WebSocketMessage {
   readonly data?: Record<string, unknown>;
 }
 
+export interface WebsocketActionsOptions {
+  authentication?: 'query' | 'message';
+  authenticateMessage?: (token: string) => Record<string, unknown>;
+  url?: string;
+}
+
 export interface WebsocketActions {
   readonly sendNotification: (notification: NotificationType) => NotificationType | null;
   readonly sendTyping: (
@@ -50,7 +56,9 @@ const createWebsocketClientId = (): string => {
   return `ws-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 };
 
-export const createWebsocketActions = (flux: FluxFramework): WebsocketActions => {
+export const createWebsocketActions = (
+  flux: FluxFramework, options: WebsocketActionsOptions = {}
+): WebsocketActions => {
   let ws: Sockette | null = null;
   let activeClientId = '';
   let activeToken = '';
@@ -83,7 +91,7 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
       activeClientId = createWebsocketClientId();
       window.sessionStorage.setItem(WEBSOCKET_CLIENT_ID_KEY, activeClientId);
       return activeClientId;
-    } catch(error) {
+    } catch{
       activeClientId = createWebsocketClientId();
       return activeClientId;
     }
@@ -93,6 +101,10 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
       return;
     }
 
+    if(options.authentication === 'message' && options.authenticateMessage) {
+      ws.json(options.authenticateMessage(String(flux.getState('user.session.token') || activeToken)));
+      return;
+    }
     ws.json({
       action: 'websocketConnect',
       data: {
@@ -153,7 +165,6 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
   };
 
   const wsSend = (message: WebSocketMessage) => {
-    console.log('websockets::onOpen::message', {ws, message});
     if(ws && socketIsOpen) {
       ws.json(message);
       return;
@@ -253,12 +264,10 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
 
     try {
       data = JSON.parse(rawData);
-    } catch(parseError) {
-      console.warn('websockets::onReceive::invalidJson', rawData, parseError);
+    } catch{
       return;
     }
 
-    console.log('websockets::onRecieve::data', data);
     flux.dispatch({data, timestamp, type: WEBSOCKET_CONSTANTS.MESSAGE});
 
     if(String(data?.action || '') === 'message.created') {
@@ -334,12 +343,14 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
   };
 
   const onClose = (event: any) => {
-    console.log('websockets::onOpen::message', event);
     const {timeStamp: timestamp} = event;
     socketIsOpen = false;
     socketIsConnecting = Boolean(activeToken) && !closeRequested;
     closeRequested = false;
-    flux.dispatch({timestamp, type: WEBSOCKET_CONSTANTS.CLOSE});
+    if(event.code === 1008) {
+      wsClose();
+    }
+    flux.dispatch({code: event.code, timestamp, type: WEBSOCKET_CONSTANTS.CLOSE});
   };
 
   const onError = (event: any) => {
@@ -349,7 +360,6 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
   };
 
   const onOpen = (event: any) => {
-    console.log('websockets::onOpen::event', event);
     const {timeStamp: timestamp} = event;
     socketIsOpen = true;
     socketIsConnecting = false;
@@ -361,39 +371,20 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
 
   const wsInit = (token?: string, personaId?: string): Sockette | null => {
     const config = getConfigFromFlux(flux);
-    const websocketUrl = config.app?.urls?.websocket || '';
+    const websocketUrl = options.url || config.app?.urls?.websocket || '';
     const sessionClientId = getClientId();
     const sessionToken = String(token || flux.getState('user.session.token') || '');
     const sessionPersonaId = String(personaId || flux.getState('user.session.personaId') || '');
 
     if(!sessionToken || !websocketUrl) {
-      console.log('websockets::wsInit::skipped', {
-        hasPersonaId: Boolean(sessionPersonaId),
-        hasToken: Boolean(sessionToken),
-        websocketUrl
-      });
       return null;
     }
 
     if(ws && activeToken === sessionToken && activePersonaId === sessionPersonaId && activeClientId === sessionClientId) {
-      console.log('websockets::wsInit::reuse', {
-        activeClientId,
-        activePersonaId,
-        activeToken,
-        sessionClientId,
-        sessionPersonaId
-      });
       return ws;
     }
 
     if(ws && (activeToken !== sessionToken || activePersonaId !== sessionPersonaId || activeClientId !== sessionClientId)) {
-      console.log('websockets::wsInit::reconnect', {
-        activeClientId,
-        activePersonaId,
-        activeToken,
-        sessionClientId,
-        sessionPersonaId
-      });
       wsClose();
     }
 
@@ -412,14 +403,11 @@ export const createWebsocketActions = (flux: FluxFramework): WebsocketActions =>
       websocketParams.set('clientId', sessionClientId);
     }
 
-    console.log('websockets::wsInit::connect', {
-      sessionClientId,
-      sessionPersonaId,
-      sessionToken,
-      url: `${websocketUrl}?${websocketParams.toString()}`
-    });
 
-    ws = new Sockette(`${websocketUrl}?${websocketParams.toString()}`, {
+    const connectionUrl = options.authentication === 'message'
+      ? websocketUrl
+      : `${websocketUrl}${websocketUrl.includes('?') ? '&' : '?'}${websocketParams.toString()}`;
+    ws = new Sockette(connectionUrl, {
       maxAttempts: 5,
       onclose: onClose,
       onerror: onError,

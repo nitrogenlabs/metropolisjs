@@ -242,3 +242,23 @@ describe('createWebsocketActions', () => {
     expect(socket.close).toHaveBeenCalledWith(1000, 'metropolis_close');
   });
 });
+
+
+describe('first-message authentication', () => {
+  it('keeps tokens out of URLs and sends the configured handshake before application messages', () => {
+    const flux = createFlux();
+    const actions = createWebsocketActions(flux as any, {
+      authenticateMessage: (token) => ({token}), authentication: 'message', url: 'wss://example.test/events'
+    });
+    actions.wsInit('token-1');
+    const socket = socketteInstances.at(-1)!;
+    actions.wsSend({action: 'refresh'});
+    actions.onOpen({timeStamp: 1});
+    expect(socket.url).toBe('wss://example.test/events');
+    expect(socket.json).toHaveBeenNthCalledWith(1, {token: 'token-1'});
+    expect(socket.json).toHaveBeenNthCalledWith(2, {action: 'refresh'});
+    actions.onClose({code: 1008, timeStamp: 2});
+    expect(socket.close).toHaveBeenCalled();
+    expect(flux.dispatch).toHaveBeenCalledWith({code: 1008, timestamp: 2, type: WEBSOCKET_CONSTANTS.CLOSE});
+  });
+});

@@ -1514,3 +1514,34 @@ For comprehensive guides and examples, see:
 - [CRUD Examples](./examples/crud-usage.tsx) - Practical code examples
 - [Connection Examples](./examples/connections-usage.tsx) - Relationship management examples
 - [Extensibility Examples](./examples/extensibility-usage.tsx) - Custom field examples
+
+### Generate content with a selected provider
+
+Use the existing factory, with provider selection in the request:
+
+```ts
+const content = createContentActions(flux);
+await content.generateContent({prompt: 'Write a scene', provider: 'claude'});
+```
+
+This calls Reaktor's `contents.generateContent` GraphQL mutation. It stores the confirmed
+result at `content.generation` before dispatching `CONTENT_GENERATION_CONSTANTS.SUCCESS`;
+failures dispatch `CONTENT_GENERATION_CONSTANTS.ERROR`. Paid generation is not queued for
+offline replay. Listen to Arkham events to update the UI.
+
+For an application-owned durable job, pass `{transport: async (input) => enqueue(input)}`
+as the second argument. The transport receives the full application input (including its
+provider and idempotency key) and returns the confirmed job result. Ownership, billing and
+reconciliation belong to that application endpoint; provider credentials remain server-side.
+
+### Image/video generation and bearer sockets
+
+`createImageActions(flux).generateImage({provider: 'openai', prompt: 'A paper moon'})` uses Reaktor's `images.generateImage` mutation. Existing image upload and CRUD actions are unchanged. `createVideoActions(flux).generateVideo({provider: 'higgsfield', imageUrl: 'https://example.com/reference.png'})` uses Reaktor's Higgsfield video mutations. Both methods also accept `{transport: async (input) => ...}` for application-owned durable jobs. They update `image.generation`/`video.generation` before dispatching `IMAGE_GENERATE_SUCCESS`/`VIDEO_GENERATE_SUCCESS`; errors dispatch the matching error event. Paid defaults disable offline replay.
+
+Use `createWebsocketActions(flux, {authentication: 'message', url, authenticateMessage: (token) => ({token})})` with a server that authenticates the first frame. Tokens are omitted from its URL. Existing query authentication remains the compatibility default. A policy close (1008) stops reconnection and dispatches the close code. Configure `app.session.autoRefresh: false` for nonrenewable bearer sessions; the existing `storeSession` and `clearPersistedSession` helpers own Flux session state.
+
+`createVideoActions(flux).generateVideo({imageUrl, prompt})` requires an explicit provider and calls
+Reaktor's generic `videos.generateVideo` GraphQL mutation. An explicit input `provider`
+overrides the factory's optional `provider` setting. Neither has an implicit provider default. The normalized
+provider is also passed to custom transports. Generation stores results before its Arkham
+success event and disables offline replay.

@@ -13,6 +13,7 @@ import {clearCachedRequest, getCachedRequest, setCachedRequest} from '../../util
 
 import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {ImageType} from '../../adapters/imageAdapter/imageAdapter.js';
+import type {ImageGenerationInput, ImageGenerationResult} from '../../types/imageGeneration.types.js';
 import type {ApiResultsType} from '../../utils/api.js';
 import type {ActionRequestOptions} from '../../utils/requestCache.js';
 
@@ -49,6 +50,7 @@ export interface ImageAdapterOptions {
 }
 
 export interface ImageActionsOptions {
+
   imageAdapter?: (input: unknown, options?: ImageAdapterOptions) => any;
   imageAdapterOptions?: ImageAdapterOptions;
 }
@@ -66,7 +68,12 @@ export type ImageApiResultsType = {
   getImageCount: number;
 };
 
+export type GenerateImage = <TInput extends {provider: string} = ImageGenerationInput, TResult = ImageGenerationResult>(
+  input: TInput, options?: {transport?: (input: TInput) => Promise<TResult>}
+) => Promise<TResult>;
+
 export interface ImageActions {
+  generateImage: GenerateImage;
   add: (image: Partial<ImageType>, type?: string, requestOptions?: ActionRequestOptions) => Promise<ImageType>;
   delete: (imageId: string, imageProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ImageType>;
   getImageById: (imageId: string, imageProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ImageType>;
@@ -148,6 +155,31 @@ export const createImageActions = (
   const updateImageAdapterOptions = (options: ImageAdapterOptions): void => {
     imageAdapterOptions = {...imageAdapterOptions, ...options};
     validateImage = createImageValidator(customImageAdapter, imageAdapterOptions);
+  };
+
+  const generateImage: GenerateImage = async (input, requestOptions = {}) => {
+    try {
+      if(!['higgsfield', 'openai'].includes(input.provider)) {
+        throw new Error('Choose an image provider and enter a prompt.');
+      }
+      const result = requestOptions.transport
+        ? await requestOptions.transport(input)
+        : await appMutation(flux, 'generateImage', DATA_TYPE, {
+          input: {type: 'ImageGenerationInput!', value: input}
+        }, ['cancelUrl', 'imageBase64', 'provider', 'requestId', 'status', 'statusUrl'], {
+          onSuccess: async (data) => data.images?.generateImage,
+          queueOffline: false
+        });
+      if(result === undefined || result === null) {
+        throw new Error('Image submission could not be confirmed.');
+      }
+      await flux.setState('image.generation', result);
+      await flux.dispatch({generation: result, type: IMAGE_CONSTANTS.GENERATE_SUCCESS});
+      return result as any;
+    } catch(error) {
+      await flux.dispatch({error, type: IMAGE_CONSTANTS.GENERATE_ERROR});
+      throw error;
+    }
   };
 
   // Action implementations
@@ -671,6 +703,7 @@ export const createImageActions = (
   return {
     add,
     delete: deleteImage,
+    generateImage,
     getImageById,
     update,
     upload,

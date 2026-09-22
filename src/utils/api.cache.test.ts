@@ -164,3 +164,35 @@ describe('request/session cache races', () => {
     await rejected;
   });
 });
+
+
+describe('nonrenewable bearer sessions and paid mutations', () => {
+  it('does not refresh an opaque session when automatic refresh is disabled', async () => {
+    const {flux} = createSessionFlux();
+    const read = flux.getState.bind(flux);
+    vi.spyOn(flux, 'getState').mockImplementation(((path: string, fallback?: unknown) =>
+      path === 'app.config' ? {app: {api: {url: 'https://example.test/app'}, session: {autoRefresh: false}}} : read(path, fallback)) as any);
+    await flux.setState('user.session', {expires: Date.now() + 120000, issued: Date.now() - 600000, token: 'opaque'});
+    transport.graphqlQuery.mockResolvedValue({images: {generateImage: {requestId: 'one'}}});
+    await appQuery(flux, 'generateImage', 'images', {}, ['requestId'], {queueOffline: false});
+    expect(transport.graphqlQuery).toHaveBeenCalledTimes(1);
+    expect(transport.graphqlQuery.mock.calls[0][2]).toEqual({cache: false, token: 'opaque'});
+  });
+  it('does not enqueue an uncertain paid request for automatic replay', async () => {
+    const {dispatch, flux} = createSessionFlux();
+    transport.graphqlQuery.mockRejectedValue({errors: ['network_error']});
+    await expect(appQuery(flux, 'generateImage', 'images', {}, ['requestId'], {queueOffline: false})).rejects.toEqual({errors: ['network_error']});
+    expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({retry: expect.anything()}));
+    expect(transport.graphqlQuery).toHaveBeenCalledTimes(1);
+  });
+});
+
+it('rejects offline paid REST operations instead of adding a replay command', async () => {
+  const {dispatch, flux} = createSessionFlux();
+  const read = flux.getState.bind(flux);
+  vi.spyOn(flux, 'getState').mockImplementation(((path: string, fallback?: unknown) =>
+    path === 'app.networkType' ? 'none' : read(path, fallback)) as any);
+  await expect(restRequest(flux, '/images', 'POST', {prompt: 'moon'}, {queueOffline: false})).rejects.toThrow('network_unavailable');
+  expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({retry: expect.anything()}));
+  expect(transport.post).not.toHaveBeenCalled();
+});

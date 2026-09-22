@@ -20,6 +20,7 @@ const DATA_TYPE = 'videos';
 export type VideoAdapterOptions = BaseAdapterOptions;
 
 export type VideoActionsOptions = Readonly<{
+  provider?: string;
   videoAdapter?: (input: unknown, options?: VideoAdapterOptions) => any;
   videoAdapterOptions?: VideoAdapterOptions;
 }>
@@ -40,7 +41,33 @@ export type VideoApiResultsType = Readonly<{
   }>;
 }>;
 
+export interface VideoGenerationInput {
+  aspectRatio?: string;
+  audioUrls?: string[];
+  endImageUrl?: string;
+  duration?: number;
+  generateAudio?: boolean;
+  imageUrl?: string;
+  imageUrls?: string[];
+  outputFormat?: string;
+  prompt?: string;
+  provider?: string;
+  resolution?: string;
+  videoUrls?: string[];
+}
+export interface VideoGenerationResult {
+  provider: string;
+  status: string;
+  cancelUrl?: string;
+  requestId: string;
+  statusUrl: string;
+}
+export type GenerateVideo = <TInput extends object = VideoGenerationInput, TResult = VideoGenerationResult>(
+  input: TInput, options?: {transport?: (input: TInput) => Promise<TResult>}
+) => Promise<TResult>;
+
 export type VideoActions = Readonly<{
+  generateVideo: GenerateVideo;
   add: (
     videoData: Partial<VideoType>,
     videoProps?: string[],
@@ -111,13 +138,43 @@ export type VideoActions = Readonly<{
   updateVideoAdapterOptions: (options: VideoAdapterOptions) => void;
 }>
 
-const defaultVideoValidator = (input: unknown, options?: VideoAdapterOptions) =>
+const defaultVideoValidator = (input: unknown, _options?: VideoAdapterOptions) =>
   validateVideoInput(input);
 
 export const createVideoActions = (
   flux: FluxFramework,
   options?: VideoActionsOptions
 ): VideoActions => {
+  const generateVideo: GenerateVideo = async (input, requestOptions = {}) => {
+    try {
+      const provider = (input as {provider?: string}).provider ?? options?.provider;
+      if(!provider) {
+        throw new Error('A video generation provider is required.');
+      }
+      if(provider !== 'higgsfield') {
+        throw new Error('Unsupported video provider.');
+      }
+      const normalized = {...input, provider};
+      const result = requestOptions.transport
+        ? await requestOptions.transport(normalized)
+        : await appMutation(flux, 'generateVideo', DATA_TYPE, {
+          input: {type: 'VideoGenerationInput!', value: normalized}
+        }, ['cancelUrl', 'provider', 'requestId', 'status', 'statusUrl'], {
+          onSuccess: async (data) => data.videos?.generateVideo,
+          queueOffline: false
+        });
+      if(result === undefined || result === null) {
+        throw new Error('Video submission could not be confirmed.');
+      }
+      await flux.setState('video.generation', result);
+      await flux.dispatch({generation: result, type: VIDEO_CONSTANTS.GENERATE_SUCCESS});
+      return result as any;
+    } catch(error) {
+      await flux.dispatch({error, type: VIDEO_CONSTANTS.GENERATE_ERROR});
+      throw error;
+    }
+  };
+
   const videoBase = createBaseActions(flux, defaultVideoValidator, {
     adapter: options?.videoAdapter,
     adapterOptions: options?.videoAdapterOptions
@@ -126,7 +183,7 @@ export const createVideoActions = (
   const add = async (
     videoData: Partial<VideoType>,
     videoProps: string[] = [],
-    requestOptions: ActionRequestOptions = {}
+    _requestOptions: ActionRequestOptions = {}
   ): Promise<VideoType> => {
     try {
       const queryVariables = {
@@ -219,7 +276,7 @@ export const createVideoActions = (
     videoData: Partial<VideoType>,
     partCount: number,
     videoProps: string[] = [],
-    requestOptions: ActionRequestOptions = {}
+    _requestOptions: ActionRequestOptions = {}
   ): Promise<VideoMultipartUploadType> => {
     try {
       const queryVariables = {
@@ -270,7 +327,7 @@ export const createVideoActions = (
     videoId: string,
     uploadId: string,
     partNumbers: number[],
-    requestOptions: ActionRequestOptions = {}
+    _requestOptions: ActionRequestOptions = {}
   ): Promise<VideoUploadPartUrl[]> => {
     try {
       const queryVariables = {
@@ -310,7 +367,7 @@ export const createVideoActions = (
     uploadId: string,
     parts: VideoUploadPartInput[],
     videoProps: string[] = [],
-    requestOptions: ActionRequestOptions = {}
+    _requestOptions: ActionRequestOptions = {}
   ): Promise<VideoType> => {
     try {
       const queryVariables = {
@@ -356,7 +413,7 @@ export const createVideoActions = (
   const abortMultipartUpload = async (
     videoId: string,
     uploadId: string,
-    requestOptions: ActionRequestOptions = {}
+    _requestOptions: ActionRequestOptions = {}
   ): Promise<boolean> => {
     try {
       const queryVariables = {
@@ -600,7 +657,7 @@ export const createVideoActions = (
   const deleteVideo = async (
     videoId: string,
     videoProps: string[] = [],
-    requestOptions: ActionRequestOptions = {}
+    _requestOptions: ActionRequestOptions = {}
   ): Promise<VideoType> => {
     try {
       const queryVariables = {
@@ -637,7 +694,7 @@ export const createVideoActions = (
   const update = async (
     video: Partial<VideoType>,
     videoProps: string[] = [],
-    requestOptions: ActionRequestOptions = {}
+    _requestOptions: ActionRequestOptions = {}
   ): Promise<VideoType> => {
     try {
       const queryVariables = {
@@ -678,6 +735,7 @@ export const createVideoActions = (
     completeMultipartUpload,
     createMultipartUpload,
     delete: deleteVideo,
+    generateVideo,
     getMultipartUploadPartUrls,
     getVideoById,
     list,

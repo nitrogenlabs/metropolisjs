@@ -7,6 +7,7 @@ import {merge} from '@nlabs/utils';
 import type {MetropolisAdapters} from '../utils/MetropolisContext.js';
 
 export interface ConfigAppSessionType {
+  autoRefresh?: boolean;
   readonly maxMinutes?: number;
   readonly minMinutes?: number;
   readonly refreshAfterRatio?: number;

@@ -406,3 +406,6 @@ export type {BaseAdapterOptions} from './utils/validatorFactory.js';
 export * from './actions/index.js';
 export * from './constants/Collections.js';
 export * from './types/index.js';
+
+export {clearPersistedSession, storeSession} from './utils/session.js';
+export {WEBSOCKET_CONSTANTS} from './stores/websocketStore.js';
