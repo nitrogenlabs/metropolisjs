@@ -186,4 +186,41 @@ describe('awsRumActions', () => {
     expect(rumRequestMock).not.toHaveBeenCalled();
     expect(flux.dispatch).toHaveBeenCalledWith(expect.objectContaining({type: AWS_RUM_CONSTANTS.TRACK_SUCCESS}));
   });
+
+  it('sends batches over the websocket transport when wsSend is provided', async () => {
+    const flux = createFlux();
+    const wsSend = vi.fn();
+    const awsRum = createAwsRumActions(flux as any, {
+      analyticsId: 'gotham',
+      analyticsTransport: 'websocket',
+      debounceMs: 0,
+      throttleMs: 0,
+      wsSend
+    });
+
+    awsRum.track({name: 'page_view', path: '/home', type: 'page_view'});
+    await vi.runAllTimersAsync();
+
+    expect(wsSend).toHaveBeenCalledWith({
+      action: 'rum.track',
+      data: expect.objectContaining({analyticsId: 'gotham'})
+    });
+    expect(rumRequestMock).not.toHaveBeenCalled();
+    expect(flux.dispatch).toHaveBeenCalledWith(expect.objectContaining({type: AWS_RUM_CONSTANTS.TRACK_SUCCESS}));
+  });
+
+  it('falls back to the graphql transport when websocket is selected without wsSend', async () => {
+    const flux = createFlux();
+    const awsRum = createAwsRumActions(flux as any, {
+      analyticsId: 'gotham',
+      analyticsTransport: 'websocket',
+      debounceMs: 0,
+      throttleMs: 0
+    });
+
+    awsRum.track({name: 'page_view', path: '/home', type: 'page_view'});
+    await vi.runAllTimersAsync();
+
+    expect(rumRequestMock).toHaveBeenCalledTimes(1);
+  });
 });

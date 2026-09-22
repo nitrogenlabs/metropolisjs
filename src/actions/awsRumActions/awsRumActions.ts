@@ -5,6 +5,7 @@
 import {rumBeaconRequest, rumRequest} from '../../utils/api.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
+import type {WebSocketMessage} from '../websocketActions/websocketActions.js';
 
 export const AWS_RUM_CONSTANTS = {
   TRACK_ERROR: 'AWS_RUM_TRACK_ERROR',
@@ -31,11 +32,21 @@ export interface AwsRumEvent extends AwsRumTrackInput {
 
 export interface AwsRumActionsOptions {
   readonly analyticsId?: string;
+  /**
+   * Delivery transport for RUM batches. Defaults to `graphql`, which sends
+   * batches with `rumRequest` (falling back to `navigator.sendBeacon` on
+   * terminal flushes). `websocket` sends batches with `wsSend` instead,
+   * queuing until the shared connection is open (same behavior as
+   * `sendNotification`/`sendTyping`); falls back to `graphql` delivery only
+   * when no `wsSend` was supplied.
+   */
+  readonly analyticsTransport?: 'graphql' | 'websocket';
   readonly debounceMs?: number;
   readonly dedupeMs?: number;
   readonly enabled?: boolean;
   readonly respectPrivacySignals?: boolean;
   readonly throttleMs?: number;
+  readonly wsSend?: (message: WebSocketMessage) => void;
 }
 
 export interface AwsRumActions {
@@ -154,6 +165,8 @@ export const createAwsRumActions = (
   options: AwsRumActionsOptions = {}
 ): AwsRumActions => {
   const analyticsId = normalizeText(options.analyticsId, 128);
+  const analyticsTransport = options.analyticsTransport === 'websocket' ? 'websocket' : 'graphql';
+  const wsSend = options.wsSend;
   const debounceMs = Math.max(0, options.debounceMs ?? DEFAULT_DEBOUNCE_MS);
   const dedupeMs = Math.max(0, options.dedupeMs ?? DEFAULT_DEDUPE_MS);
   const enabled = options.enabled !== false;
@@ -224,10 +237,15 @@ export const createAwsRumActions = (
 
         try {
           const batch = {analyticsId, events: batchEvents};
-          const sentByBeacon = useBeacon && rumBeaconRequest(flux, batch);
 
-          if(!sentByBeacon) {
-            await rumRequest(flux, batch);
+          if(analyticsTransport === 'websocket' && wsSend) {
+            wsSend({action: 'rum.track', data: batch});
+          } else {
+            const sentByBeacon = useBeacon && rumBeaconRequest(flux, batch);
+
+            if(!sentByBeacon) {
+              await rumRequest(flux, batch);
+            }
           }
           await flux.dispatch({analyticsId, events: batchEvents, type: AWS_RUM_CONSTANTS.TRACK_SUCCESS});
         } catch(error) {

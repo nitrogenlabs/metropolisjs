@@ -29,6 +29,7 @@ export interface ConfigAppType {
   readonly name?: string;
   readonly rum?: {
     readonly analyticsId?: string;
+    readonly analyticsTransport?: 'graphql' | 'websocket';
     readonly debounceMs?: number;
     readonly dedupeMs?: number;
     readonly enabled?: boolean;

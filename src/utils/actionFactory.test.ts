@@ -19,6 +19,7 @@ describe('actionFactory', () => {
       'crm',
       'event',
       'group',
+      'higgsfield',
       'image',
       'location',
       'message',
@@ -43,6 +44,24 @@ describe('actionFactory', () => {
     expect(createAction('awsRum', flux as any, {analyticsId: 'other'})).not.toBe(
       createAction('awsRum', flux as any, {analyticsId: 'metropolis'})
     );
+  });
+
+  it('wires the shared websocket action into awsRum when analyticsTransport is websocket', async () => {
+    const wsFlux = {
+      dispatch: vi.fn(async (payload: unknown) => payload),
+      getState: vi.fn((path: string, fallback?: unknown) => fallback),
+      setState: vi.fn(),
+      on: vi.fn()
+    };
+
+    const websocket = createAction('websocket', wsFlux as any);
+    const wsSendSpy = vi.spyOn(websocket, 'wsSend').mockImplementation(() => {});
+    const awsRum = createAction('awsRum', wsFlux as any, {analyticsId: 'metropolis', analyticsTransport: 'websocket'});
+
+    awsRum.track({name: 'click', type: 'click'});
+    await awsRum.flush();
+
+    expect(wsSendSpy).toHaveBeenCalledWith(expect.objectContaining({action: 'rum.track'}));
   });
 
   it('creates selected actions and rejects unknown action types', () => {
