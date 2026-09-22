@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1 (2026-09-22)
+
+Provider-driven content/image/video methods on existing action factories, custom durable-job transports, committed state before ArkhamJS events, paid-request offline replay protection, first-frame WebSocket authentication, and nonrenewable session configuration. Added Gemini media support and packaged the generation/session guide.
+
+
 ## Unreleased
 
 - Register missing stores on each Flux instance instead of trusting a persisted initialization flag.

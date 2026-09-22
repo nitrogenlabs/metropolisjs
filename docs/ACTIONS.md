@@ -236,3 +236,7 @@ npm run typecheck
 ```
 
 This validates the production source, tests, lint inputs, and examples. Run `npm run lint`, `npm test`, and `npm run build` before publishing.
+
+## Generation actions
+
+Content, image, and video factories now expose provider-driven generation through existing Reaktor GraphQL namespaces. They support custom durable-job transports, disable paid offline replay, and store results before ArkhamJS success events. See [Generation, sessions, and events](GENERATION.md) for the method/provider matrix, examples, and lifecycle contract.

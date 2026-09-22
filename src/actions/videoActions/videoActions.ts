@@ -49,6 +49,7 @@ export interface VideoGenerationInput {
   generateAudio?: boolean;
   imageUrl?: string;
   imageUrls?: string[];
+  model?: string;
   outputFormat?: string;
   prompt?: string;
   provider?: string;
@@ -151,7 +152,7 @@ export const createVideoActions = (
       if(!provider) {
         throw new Error('A video generation provider is required.');
       }
-      if(provider !== 'higgsfield') {
+      if(!['gemini', 'higgsfield'].includes(provider)) {
         throw new Error('Unsupported video provider.');
       }
       const normalized = {...input, provider};

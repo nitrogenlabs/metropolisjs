@@ -6,7 +6,7 @@ export interface ImageGenerationInput {
   model?: string;
   presetId?: string;
   prompt: string;
-  provider: 'higgsfield' | 'openai';
+  provider: 'gemini' | 'higgsfield' | 'openai';
   quality?: string;
   resolution?: string;
   seed?: number;
@@ -17,7 +17,8 @@ export interface ImageGenerationInput {
 export interface ImageGenerationResult {
   cancelUrl?: string;
   imageBase64?: string;
-  provider: 'higgsfield' | 'openai';
+  mimeType?: 'image/jpeg' | 'image/png';
+  provider: 'gemini' | 'higgsfield' | 'openai';
   requestId: string;
   status: string;
   statusUrl?: string;

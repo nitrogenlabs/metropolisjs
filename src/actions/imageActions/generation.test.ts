@@ -31,3 +31,23 @@ describe('generic media generation', () => {
     expect(flux.dispatch).toHaveBeenCalledWith(expect.objectContaining({type: 'VIDEO_GENERATE_ERROR'}));
   });
 });
+
+it('does not infer an image provider', async () => {
+  const transport = vi.fn();
+  await expect(createImageActions(flux as never).generateImage({prompt: 'Moon'} as never, {transport})).rejects.toThrow('Choose an image provider');
+  expect(transport).not.toHaveBeenCalled();
+});
+
+it.each(['image', 'video'])('routes Gemini %s through generic actions and Arkham state', async (kind) => {
+  vi.clearAllMocks();
+  const result = {provider: 'gemini', requestId: 'one', status: kind === 'image' ? 'completed' : 'queued'};
+  vi.mocked(appMutation).mockResolvedValue(result);
+  if(kind === 'image') {
+    await createImageActions(flux as never).generateImage({prompt: 'Moon', provider: 'gemini'});
+  } else {
+    await createVideoActions(flux as never).generateVideo({duration: 8, prompt: 'Moon', provider: 'gemini'});
+  }
+  expect(appMutation).toHaveBeenCalledWith(flux, kind === 'image' ? 'generateImage' : 'generateVideo', `${kind}s`, expect.objectContaining({input: expect.objectContaining({value: expect.objectContaining({provider: 'gemini'})})}), expect.any(Array), expect.objectContaining({queueOffline: false}));
+  expect(flux.setState).toHaveBeenCalledWith(`${kind}.generation`, result);
+  expect(flux.setState.mock.invocationCallOrder[0]).toBeLessThan(flux.dispatch.mock.invocationCallOrder[0]!);
+});

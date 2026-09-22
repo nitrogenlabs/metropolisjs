@@ -78,17 +78,27 @@ export interface ImageActions {
   delete: (imageId: string, imageProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ImageType>;
   getImageById: (imageId: string, imageProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ImageType>;
   update: (image: Partial<ImageType>, type?: string, requestOptions?: ActionRequestOptions) => Promise<ImageType>;
-  upload: (imageFiles: File[], itemId: string, itemType?: string, requestOptions?: ActionRequestOptions) => Promise<ImageType[]>;
+  upload: (
+    imageFiles: File[], itemId: string, itemType?: string, requestOptions?: ActionRequestOptions
+  ) => Promise<ImageType[]>;
   countByItem: (itemId: string, requestOptions?: ActionRequestOptions) => Promise<number>;
-  listByItem: (itemId: string, itemType?: string, from?: number, to?: number, imageProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ImageType[]>;
-  listByPersonaReactions: (personaId: string, reactions: string[], from?: number, to?: number, imageProps?: string[], listKey?: string, requestOptions?: ActionRequestOptions) => Promise<ImageType[]>;
-  listByReactions: (reactions: string[], from?: number, to?: number, imageProps?: string[], requestOptions?: ActionRequestOptions) => Promise<ImageType[]>;
+  listByItem: (
+    itemId: string, itemType?: string, from?: number, to?: number,
+    imageProps?: string[], requestOptions?: ActionRequestOptions
+  ) => Promise<ImageType[]>;
+  listByPersonaReactions: (
+    personaId: string, reactions: string[], from?: number, to?: number,
+    imageProps?: string[], listKey?: string, requestOptions?: ActionRequestOptions
+  ) => Promise<ImageType[]>;
+  listByReactions: (
+    reactions: string[], from?: number, to?: number, imageProps?: string[], requestOptions?: ActionRequestOptions
+  ) => Promise<ImageType[]>;
   updateImageAdapter: (adapter: (input: unknown, options?: ImageAdapterOptions) => any) => void;
   updateImageAdapterOptions: (options: ImageAdapterOptions) => void;
 }
 
 // Default validation function
-const defaultImageValidator = (input: unknown, options?: ImageAdapterOptions) => validateImageInput(input);
+const defaultImageValidator = (input: unknown, _options?: ImageAdapterOptions) => validateImageInput(input);
 
 // Enhanced validation function that merges custom logic with defaults
 const createImageValidator = (
@@ -159,14 +169,14 @@ export const createImageActions = (
 
   const generateImage: GenerateImage = async (input, requestOptions = {}) => {
     try {
-      if(!['higgsfield', 'openai'].includes(input.provider)) {
+      if(!['gemini', 'higgsfield', 'openai'].includes(input.provider)) {
         throw new Error('Choose an image provider and enter a prompt.');
       }
       const result = requestOptions.transport
         ? await requestOptions.transport(input)
         : await appMutation(flux, 'generateImage', DATA_TYPE, {
           input: {type: 'ImageGenerationInput!', value: input}
-        }, ['cancelUrl', 'imageBase64', 'provider', 'requestId', 'status', 'statusUrl'], {
+        }, ['cancelUrl', 'imageBase64', 'mimeType', 'provider', 'requestId', 'status', 'statusUrl'], {
           onSuccess: async (data) => data.images?.generateImage,
           queueOffline: false
         });
@@ -186,7 +196,7 @@ export const createImageActions = (
   const add = async (
     image: Partial<ImageType>,
     type: string = 'image',
-    requestOptions: ActionRequestOptions = {}
+    _requestOptions: ActionRequestOptions = {}
   ): Promise<ImageType> => {
     try {
       const validatedImage = validateImage(image, imageAdapterOptions);
@@ -252,7 +262,7 @@ export const createImageActions = (
   const deleteImage = async (
     imageId: string,
     imageProps: string[] = [],
-    requestOptions: ActionRequestOptions = {}
+    _requestOptions: ActionRequestOptions = {}
   ): Promise<ImageType> => {
     try {
       const queryVariables = {
@@ -282,7 +292,7 @@ export const createImageActions = (
   const update = async (
     image: Partial<ImageType>,
     type: string = 'image',
-    requestOptions: ActionRequestOptions = {}
+    _requestOptions: ActionRequestOptions = {}
   ): Promise<ImageType> => {
     try {
       const validatedImage = validateImage(image, imageAdapterOptions);
@@ -390,7 +400,7 @@ export const createImageActions = (
 
       const onSuccess = (data: ApiResultsType = {}) => {
         const count = data?.imageCount ?? 0;
-        return flux.dispatch({itemId, count, type: IMAGE_CONSTANTS.GET_COUNT_SUCCESS});
+        return flux.dispatch({count, itemId, type: IMAGE_CONSTANTS.GET_COUNT_SUCCESS});
       };
 
       const result = await appQuery<number>(flux, 'imageCount', DATA_TYPE, queryVariables, ['count'], {onSuccess});
@@ -628,7 +638,9 @@ export const createImageActions = (
       );
 
       if(cachedResult !== undefined) {
-        await flux.dispatch({itemId: listKey, list: cachedResult, personaId, reactions, type: IMAGE_CONSTANTS.GET_LIST_SUCCESS});
+        await flux.dispatch({
+          itemId: listKey, list: cachedResult, personaId, reactions, type: IMAGE_CONSTANTS.GET_LIST_SUCCESS
+        });
         return cachedResult;
       }
 
@@ -702,16 +714,16 @@ export const createImageActions = (
 
   return {
     add,
+    countByItem,
     delete: deleteImage,
     generateImage,
     getImageById,
-    update,
-    upload,
-    countByItem,
     listByItem,
     listByPersonaReactions,
     listByReactions,
+    update,
     updateImageAdapter,
-    updateImageAdapterOptions
+    updateImageAdapterOptions,
+    upload
   };
 };
