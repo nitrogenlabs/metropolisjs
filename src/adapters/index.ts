@@ -4,6 +4,12 @@ export {parseContent} from './contentAdapter/contentAdapter.js';
 export {parseConversation} from './conversationAdapter/conversationAdapter.js';
 export {parseEvent} from './eventAdapter/eventAdapter.js';
 export {parseGroup} from './groupAdapter/groupAdapter.js';
+export {
+  validateMarketingStudioImageInput,
+  validateSeedanceReferenceVideoInput,
+  validateSeedanceVideoInput,
+  validateSoulImageInput
+} from './higgsfieldAdapter/higgsfieldAdapter.js';
 export {parseImage} from './imageAdapter/imageAdapter.js';
 export {parseLocation} from './locationAdapter/locationAdapter.js';
 export {parseMessage} from './messageAdapter/messageAdapter.js';
@@ -32,6 +38,13 @@ export type {ContentInputType, ContentType} from './contentAdapter/contentAdapte
 export type {ConversationType as ConversationAdapterType} from './conversationAdapter/conversationAdapter.js';
 export type {EventType} from './eventAdapter/eventAdapter.js';
 export type {GroupType} from '../types/groups.types.js';
+export type {
+  HiggsfieldRequest,
+  MarketingStudioImageInput,
+  SeedanceReferenceVideoInput,
+  SeedanceVideoInput,
+  SoulImageInput
+} from './higgsfieldAdapter/higgsfieldAdapter.js';
 export type {ImageType} from './imageAdapter/imageAdapter.js';
 export type {LocationType} from './locationAdapter/locationAdapter.js';
 export type {MessageType} from './messageAdapter/messageAdapter.js';

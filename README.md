@@ -171,6 +171,7 @@ Configure the public analytics identifier returned by Reaktor under `app.rum.ana
         },
         rum: {
           analyticsId: '00000000-0000-4000-8000-000000000000',
+          analyticsTransport: 'graphql',
           debounceMs: 250,
           dedupeMs: 1000,
           enabled: true,
@@ -185,6 +186,13 @@ Configure the public analytics identifier returned by Reaktor under `app.rum.ana
 ```
 
 Configure the endpoint at `app.api.endpoints.rum`. RUM delivery is unauthenticated and each batch contains `analyticsId` and up to 50 sanitized events.
+
+#### Delivery transport
+
+`app.rum.analyticsTransport` selects how batches leave the client:
+
+- `graphql` (default) — sends batches with the normal RUM request, matching the beacon fallback described below.
+- `websocket` — sends batches over the shared Metropolis websocket connection instead, using the same `wsSend` queue as notifications and typing indicators. Requires `app.urls.websocket` to be configured; batches queue until the connection opens rather than falling back per flush.
 
 #### Beacon delivery
 

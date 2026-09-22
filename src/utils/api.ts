@@ -35,6 +35,7 @@ export type ReaktorDbCollection =
   'events' |
   'files' |
   'groups' |
+  'higgsfield' |
   'images' |
   'locations' |
   'messages' |

@@ -58,6 +58,7 @@ export {
   useAwsRum, useContentActions, useCrmActions,
   useEventActions,
   useGroupActions,
+  useHiggsfieldActions,
   useImageActions,
   useLocationActions,
   useMessageActions,

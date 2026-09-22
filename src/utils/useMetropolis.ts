@@ -97,6 +97,9 @@ const mapActionsToReturnKeys = (actions: Record<string, any>): Record<string, an
   if(actions.group) {
     mapped.groupActions = actions.group;
   }
+  if(actions.higgsfield) {
+    mapped.higgsfieldActions = actions.higgsfield;
+  }
   if(actions.image) {
     mapped.imageActions = actions.image;
   }
@@ -246,6 +249,11 @@ export const useEventActions = () => {
 export const useGroupActions = () => {
   const {groupActions} = useMetropolis(['group']);
   return groupActions;
+};
+
+export const useHiggsfieldActions = () => {
+  const {higgsfieldActions} = useMetropolis(['higgsfield']);
+  return higgsfieldActions;
 };
 
 export const useImageActions = () => {

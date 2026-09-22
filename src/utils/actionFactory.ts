@@ -7,6 +7,7 @@ import {createContentActions} from '../actions/contentActions/contentActions.js'
 import {createCrmActions} from '../actions/crmActions/crmActions.js';
 import {createEventActions} from '../actions/eventActions/eventActions.js';
 import {createGroupActions} from '../actions/groupActions/groupActions.js';
+import {createHiggsfieldActions} from '../actions/higgsfieldActions/higgsfieldActions.js';
 import {createImageActions} from '../actions/imageActions/imageActions.js';
 import {createLocationActions} from '../actions/locationActions/locationActions.js';
 import {createMessageActions} from '../actions/messageActions/messageActions.js';
@@ -51,6 +52,7 @@ const websocketActionCache = new WeakMap<FluxFramework, ReturnType<typeof create
 
 const createAwsRumOptionsKey = (options: AwsRumActionsOptions = {}): string => JSON.stringify({
   analyticsId: options.analyticsId,
+  analyticsTransport: options.analyticsTransport,
   debounceMs: options.debounceMs,
   dedupeMs: options.dedupeMs,
   enabled: options.enabled,
@@ -64,6 +66,7 @@ export type ActionType =
   | 'crm'
   | 'event'
   | 'group'
+  | 'higgsfield'
   | 'image'
   | 'location'
   | 'message'
@@ -86,6 +89,7 @@ export interface ActionMap {
   crm: ReturnType<typeof createCrmActions>;
   event: ReturnType<typeof createEventActions>;
   group: ReturnType<typeof createGroupActions>;
+  higgsfield: ReturnType<typeof createHiggsfieldActions>;
   image: ReturnType<typeof createImageActions>;
   location: ReturnType<typeof createLocationActions>;
   message: ReturnType<typeof createMessageActions>;
@@ -133,7 +137,7 @@ const createActionByType = (
 ) => {
   switch(actionType) {
     case 'awsRum': {
-      const awsRumOptions = options as AwsRumActionsOptions;
+      const awsRumOptions = (options || {}) as AwsRumActionsOptions;
       const optionsKey = createAwsRumOptionsKey(awsRumOptions);
       const cached = awsRumActionCache.get(flux);
 
@@ -142,7 +146,10 @@ const createActionByType = (
           void cached.actions.destroy();
         }
 
-        const actions = createAwsRumActions(flux, awsRumOptions);
+        const resolvedOptions = awsRumOptions.analyticsTransport === 'websocket'
+          ? {...awsRumOptions, wsSend: (createActionByType('websocket', flux) as ReturnType<typeof createWebsocketActions>).wsSend}
+          : awsRumOptions;
+        const actions = createAwsRumActions(flux, resolvedOptions);
         awsRumActionCache.set(flux, {actions, optionsKey});
         return actions;
       }
@@ -161,6 +168,9 @@ const createActionByType = (
 
     case 'group':
       return createGroupActions(flux, options as GroupActionsOptions);
+
+    case 'higgsfield':
+      return createHiggsfieldActions(flux);
 
     case 'image':
       return createImageActions(flux, options as ImageActionsOptions);
@@ -247,6 +257,7 @@ export const createAllActions = (
     'crm',
     'event',
     'group',
+    'higgsfield',
     'image',
     'location',
     'message',

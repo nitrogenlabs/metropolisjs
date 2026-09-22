@@ -6,6 +6,7 @@ export * from './conversationActions/conversationActions.js';
 export * from './crmActions/crmActions.js';
 export * from './eventActions/eventActions.js';
 export * from './groupActions/groupActions.js';
+export * from './higgsfieldActions/higgsfieldActions.js';
 export * from './imageActions/imageActions.js';
 export * from './locationActions/locationActions.js';
 export * from './messageActions/messageActions.js';
