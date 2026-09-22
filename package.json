@@ -92,26 +92,24 @@
     "url": "https://github.com/nitrogenlabs/metropolisjs/issues"
   },
   "dependencies": {
-    "@nlabs/rip-hunter": "3.1.1",
-    "@nlabs/utils": "^2.10.7",
-    "i18next": "^26.3.6",
+    "@nlabs/rip-hunter": "3.1.2",
+    "@nlabs/utils": "^2.11.0",
+    "i18next": "^26.4.2",
     "luxon": "^3.7.2",
-    "p-debounce": "^5.1.0",
-    "react-i18next": "^17.0.11",
+    "p-debounce": "^5.1.1",
+    "react-i18next": "^17.0.15",
     "sockette": "^2.0.6",
-    "zod": "^4.4.3"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@nlabs/arkhamjs": "3.31.11",
-    "@nlabs/arkhamjs-storage-browser": "^3.30.8",
-    "@nlabs/arkhamjs-utils-react": "^3.32.9",
-    "@nlabs/lex": "^2.0.3",
-    "@types/node": "^26.2.0",
-    "@types/react": "^19.2.18",
-    "@vitest/coverage-v8": "^4.1.10",
-    "react": "^19.2.8",
-    "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "@nlabs/arkhamjs": "3.31.16",
+    "@nlabs/arkhamjs-storage-browser": "^3.30.12",
+    "@nlabs/arkhamjs-utils-react": "^3.32.13",
+    "@nlabs/lex": "^2.0.8",
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.3.0",
+    "react": "^19.3.0",
+    "typescript": "^7.0.2"
   },
   "peerDependencies": {
     "@nlabs/arkhamjs": "^3.31.1",
