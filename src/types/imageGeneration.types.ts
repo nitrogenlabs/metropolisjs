@@ -4,8 +4,9 @@ export interface ImageGenerationInput {
   enhancePrompt?: boolean;
   imageUrls?: string[];
   model?: string;
+  modelInput?: Record<string, unknown>;
   presetId?: string;
-  prompt: string;
+  prompt?: string;
   provider: 'gemini' | 'higgsfield' | 'openai';
   quality?: string;
   resolution?: string;

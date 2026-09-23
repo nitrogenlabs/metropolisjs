@@ -1556,3 +1556,7 @@ support `gemini` (Veo) and `higgsfield`. No generation provider is inferred. The
 GraphQL actions and Arkham events apply to each provider. Provider credentials remain
 in Reaktor server configuration; applications retain responsibility for durable jobs,
 credit accounting, and private object storage.
+
+### Higgsfield catalog model inputs
+
+Image and video generation actions accept a Higgsfield route in `model` and its documented nested parameters in `modelInput`. The generic GraphQL transport forwards this JSON to Reaktor's allowlisted catalog and schema validator; custom authenticated transports retain the same Flux completion/error events. Read available models from the application's server catalog rather than embedding provider credentials or duplicating the model list in the UI.

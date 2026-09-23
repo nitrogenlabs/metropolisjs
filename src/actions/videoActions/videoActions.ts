@@ -50,6 +50,7 @@ export interface VideoGenerationInput {
   imageUrl?: string;
   imageUrls?: string[];
   model?: string;
+  modelInput?: Record<string, unknown>;
   outputFormat?: string;
   prompt?: string;
   provider?: string;

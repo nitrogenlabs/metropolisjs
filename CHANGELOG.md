@@ -1,3 +1,7 @@
+## 1.4.0
+
+Add typed nested model inputs for catalog-based Higgsfield image and video generation.
+
 # Changelog
 
 ## 1.2.1 (2026-09-22)
