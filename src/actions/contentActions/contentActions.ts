@@ -19,7 +19,7 @@ export interface ContentGenerationInput {
   maxTokens?: number;
   model?: string;
   prompt: string;
-  provider: 'claude' | 'gemini' | 'openai';
+  provider: 'claude' | 'gemini' | 'grok' | 'openai';
   search?: boolean;
   system?: string;
 }

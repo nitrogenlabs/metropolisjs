@@ -1560,3 +1560,11 @@ credit accounting, and private object storage.
 ### Higgsfield catalog model inputs
 
 Image and video generation actions accept a Higgsfield route in `model` and its documented nested parameters in `modelInput`. The generic GraphQL transport forwards this JSON to Reaktor's allowlisted catalog and schema validator; custom authenticated transports retain the same Flux completion/error events. Read available models from the application's server catalog rather than embedding provider credentials or duplicating the model list in the UI.
+
+### Grok text and media
+
+Text generation accepts `provider: "grok"`; Reaktor uses server-side `contentGeneration.grokKey` and optional `grokModel` (default `grok-4.7`) for the xAI Responses API. Owned image inputs can accompany a text prompt. Grok image/video models are available through the Higgsfield model catalog and its existing webhook transport; this integration does not add a direct xAI media polling adapter. Application code owns callback persistence, retention, and accounting.
+
+### Assistant actions
+
+Use `createAction('assistant', flux)` for typed Reaktor chat, FAQ and support operations with scoped Flux state and events. Configure `app.api.public` for your Reaktor endpoint. See [Assistant actions](docs/ASSISTANT.md) for setup and examples.

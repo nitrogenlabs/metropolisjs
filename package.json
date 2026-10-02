@@ -1,6 +1,6 @@
 {
   "name": "@nlabs/metropolisjs",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Type-safe frontend integration for authentication, data, messaging, realtime events, billing, and Reaktor APIs.",
   "type": "module",
   "main": "lib/index.js",
@@ -136,6 +136,7 @@
     "lib",
     "README.md",
     "LICENSE",
-    "docs/GENERATION.md"
+    "docs/GENERATION.md",
+    "docs/ASSISTANT.md"
   ]
 }
