@@ -755,3 +755,87 @@ describe('createUserActions', () => {
     expect(actions.updateUserAdapterOptions).toBeTypeOf('function');
   });
 });
+
+describe('sign-in request ownership', () => {
+  it('rejects a successful response after sign-out without restoring the session', async () => {
+    const flux = createMockFlux();
+    const actions = createUserActions(flux as any);
+    let complete!: () => Promise<void>;
+    publicMutationMock.mockImplementation(
+      (_flux, _name, _type, _vars, _fields, options) => new Promise((resolve, reject) => {
+        complete = async () => {
+          try {
+            resolve(await options.onSuccess({users: {signIn: {token: 'late', userId: 'old'}}}));
+          } catch(error) {
+            reject(error);
+          }
+        };
+      }));
+    const pending = actions.signIn({password: 'secret', username: 'old'});
+    const rejected = pending.then(() => {
+      throw new Error('Expected rejection');
+    },
+    (error) => expect(error.message).toBe('session_changed'));
+    await actions.signOut();
+    await complete();
+    await rejected;
+
+    expect(flux.getState('user.session.token')).toBeUndefined();
+  });
+
+  it('keeps a newer sign-in when an older request fails through another action instance', async () => {
+    const flux = createMockFlux();
+    let fail!: (error: Error) => void;
+    publicMutationMock.mockImplementationOnce(() => new Promise((_resolve, reject) => {
+      fail = reject;
+    }));
+    const first = createUserActions(flux as any).signIn({password: 'secret', username: 'old'});
+    const rejected = first.then(() => {
+      throw new Error('Expected rejection');
+    },
+    (error) => expect(error.message).toBe('old failed'));
+    publicMutationMock.mockImplementationOnce(async (_flux, _name, _type, _vars, _fields, options) =>
+      options.onSuccess({users: {signIn: {token: 'new', userId: 'new'}}}));
+    const newer = await createUserActions(flux as any).signIn({password: 'secret', username: 'new'});
+    fail(new Error('old failed'));
+    await rejected;
+
+    expect(flux.getState('user.session.token')).toBe(newer.token);
+    expect(flux.dispatch.mock.calls.filter(([action]) => action.type === 'USER_SIGN_IN_ERROR')).toHaveLength(0);
+  });
+});
+
+test.each([true, false])('rejects sign-in superseded during its final success persistence (hydrated: %s)', async (hydrated) => {
+  const flux = createMockFlux();
+  const actions = createUserActions(flux as any);
+  let release!: () => void;
+  let started!: () => void;
+  const blocked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const received = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  clearPersistedSessionMock.mockImplementation(async (target) => target.setState('user.session', {}));
+  publicMutationMock.mockImplementation(async (_flux, _name, _type, _vars, _fields, options) =>
+    options.onSuccess({users: {signIn: {token: 'old', userId: 'old'}}}));
+  appQueryMock.mockResolvedValue(hydrated ? {users: {getUserBySession: {userId: 'old'}}} : {});
+  flux.dispatch.mockImplementation(async (action) => {
+    if(action.type === 'USER_SIGN_IN_SUCCESS') {
+      started();
+      await blocked;
+    }
+    return action;
+  });
+  const pending = actions.signIn({password: 'secret', username: 'old'});
+  const rejected = pending.then(() => {
+    throw new Error('Expected rejection');
+  },
+  (error) => expect(error.message).toBe('session_changed'));
+  await received;
+  await actions.signOut();
+  release();
+  await rejected;
+
+  expect(flux.getState('user.session.token')).toBeUndefined();
+});

@@ -24,6 +24,7 @@ import type {ActionRequestOptions} from '../../utils/requestCache.js';
 import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
 
 const DATA_TYPE = 'users';
+const accountRequests = new WeakMap<FluxFramework, symbol>();
 const DEFAULT_USER_QUERY_FIELDS = ['userId', 'username'];
 const SENSITIVE_USER_FIELDS = new Set([
   'password',
@@ -618,7 +619,8 @@ export const createUserActions = (
 
   const session = async (
     userProps: string[] = [],
-    _requestOptions: ActionRequestOptions = {}
+    _requestOptions: ActionRequestOptions = {},
+    assertCurrent: () => void = () => {}
   ): Promise<User> => withInvalidFieldRetry(
     async (sessionProps) => {
       const data = await appQuery(
@@ -630,17 +632,22 @@ export const createUserActions = (
       ) as unknown as {
         users?: {getUserBySession?: Partial<User>};
       };
+      assertCurrent();
       const sessionData = data?.users?.getUserBySession || {};
 
       if(!hasSessionIdentity(sessionData)) {
         await clearPersistedSession(flux);
+        assertCurrent();
         await flux.dispatch({type: USER_CONSTANTS.GET_SESSION_ERROR});
         throw new Error('invalid_session');
       }
 
       const nextSession = await syncStoredSession(flux, sessionData as Record<string, unknown>);
+      assertCurrent();
       await flux.dispatch({session: nextSession, type: USER_CONSTANTS.GET_SESSION_SUCCESS});
+      assertCurrent();
       await syncPersonaTagsToSession(flux, String((nextSession as any)?.personaId || ''));
+      assertCurrent();
       return await syncStoredSession(flux, (flux.getState('user.session', nextSession) || nextSession) as Record<string, unknown>) as User;
     },
     userProps,
@@ -1141,6 +1148,22 @@ export const createUserActions = (
       throw new Error('Username, email, or phone number and password are required to sign in');
     }
 
+    const owner = Symbol('signIn');
+    accountRequests.set(flux, owner);
+    let generation = flux.getState('app.sessionGeneration', 0);
+    const assertCurrent = (checkGeneration = true): void => {
+      if(accountRequests.get(flux) !== owner ||
+        (checkGeneration && generation !== flux.getState('app.sessionGeneration', 0))) {
+        throw new Error('session_changed');
+      }
+    };
+    const storeCurrentSession = async (value: Record<string, unknown>): Promise<SessionType> => {
+      assertCurrent();
+      const stored = await syncStoredSession(flux, value);
+      assertCurrent();
+      return stored;
+    };
+
     const config = getConfigFromFlux(flux);
     const requestedExpires = Math.max(1, Number(expires || config.app?.session?.maxMinutes || 15));
     const queryVariablesWithUserInput = {
@@ -1155,10 +1178,13 @@ export const createUserActions = (
     };
 
     const onSuccess = async (data: ApiResultsType = {}): Promise<FluxAction> => {
+      assertCurrent();
       const users = (data as unknown as UserApiResultsType)?.users;
       const sessionData = normalizeSession(users?.signIn || {});
       await flux.dispatch({session: {}, type: USER_CONSTANTS.SIGN_OUT_SUCCESS});
-      const storedSession = await syncStoredSession(flux, sessionData);
+      assertCurrent(false);
+      generation = flux.getState('app.sessionGeneration', 0);
+      const storedSession = await storeCurrentSession(sessionData);
       const action: FluxAction = {
         session: storedSession,
         type: USER_CONSTANTS.SIGN_IN_SUCCESS
@@ -1174,45 +1200,58 @@ export const createUserActions = (
         DATA_TYPE,
         queryVariables,
         ['expires', 'issued', 'token', 'userId', 'username'],
-        {onSuccess}
+        {onSuccess, queueOffline: false}
       );
-      const baseSession = await syncStoredSession(flux, getSessionPayload(sessionResult));
+      const baseSession = await storeCurrentSession(getSessionPayload(sessionResult));
 
       try {
-        const hydratedSession = await session(['userId', 'personaId', 'userAccess', 'username'], requestOptions);
+        const hydratedSession = await session(['userId', 'personaId', 'userAccess', 'username'], requestOptions, assertCurrent);
+        assertCurrent();
         await syncPersonaTagsToSession(flux, String((hydratedSession as any)?.personaId || ''));
       } catch{
-        const fallbackSession = await syncStoredSession(flux, baseSession as Record<string, unknown>);
+        assertCurrent();
+        const fallbackSession = await storeCurrentSession(baseSession as Record<string, unknown>);
         await flux.dispatch({
           session: fallbackSession,
           type: USER_CONSTANTS.SIGN_IN_SUCCESS
         });
+        assertCurrent();
         return fallbackSession;
       }
 
-      const finalSession = await syncStoredSession(
-        flux,
+      const finalSession = await storeCurrentSession(
         (flux.getState('user.session', baseSession) || baseSession) as Record<string, unknown>
       );
       await flux.dispatch({
         session: finalSession,
         type: USER_CONSTANTS.SIGN_IN_SUCCESS
       });
+      assertCurrent();
       return finalSession;
     };
 
+    let result: SessionType;
     try {
-      return await performSignIn(queryVariablesWithUserInput);
+      result = await performSignIn(queryVariablesWithUserInput);
     } catch(error) {
-      flux.dispatch({error, type: USER_CONSTANTS.SIGN_IN_ERROR});
+      if(accountRequests.get(flux) === owner && generation === flux.getState('app.sessionGeneration', 0)) {
+        await flux.dispatch({error, type: USER_CONSTANTS.SIGN_IN_ERROR});
+      }
       throw error;
     } finally {
       await clearUserRequestCaches(String((user as any)?.userId || ''));
     }
+    assertCurrent();
+    return result;
   };
 
   const signOut = async (_requestOptions: ActionRequestOptions = {}): Promise<boolean> => {
+    const owner = Symbol('signOut');
+    accountRequests.set(flux, owner);
     await clearPersistedSession(flux);
+    if(accountRequests.get(flux) !== owner) {
+      return true;
+    }
     await flux.dispatch({session: {}, type: USER_CONSTANTS.SIGN_OUT_SUCCESS});
     await clearUserRequestCaches();
     return true;
