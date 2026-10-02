@@ -1,5 +1,5 @@
 import {resetActionScenarioMocks, runPersonaActionsScenario} from '../../tests/actionTestScenarios.js';
-import {createPersonaActions, syncPersonaTagsToSession, syncPersonaToSession} from './personaActions';
+import {createPersonaActions, syncPersonaTagsToSession, syncPersonaToSession} from './personaActions.js';
 
 const createMockFlux = () => {
   const defaultConfig = {
@@ -20,7 +20,7 @@ const createMockFlux = () => {
   return {
     dispatch: () => {},
     getState: (key) => {
-      if (key) {
+      if(key) {
         return mockState[key];
       }
       return mockState;
@@ -69,22 +69,30 @@ describe('personaActions', () => {
       })
     };
 
-    syncPersonaToSession(flux as any, {
+    await syncPersonaToSession(flux as any, {
       name: 'Persona',
       personaId: 'persona-1',
       tags: [{name: 'Alpha', tagId: 'tag-1'}],
       userId: 'user-1'
     });
-    expect(flux.setState).toHaveBeenCalledWith('user.session', expect.objectContaining({
-      name: 'Persona',
-      tags: [{name: 'Alpha', tagId: 'tag-1'}]
-    }));
+
+    expect(flux.setState).toHaveBeenCalledWith(
+      'user.session',
+      expect.objectContaining({
+        name: 'Persona',
+        tags: [{name: 'Alpha', tagId: 'tag-1'}]
+      })
+    );
 
     await expect(syncPersonaTagsToSession(flux as any, 'persona-1')).resolves.toBeDefined();
     await expect(syncPersonaTagsToSession(flux as any, '')).resolves.toBeDefined();
 
-    syncPersonaToSession(flux as any, {personaId: 'other', userId: 'user-1'});
-    expect(flux.setState).not.toHaveBeenCalledWith('user.session', expect.objectContaining({personaId: 'other'}));
+    await syncPersonaToSession(flux as any, {personaId: 'other', userId: 'user-1'});
+
+    expect(flux.setState).not.toHaveBeenCalledWith(
+      'user.session',
+      expect.objectContaining({personaId: 'other'})
+    );
   });
 
   it('should have correct method types', () => {
@@ -196,7 +204,12 @@ describe('personaActions', () => {
   });
 
   it('should handle addPersona with full input', async () => {
-    const personaData = {bio: 'full-bio', email: 'test@example.com', name: 'full-name', phone: '123-456-7890'};
+    const personaData = {
+      bio: 'full-bio',
+      email: 'test@example.com',
+      name: 'full-name',
+      phone: '123-456-7890'
+    };
 
     try {
       await personaActions.addPersona(personaData);
@@ -216,7 +229,13 @@ describe('personaActions', () => {
   });
 
   it('should handle updatePersona with full input', async () => {
-    const personaData = {bio: 'full-updated', email: 'updated@example.com', name: 'full-updated', phone: '098-765-4321', personaId: 'test-id'};
+    const personaData = {
+      bio: 'full-updated',
+      email: 'updated@example.com',
+      name: 'full-updated',
+      personaId: 'test-id',
+      phone: '098-765-4321'
+    };
 
     try {
       await personaActions.updatePersona(personaData);
@@ -230,6 +249,7 @@ describe('personaActions', () => {
 
     for(const id of testIds) {
       try {
+        // eslint-disable-next-line no-await-in-loop
         await personaActions.getPersonaById(id);
       } catch(error) {
         expect(error).toBeDefined();
@@ -238,14 +258,11 @@ describe('personaActions', () => {
   });
 
   it('should handle getPersonaListByIds with various ID arrays', async () => {
-    const testIdArrays = [
-      ['persona-1'],
-      ['persona-1', 'persona-2'],
-      ['persona-1', 'persona-2', 'persona-3']
-    ];
+    const testIdArrays = [['persona-1'], ['persona-1', 'persona-2'], ['persona-1', 'persona-2', 'persona-3']];
 
     for(const ids of testIdArrays) {
       try {
+        // eslint-disable-next-line no-await-in-loop
         await personaActions.getPersonaListByIds(ids);
       } catch(error) {
         expect(error).toBeDefined();
@@ -258,6 +275,7 @@ describe('personaActions', () => {
 
     for(const id of testIds) {
       try {
+        // eslint-disable-next-line no-await-in-loop
         await personaActions.deletePersona(id);
       } catch(error) {
         expect(error).toBeDefined();
@@ -328,11 +346,7 @@ describe('personaActions', () => {
   });
 
   it('should handle adapter updates with various functions', () => {
-    const testAdapters = [
-      () => {},
-      (input) => input,
-      (input, options) => ({...input, ...options})
-    ];
+    const testAdapters = [() => {}, (input) => input, (input, options) => ({...input, ...options})];
 
     for(const adapter of testAdapters) {
       personaActions.updatePersonaAdapter(adapter);
@@ -355,4 +369,55 @@ describe('personaActions', () => {
       expect(typeof personaActions.updatePersonaAdapterOptions).toBe('function');
     }
   });
+});
+
+test('rejects profile synchronization when persistence fails', async () => {
+  const flux = {
+    dispatch: vi.fn(async (action) => action),
+    getState: (path: string, fallback: unknown) =>
+      (path === 'user.session' ? {token: 'token', userId: 'user'} : fallback),
+    setState: async () => {
+      throw new Error('secure storage unavailable');
+    }
+  };
+
+  await expect(syncPersonaToSession(flux as any, {personaId: 'profile', userId: 'user'})).rejects.toThrow(
+    'secure storage unavailable'
+  );
+  expect(flux.dispatch).not.toHaveBeenCalled();
+});
+
+test('rejects profile success when sign-out occurs during its final persistence wait', async () => {
+  let session: Record<string, unknown> = {token: 'token', userId: 'user'};
+  let release!: () => void;
+  let started!: () => void;
+  const blocked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const received = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const flux = {
+    dispatch: async () => {
+      started();
+      await blocked;
+    },
+    getState: (path: string, fallback: unknown) => (path === 'user.session' ? session : fallback),
+    setState: async (_path: string, value: Record<string, unknown>) => {
+      session = value;
+    }
+  };
+  const pending = syncPersonaToSession(flux as any, {personaId: 'profile', userId: 'user'});
+  const rejected = pending.then(
+    () => {
+      throw new Error('Expected rejection');
+    },
+    (error) => expect(error.message).toBe('session_changed')
+  );
+  await received;
+  session = {};
+  release();
+  await rejected;
+
+  expect(session.token).toBeUndefined();
 });

@@ -2,18 +2,18 @@
  * Copyright (c) 2023-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
-import { parseId } from '@nlabs/utils';
+import {parseId} from '@nlabs/utils';
 
-import { validatePersonaInput } from '../../adapters/personaAdapter/personaAdapter.js';
-import { PERSONA_CONSTANTS } from '../../stores/personaStore.js';
-import { USER_CONSTANTS } from '../../stores/userStore.js';
-import { appMutation, appQuery } from '../../utils/api.js';
-import { createBaseActions } from '../../utils/baseActionFactory.js';
+import {validatePersonaInput} from '../../adapters/personaAdapter/personaAdapter.js';
+import {PERSONA_CONSTANTS} from '../../stores/personaStore.js';
+import {USER_CONSTANTS} from '../../stores/userStore.js';
+import {appMutation, appQuery} from '../../utils/api.js';
+import {createBaseActions} from '../../utils/baseActionFactory.js';
 import {clearCachedRequest, getCachedRequest, setCachedRequest} from '../../utils/requestCache.js';
 
-import type { FluxFramework } from '@nlabs/arkhamjs';
-import type { PersonaType } from '../../adapters/personaAdapter/personaAdapter.js';
-import type { ActionRequestOptions } from '../../utils/requestCache.js';
+import type {FluxFramework} from '@nlabs/arkhamjs';
+import type {PersonaType} from '../../adapters/personaAdapter/personaAdapter.js';
+import type {ActionRequestOptions} from '../../utils/requestCache.js';
 
 // Define the collection name for personas
 const DATA_TYPE = 'personas';
@@ -59,9 +59,21 @@ export type PersonaRelationFilter = 'followers' | 'following' | 'friends';
 export interface PersonaActions {
   readonly blockPersona: (targetPersonaId: string) => Promise<boolean>;
   readonly followPersona: (targetPersonaId: string) => Promise<boolean>;
-  readonly addPersona: (personaData: Partial<PersonaType>, personaProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PersonaType>;
-  readonly getPersonaById: (personaId: string, personaProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PersonaType>;
-  readonly getPersonaListByIds: (personaIds: string[], personaProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PersonaType[]>;
+  readonly addPersona: (
+    personaData: Partial<PersonaType>,
+    personaProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<PersonaType>;
+  readonly getPersonaById: (
+    personaId: string,
+    personaProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<PersonaType>;
+  readonly getPersonaListByIds: (
+    personaIds: string[],
+    personaProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<PersonaType[]>;
   readonly listByRelation: (
     relation: PersonaRelationFilter,
     personaId?: string,
@@ -81,23 +93,35 @@ export interface PersonaActions {
   ) => Promise<PersonaType[]>;
   readonly unfollowPersona: (targetPersonaId: string) => Promise<boolean>;
   readonly unblockPersona: (targetPersonaId: string) => Promise<boolean>;
-  readonly deletePersona: (personaId: string, personaProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PersonaType>;
-  readonly updatePersona: (persona: Partial<PersonaType>, personaProps?: string[], requestOptions?: ActionRequestOptions) => Promise<PersonaType>;
+  readonly deletePersona: (
+    personaId: string,
+    personaProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<PersonaType>;
+  readonly updatePersona: (
+    persona: Partial<PersonaType>,
+    personaProps?: string[],
+    requestOptions?: ActionRequestOptions
+  ) => Promise<PersonaType>;
   readonly updatePersonaAdapter: (adapter: (input: unknown, options?: PersonaAdapterOptions) => any) => void;
   readonly updatePersonaAdapterOptions: (options: PersonaAdapterOptions) => void;
 }
 
 // Default validation function
-const defaultPersonaValidator = (input: unknown, options?: PersonaAdapterOptions) => validatePersonaInput(input);
+const defaultPersonaValidator = (input: unknown, _options?: PersonaAdapterOptions) =>
+  validatePersonaInput(input);
 
-export const syncPersonaToSession = (flux: FluxFramework, persona: Partial<PersonaType> = {}) => {
+export const syncPersonaToSession = async (
+  flux: FluxFramework,
+  persona: Partial<PersonaType> = {}
+): Promise<void> => {
   const currentSession = (flux.getState('user.session', {}) || {}) as Record<string, unknown>;
   const sessionPersonaId = parseId(String(currentSession?.personaId || ''));
   const fetchedPersonaId = parseId(String(persona?.personaId || ''));
   const sessionUserId = parseId(String(currentSession?.userId || ''));
   const fetchedUserId = parseId(String(persona?.userId || ''));
 
-  if(!fetchedPersonaId) {
+  if(!sessionUserId || !fetchedPersonaId) {
     return;
   }
 
@@ -115,8 +139,21 @@ export const syncPersonaToSession = (flux: FluxFramework, persona: Partial<Perso
     ...(Array.isArray(persona?.tags) ? {tags: persona.tags} : {})
   };
 
-  void flux.setState('user.session', nextSession);
-  flux.dispatch({type: USER_CONSTANTS.UPDATE_SESSION_SUCCESS, user: persona as any});
+  const generation = flux.getState('app.sessionGeneration', 0);
+  await flux.setState('user.session', nextSession);
+  const assertCurrent = (): void => {
+    const active = flux.getState<Record<string, unknown>>('user.session', {});
+    if(
+      active.userId !== currentSession.userId ||
+      active.token !== currentSession.token ||
+      generation !== flux.getState('app.sessionGeneration', 0)
+    ) {
+      throw new Error('session_changed');
+    }
+  };
+  assertCurrent();
+  await flux.dispatch({type: USER_CONSTANTS.UPDATE_SESSION_SUCCESS, user: persona as any});
+  assertCurrent();
 };
 
 export const syncPersonaTagsToSession = async (
@@ -137,24 +174,24 @@ export const syncPersonaTagsToSession = async (
   };
 
   try {
-    const data = await appQuery(
+    const data = (await appQuery(
       flux,
       'getPersonaById',
       DATA_TYPE,
       queryVariables,
       PERSONA_TAG_SESSION_FIELDS
-    ) as unknown as {
+    )) as unknown as {
       personas?: {getPersonaById?: Partial<PersonaType>};
     };
     const persona = data?.personas?.getPersonaById || {};
 
-    syncPersonaToSession(flux, {
+    await syncPersonaToSession(flux, {
       ...(persona?.personaId ? {personaId: persona.personaId} : {personaId: normalizedPersonaId}),
       ...(Array.isArray(persona?.tags) ? {tags: persona.tags} : {})
     });
 
     return (flux.getState('user.session', {}) || {}) as Record<string, unknown>;
-  } catch(error) {
+  } catch{
     return (flux.getState('user.session', {}) || {}) as Record<string, unknown>;
   }
 };
@@ -198,7 +235,11 @@ export const createPersonaActions = (
   };
 
   // Action implementations
-  const addPersona = async (personaData: Partial<PersonaType>, personaProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<PersonaType> => {
+  const addPersona = async (
+    personaData: Partial<PersonaType>,
+    personaProps: string[] = [],
+    _requestOptions: ActionRequestOptions = {}
+  ): Promise<PersonaType> => {
     try {
       const queryVariables = {
         persona: {
@@ -207,12 +248,15 @@ export const createPersonaActions = (
         }
       };
 
+      let savedPersona: PersonaType = {};
       const onSuccess = async (data: PersonaApiResultsType) => {
         const addPersona = data?.personas?.addPersona || {};
+        savedPersona = addPersona;
+        await syncPersonaToSession(flux, addPersona);
         return flux.dispatch({persona: addPersona, type: PERSONA_CONSTANTS.ADD_ITEM_SUCCESS});
       };
 
-      return await appMutation<PersonaType>(
+      await appMutation<PersonaType>(
         flux,
         'addPersona',
         DATA_TYPE,
@@ -220,6 +264,7 @@ export const createPersonaActions = (
         [...DEFAULT_PERSONA_PROPS, ...personaProps],
         {onSuccess}
       );
+      return savedPersona;
     } catch(error) {
       flux.dispatch({error, type: PERSONA_CONSTANTS.ADD_ITEM_ERROR});
       throw error;
@@ -230,9 +275,18 @@ export const createPersonaActions = (
     }
   };
 
-  const getPersonaById = async (personaId: string, personaProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<PersonaType> => {
+  const getPersonaById = async (
+    personaId: string,
+    personaProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<PersonaType> => {
     try {
-      const cachedResult = getCachedRequest<PersonaType>(flux, `persona.getPersonaById:${personaId}`, {personaId, personaProps}, requestOptions);
+      const cachedResult = getCachedRequest<PersonaType>(
+        flux,
+        `persona.getPersonaById:${personaId}`,
+        {personaId, personaProps},
+        requestOptions
+      );
 
       if(cachedResult !== undefined) {
         return cachedResult;
@@ -245,13 +299,15 @@ export const createPersonaActions = (
         }
       };
 
-      const onSuccess = (data: PersonaApiResultsType) => {
+      let fetchedPersona: PersonaType = {};
+      const onSuccess = async (data: PersonaApiResultsType) => {
         const persona = data?.personas?.getPersonaById || {};
-        syncPersonaToSession(flux, persona);
+        fetchedPersona = persona;
+        await syncPersonaToSession(flux, persona);
         return flux.dispatch({persona, type: PERSONA_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
-      const result = await appQuery<PersonaType>(
+      await appQuery<PersonaType>(
         flux,
         'getPersonaById',
         DATA_TYPE,
@@ -259,16 +315,31 @@ export const createPersonaActions = (
         [...DEFAULT_PERSONA_PROPS, ...personaProps],
         {onSuccess}
       );
-      return await setCachedRequest(flux, `persona.getPersonaById:${personaId}`, {personaId, personaProps}, result, requestOptions);
+      return await setCachedRequest(
+        flux,
+        `persona.getPersonaById:${personaId}`,
+        {personaId, personaProps},
+        fetchedPersona,
+        requestOptions
+      );
     } catch(error) {
       flux.dispatch({error, type: PERSONA_CONSTANTS.GET_ITEM_ERROR});
       throw error;
     }
   };
 
-  const getPersonaListByIds = async (personaIds: string[], personaProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<PersonaType[]> => {
+  const getPersonaListByIds = async (
+    personaIds: string[],
+    personaProps: string[] = [],
+    requestOptions: ActionRequestOptions = {}
+  ): Promise<PersonaType[]> => {
     try {
-      const cachedResult = getCachedRequest<PersonaType[]>(flux, 'persona.getPersonaListByIds', {personaIds, personaProps}, requestOptions);
+      const cachedResult = getCachedRequest<PersonaType[]>(
+        flux,
+        'persona.getPersonaListByIds',
+        {personaIds, personaProps},
+        requestOptions
+      );
 
       if(cachedResult !== undefined) {
         return cachedResult;
@@ -294,7 +365,13 @@ export const createPersonaActions = (
         [...DEFAULT_PERSONA_PROPS, ...personaProps],
         {onSuccess}
       );
-      return await setCachedRequest(flux, 'persona.getPersonaListByIds', {personaIds, personaProps}, result, requestOptions);
+      return await setCachedRequest(
+        flux,
+        'persona.getPersonaListByIds',
+        {personaIds, personaProps},
+        result,
+        requestOptions
+      );
     } catch(error) {
       flux.dispatch({error, type: PERSONA_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -314,7 +391,7 @@ export const createPersonaActions = (
       const cachedResult = getCachedRequest<PersonaType[]>(
         flux,
         'persona.listByTags',
-        {username, tags, from, to, personaProps, filters},
+        {filters, from, personaProps, tags, to, username},
         requestOptions
       );
 
@@ -358,7 +435,13 @@ export const createPersonaActions = (
         [...DEFAULT_PERSONA_PROPS, ...personaProps],
         {onSuccess}
       );
-      return await setCachedRequest(flux, 'persona.listByTags', {username, tags, from, to, personaProps, filters}, result, requestOptions);
+      return await setCachedRequest(
+        flux,
+        'persona.listByTags',
+        {filters, from, personaProps, tags, to, username},
+        result,
+        requestOptions
+      );
     } catch(error) {
       flux.dispatch({error, type: PERSONA_CONSTANTS.GET_LIST_ERROR});
       throw error;
@@ -380,12 +463,16 @@ export const createPersonaActions = (
       const cachedResult = getCachedRequest<PersonaType[]>(
         flux,
         'persona.listByRelation',
-        {relation: normalizedRelation, personaId: normalizedPersonaId, from, to, personaProps},
+        {from, personaId: normalizedPersonaId, personaProps, relation: normalizedRelation, to},
         requestOptions
       );
 
       if(cachedResult !== undefined) {
-        await flux.dispatch({personas: cachedResult, relation: normalizedRelation, type: PERSONA_CONSTANTS.GET_LIST_SUCCESS});
+        await flux.dispatch({
+          personas: cachedResult,
+          relation: normalizedRelation,
+          type: PERSONA_CONSTANTS.GET_LIST_SUCCESS
+        });
         return cachedResult;
       }
 
@@ -410,7 +497,11 @@ export const createPersonaActions = (
 
       const onSuccess = (data: PersonaApiResultsType) => {
         const personas = data?.personas?.listByRelation || [];
-        return flux.dispatch({personas, relation: normalizedRelation, type: PERSONA_CONSTANTS.GET_LIST_SUCCESS});
+        return flux.dispatch({
+          personas,
+          relation: normalizedRelation,
+          type: PERSONA_CONSTANTS.GET_LIST_SUCCESS
+        });
       };
 
       const result = await appQuery<PersonaType[]>(
@@ -425,7 +516,7 @@ export const createPersonaActions = (
       return await setCachedRequest(
         flux,
         'persona.listByRelation',
-        {relation: normalizedRelation, personaId: normalizedPersonaId, from, to, personaProps},
+        {from, personaId: normalizedPersonaId, personaProps, relation: normalizedRelation, to},
         result,
         requestOptions
       );
@@ -435,7 +526,11 @@ export const createPersonaActions = (
     }
   };
 
-  const deletePersona = async (personaId: string, personaProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<PersonaType> => {
+  const deletePersona = async (
+    personaId: string,
+    personaProps: string[] = [],
+    _requestOptions: ActionRequestOptions = {}
+  ): Promise<PersonaType> => {
     try {
       const queryVariables = {
         personaId: {
@@ -449,7 +544,14 @@ export const createPersonaActions = (
         return flux.dispatch({persona, type: PERSONA_CONSTANTS.DELETE_ITEM_SUCCESS});
       };
 
-      return await appMutation<PersonaType>(flux, 'deletePersona', DATA_TYPE, queryVariables, ['personaId', ...personaProps], {onSuccess});
+      return await appMutation<PersonaType>(
+        flux,
+        'deletePersona',
+        DATA_TYPE,
+        queryVariables,
+        ['personaId', ...personaProps],
+        {onSuccess}
+      );
     } catch(error) {
       flux.dispatch({error, type: PERSONA_CONSTANTS.DELETE_ITEM_ERROR});
       throw error;
@@ -461,7 +563,11 @@ export const createPersonaActions = (
     }
   };
 
-  const updatePersona = async (persona: Partial<PersonaType>, personaProps: string[] = [], requestOptions: ActionRequestOptions = {}): Promise<PersonaType> => {
+  const updatePersona = async (
+    persona: Partial<PersonaType>,
+    personaProps: string[] = [],
+    _requestOptions: ActionRequestOptions = {}
+  ): Promise<PersonaType> => {
     try {
       const queryVariables = {
         persona: {
@@ -470,13 +576,15 @@ export const createPersonaActions = (
         }
       };
 
+      let savedPersona: PersonaType = {};
       const onSuccess = async (data: PersonaApiResultsType) => {
         const persona = data?.personas?.updatePersona || {};
-        syncPersonaToSession(flux, persona);
+        savedPersona = persona;
+        await syncPersonaToSession(flux, persona);
         return flux.dispatch({persona, type: PERSONA_CONSTANTS.UPDATE_ITEM_SUCCESS});
       };
 
-      return await appMutation<PersonaType>(
+      await appMutation<PersonaType>(
         flux,
         'updatePersona',
         DATA_TYPE,
@@ -484,6 +592,7 @@ export const createPersonaActions = (
         [...DEFAULT_PERSONA_PROPS, ...personaProps],
         {onSuccess}
       );
+      return savedPersona;
     } catch(error) {
       flux.dispatch({error, type: PERSONA_CONSTANTS.UPDATE_ITEM_ERROR});
       throw error;
@@ -522,14 +631,7 @@ export const createPersonaActions = (
         }
       };
 
-      const result = await appMutation<boolean>(
-        flux,
-        'addConnection',
-        DATA_TYPE,
-        queryVariables,
-        [],
-        {}
-      );
+      const result = await appMutation<boolean>(flux, 'addConnection', DATA_TYPE, queryVariables, [], {});
 
       return Boolean((result as unknown as PersonaApiResultsType)?.personas?.addConnection ?? result);
     } finally {
@@ -564,14 +666,7 @@ export const createPersonaActions = (
         }
       };
 
-      const result = await appMutation<boolean>(
-        flux,
-        'deleteConnection',
-        DATA_TYPE,
-        queryVariables,
-        [],
-        {}
-      );
+      const result = await appMutation<boolean>(flux, 'deleteConnection', DATA_TYPE, queryVariables, [], {});
 
       return Boolean((result as unknown as PersonaApiResultsType)?.personas?.deleteConnection ?? result);
     } finally {
@@ -606,14 +701,7 @@ export const createPersonaActions = (
         }
       };
 
-      const result = await appMutation<boolean>(
-        flux,
-        'addConnection',
-        DATA_TYPE,
-        queryVariables,
-        [],
-        {}
-      );
+      const result = await appMutation<boolean>(flux, 'addConnection', DATA_TYPE, queryVariables, [], {});
 
       return Boolean((result as unknown as PersonaApiResultsType)?.personas?.addConnection ?? result);
     } finally {
@@ -648,14 +736,7 @@ export const createPersonaActions = (
         }
       };
 
-      const result = await appMutation<boolean>(
-        flux,
-        'deleteConnection',
-        DATA_TYPE,
-        queryVariables,
-        [],
-        {}
-      );
+      const result = await appMutation<boolean>(flux, 'deleteConnection', DATA_TYPE, queryVariables, [], {});
 
       return Boolean((result as unknown as PersonaApiResultsType)?.personas?.deleteConnection ?? result);
     } finally {
@@ -664,16 +745,16 @@ export const createPersonaActions = (
   };
 
   return {
-    blockPersona,
-    followPersona,
     addPersona,
+    blockPersona,
+    deletePersona,
+    followPersona,
     getPersonaById,
     getPersonaListByIds,
     listByRelation,
     listByTags,
-    unfollowPersona,
     unblockPersona,
-    deletePersona,
+    unfollowPersona,
     updatePersona,
     updatePersonaAdapter: personaBase.updateAdapter,
     updatePersonaAdapterOptions: personaBase.updateOptions
