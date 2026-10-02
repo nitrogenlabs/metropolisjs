@@ -243,9 +243,15 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
   );
 
   useEffect(() => {
-    if(typeof globalThis.window === 'undefined') {
-      return undefined;
+    const browserWindow = globalThis.window;
+    const browserDocument = globalThis.document;
+    if(typeof browserWindow?.addEventListener !== 'function' || typeof browserWindow?.removeEventListener !== 'function') {
+      return () => {
+        void awsRum.destroy();
+      };
     }
+    const hasDocumentListeners = typeof browserDocument?.addEventListener === 'function'
+      && typeof browserDocument?.removeEventListener === 'function';
 
     const onGothamAnalytics = (event: Event): void => {
       const {detail} = (event as CustomEvent<AwsRumTrackInput>);
@@ -258,19 +264,23 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
       void awsRum.flush({useBeacon: true});
     };
     const onVisibilityChange = (): void => {
-      if(globalThis.document?.visibilityState === 'hidden') {
+      if(browserDocument?.visibilityState === 'hidden') {
         flushTerminalEvents();
       }
     };
 
-    globalThis.window.addEventListener(GOTHAM_ANALYTICS_EVENT, onGothamAnalytics);
-    globalThis.window.addEventListener('pagehide', flushTerminalEvents);
-    globalThis.document?.addEventListener('visibilitychange', onVisibilityChange);
+    browserWindow.addEventListener(GOTHAM_ANALYTICS_EVENT, onGothamAnalytics);
+    browserWindow.addEventListener('pagehide', flushTerminalEvents);
+    if(hasDocumentListeners) {
+      browserDocument.addEventListener('visibilitychange', onVisibilityChange);
+    }
 
     return () => {
-      globalThis.window.removeEventListener(GOTHAM_ANALYTICS_EVENT, onGothamAnalytics);
-      globalThis.window.removeEventListener('pagehide', flushTerminalEvents);
-      globalThis.document?.removeEventListener('visibilitychange', onVisibilityChange);
+      browserWindow.removeEventListener(GOTHAM_ANALYTICS_EVENT, onGothamAnalytics);
+      browserWindow.removeEventListener('pagehide', flushTerminalEvents);
+      if(hasDocumentListeners) {
+        browserDocument.removeEventListener('visibilitychange', onVisibilityChange);
+      }
       void awsRum.destroy();
     };
   }, [awsRum]);

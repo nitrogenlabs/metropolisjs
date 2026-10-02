@@ -346,12 +346,12 @@ describe('createUserActions', () => {
   it('checks login state and refreshes the current session', async () => {
     const flux = createMockFlux();
     const actions = createUserActions(flux as any);
-    const session = {refreshSession: {expires: 60, token: 'token-1', userId: 'user-1'}};
+    const session = {session: {expires: 60, token: 'token-1', userId: 'user-1'}, type: 'USER_UPDATE_SESSION_SUCCESS'};
 
     refreshSessionMock.mockResolvedValue(session);
 
     expect(actions.isLoggedIn()).toBe(false);
-    await expect(actions.refreshSession('token-1', 60)).resolves.toEqual(session.refreshSession);
+    await expect(actions.refreshSession('token-1', 60)).resolves.toEqual(session.session);
     expect(refreshSessionMock).toHaveBeenCalledWith(flux, 'token-1', 60);
   });
 
@@ -632,7 +632,9 @@ describe('createUserActions', () => {
 
     await expect(actions.addUser({email: user.email, password: 'secret', username: user.username})).resolves.toEqual(expect.objectContaining({users: expect.any(Object)}));
     await expect(actions.signUp({email: user.email, password: 'secret', username: user.username})).resolves.toEqual(expect.objectContaining({users: expect.any(Object)}));
-    await expect(actions.updateUser({email: user.email, userId: user.userId, username: user.username})).resolves.toEqual(user);
+    await expect(actions.updateUser({
+      email: user.email, userId: user.userId, username: user.username
+    })).resolves.toEqual(user);
     await expect(actions.confirmCode(123456, {type: 'email', value: user.email})).resolves.toBe(true);
     await expect(actions.session()).resolves.toEqual(expect.objectContaining({userId: 'user-1'}));
     await expect(actions.itemById('user-1', ['email'], {cacheTimeout: 5})).resolves.toEqual(expect.objectContaining({users: expect.any(Object)}));
@@ -662,6 +664,16 @@ describe('createUserActions', () => {
     expect(appMutationMock).not.toHaveBeenCalled();
   });
 
+  it('uses the reset response before the transport replaces it with the Flux event', async () => {
+    const flux = createMockFlux();
+    const actions = createUserActions(flux as any);
+    publicMutationMock.mockImplementationOnce(async (_flux, _operation, _type, _variables, _props, options) =>
+      options.onSuccess({users: {resetPassword: true}}));
+
+    await expect(actions.resetPassword('alpha@example.com', 'new password', '123456', 'email')).resolves.toBe(true);
+    expect(flux.dispatch).toHaveBeenCalledWith({type: 'USER_RESET_PASSWORD_SUCCESS'});
+  });
+
   it('throws for failed public recovery helpers and invalid sessions', async () => {
     const flux = createMockFlux();
     const actions = createUserActions(flux as any);
@@ -671,6 +683,7 @@ describe('createUserActions', () => {
       await options?.onSuccess?.(response);
       return response;
     });
+
     await expect(actions.forgotPassword('alpha')).rejects.toThrow('forgot_password_failed');
     expect(flux.dispatch).toHaveBeenCalledWith({type: 'USER_FORGOT_PASSWORD_ERROR'});
 
@@ -679,6 +692,7 @@ describe('createUserActions', () => {
       await options?.onSuccess?.(response);
       return response;
     });
+
     await expect(actions.sendVerificationEmail('alpha@example.com')).rejects.toThrow('send_verification_email_failed');
 
     publicMutationMock.mockImplementationOnce(async (_flux, _operation, _type, _variables, _props, options) => {
@@ -686,9 +700,11 @@ describe('createUserActions', () => {
       await options?.onSuccess?.(response);
       return response;
     });
+
     await expect(actions.resetPassword('alpha', 'secret', '123456', 'phone')).rejects.toThrow('reset_password_failed');
 
     appQueryMock.mockResolvedValueOnce({users: {getUserBySession: {}}});
+
     await expect(actions.session()).rejects.toThrow('invalid_session');
     expect(clearPersistedSessionMock).toHaveBeenCalledWith(flux);
     expect(flux.dispatch).toHaveBeenCalledWith({type: 'USER_GET_SESSION_ERROR'});
@@ -716,10 +732,12 @@ describe('createUserActions', () => {
       return session;
     });
     appQueryMock.mockResolvedValueOnce({users: {getUserBySession: {userId: 'user-1', username: 'alpha'}}});
+
     await expect(actions.signIn({password: 'secret', phone: '+15551234567'})).resolves.toEqual(expect.objectContaining({userId: 'user-1'}));
 
     const error = new Error('sign in failed');
     publicMutationMock.mockRejectedValueOnce(error);
+
     await expect(actions.signIn({password: 'secret', username: 'alpha'})).rejects.toThrow('sign in failed');
     expect(flux.dispatch).toHaveBeenCalledWith({error, type: 'USER_SIGN_IN_ERROR'});
 

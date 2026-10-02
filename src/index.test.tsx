@@ -22,9 +22,9 @@ const personaMocks = vi.hoisted(() => ({
 }));
 
 const websocketMocks = vi.hoisted(() => ({
+  sendNotification: vi.fn(),
   wsClose: vi.fn(),
-  wsInit: vi.fn(),
-  sendNotification: vi.fn()
+  wsInit: vi.fn()
 }));
 
 const rumMocks = vi.hoisted(() => ({
@@ -51,7 +51,7 @@ vi.mock('@nlabs/arkhamjs-utils-react', () => ({
 
 vi.mock('./utils/actionFactory.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./utils/actionFactory.js')>()),
-  createAction: vi.fn((actionType: string) => actionType === 'awsRum' ? rumMocks : websocketMocks)
+  createAction: vi.fn((actionType: string) => (actionType === 'awsRum' ? rumMocks : websocketMocks))
 }));
 
 const createFlux = (initialState: Record<string, unknown> = {}) => {
@@ -61,9 +61,9 @@ const createFlux = (initialState: Record<string, unknown> = {}) => {
   return {
     addMiddleware: vi.fn(),
     addStores: vi.fn(),
-    getStore: vi.fn(),
     dispatch: vi.fn(async (action) => action),
     getState: vi.fn((path: string, fallback?: unknown) => state.get(path) ?? fallback),
+    getStore: vi.fn(),
     on: vi.fn((type: string, handler: (payload?: any) => void | Promise<void>) => {
       handlers.set(type, [...(handlers.get(type) || []), handler]);
       return () => undefined;
@@ -74,6 +74,8 @@ const createFlux = (initialState: Record<string, unknown> = {}) => {
     }),
     trigger: async (type: string, payload?: unknown) => {
       for(const handler of handlers.get(type) || []) {
+        // Exercise the same ordered event callbacks as Flux.
+        // eslint-disable-next-line no-await-in-loop
         await handler(payload);
       }
     }
@@ -113,14 +115,15 @@ describe('index onInit', () => {
     expect(flux.dispatch).toHaveBeenCalled();
 
     await onInit(flux as any);
+
     expect(flux.addStores).toHaveBeenCalledTimes(1);
   });
 
   it('clears missing-expiry and expired sessions instead of renewing inactivity', async () => {
     const {onInit} = await import('./index.js');
     const missingExpiresFlux = createFlux({
-      'app.metropolisInitialized': true,
       'app.config': {app: {session: {maxMinutes: 45}}},
+      'app.metropolisInitialized': true,
       'user.session': {token: 'plain-token'},
       'user.session.token': 'plain-token'
     });
@@ -133,8 +136,8 @@ describe('index onInit', () => {
       'sig'
     ].join('.');
     const expiredFlux = createFlux({
-      'app.metropolisInitialized': true,
       'app.config': {app: {session: {maxMinutes: 20}}},
+      'app.metropolisInitialized': true,
       'user.session': {expires: Date.now() + 60000, issued: Date.now() - 60000, token: expiredToken},
       'user.session.token': expiredToken
     });
@@ -144,6 +147,24 @@ describe('index onInit', () => {
     expect(apiMocks.refreshSession).not.toHaveBeenCalled();
     expect(missingExpiresFlux.dispatch).toHaveBeenCalledWith({session: {}, type: 'USER_SIGN_OUT_SUCCESS'});
     expect(expiredFlux.dispatch).toHaveBeenCalledWith({session: {}, type: 'USER_SIGN_OUT_SUCCESS'});
+  });
+
+  it('renders with a native window alias that has no DOM listeners and cleans up analytics', async () => {
+    const {Metropolis} = await import('./index.js');
+    reactFluxMocks.flux = createFlux();
+    const browserWindow = globalThis.window;
+    try {
+      vi.stubGlobal('window', {});
+      const rendered = render(<Metropolis><div>native child</div></Metropolis>);
+
+      expect(rendered.getByText('native child')).toBeDefined();
+
+      rendered.unmount();
+
+      expect(rumMocks.destroy).toHaveBeenCalled();
+    } finally {
+      vi.stubGlobal('window', browserWindow);
+    }
   });
 
   it('renders the provider, hydrates session state, and manages websocket lifecycle', async () => {
@@ -189,20 +210,26 @@ describe('index onInit', () => {
     window.dispatchEvent(new CustomEvent('nlabs:gotham:analytics', {
       detail: {name: 'page_view', path: '/docs', type: 'page_view'}
     }));
+
     expect(rumMocks.track).toHaveBeenCalledWith({name: 'page_view', path: '/docs', type: 'page_view'});
 
     window.dispatchEvent(new Event('pagehide'));
+
     expect(rumMocks.flush).toHaveBeenCalledWith({useBeacon: true});
 
     const visibilityState = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
     document.dispatchEvent(new Event('visibilitychange'));
+
     expect(rumMocks.flush).toHaveBeenCalledTimes(2);
+
     visibilityState.mockRestore();
 
     rendered.unmount();
+
     expect(websocketMocks.wsClose).toHaveBeenCalled();
 
     window.dispatchEvent(new Event('pagehide'));
+
     expect(rumMocks.flush).toHaveBeenCalledTimes(2);
   });
 });

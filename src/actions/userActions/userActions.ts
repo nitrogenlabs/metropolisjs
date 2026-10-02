@@ -1112,7 +1112,7 @@ export const createUserActions = (
     _requestOptions: ActionRequestOptions = {}
   ): Promise<SessionType> => {
     const result = await refreshSession(flux, token, expires);
-    return (result?.refreshSession || {}) as SessionType;
+    return (result?.session || {}) as SessionType;
   };
 
   const signIn = async (
@@ -1321,6 +1321,7 @@ export const createUserActions = (
     type: 'email' | 'phone',
     requestOptions: ActionRequestOptions = {}
   ): Promise<boolean> => {
+    let resetPasswordSucceeded = false;
     const queryVariables = {
       code: {
         type: 'String!',
@@ -1338,25 +1339,25 @@ export const createUserActions = (
 
     const onSuccess = (data?: UserApiResultsType) => {
       const success = !!data?.users?.resetPassword;
+      resetPasswordSucceeded = success;
       return flux.dispatch({
         type: success ? USER_CONSTANTS.RESET_PASSWORD_SUCCESS : USER_CONSTANTS.RESET_PASSWORD_ERROR
       });
     };
 
-    return publicMutation<UserApiResultsType>(
+    await publicMutation<UserApiResultsType>(
       flux,
       'resetPassword',
       DATA_TYPE,
       queryVariables,
       [],
       {onSuccess, ...requestOptions}
-    ).then((data) => {
-      const success = !!data?.users?.resetPassword;
-      if(!success) {
-        throw new Error('reset_password_failed');
-      }
-      return true;
-    });
+    );
+
+    if(!resetPasswordSucceeded) {
+      throw new Error('reset_password_failed');
+    }
+    return true;
   };
 
   const completePasswordReset = async (
