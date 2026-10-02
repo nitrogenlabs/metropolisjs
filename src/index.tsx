@@ -13,6 +13,7 @@ import {createWebsocketActions} from './actions/websocketActions/websocketAction
 import {resolveEnvironmentConfig} from './config/index.js';
 import {
   app,
+  assistant,
   contents,
   conversation,
   events,
@@ -63,6 +64,7 @@ export const onInit = async (flux: FluxFramework) => {
     flux.addMiddleware([{name: 'metropolis-cache-events', postDispatch: async (action) => cachedAction(flux, action)}]);
     await flux.addStores([
       app,
+      assistant,
       contents,
       conversation,
       groups,

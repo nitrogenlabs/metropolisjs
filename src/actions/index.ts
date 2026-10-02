@@ -1,3 +1,4 @@
+export * from './assistantActions/assistantActions.js';
 export * from './appActions/appActions.js';
 export * from './awsRumActions/awsRumActions.js';
 export * from './connectionActions/connectionActions.js';

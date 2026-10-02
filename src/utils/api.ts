@@ -30,6 +30,7 @@ export interface RestApiOptions extends HunterOptionsType {
 
 export type ReaktorDbCollection =
   'apps' |
+  'assistant' |
   'connections' |
   'contents' |
   'conversations' |

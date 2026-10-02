@@ -2,6 +2,7 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
+import {createAssistantActions} from '../actions/assistantActions/assistantActions.js';
 import {createAwsRumActions} from '../actions/awsRumActions/awsRumActions.js';
 import {createContentActions} from '../actions/contentActions/contentActions.js';
 import {createCrmActions} from '../actions/crmActions/crmActions.js';
@@ -25,6 +26,7 @@ import {createVideoActions} from '../actions/videoActions/videoActions.js';
 import {createWebsocketActions} from '../actions/websocketActions/websocketActions.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
+import type {AssistantActionsOptions} from '../actions/assistantActions/assistantActions.js';
 import type {AwsRumActionsOptions} from '../actions/awsRumActions/awsRumActions.js';
 import type {ContentActionsOptions} from '../actions/contentActions/contentActions.js';
 import type {CrmActionsOptions} from '../actions/crmActions/crmActions.js';
@@ -61,6 +63,7 @@ const createAwsRumOptionsKey = (options: AwsRumActionsOptions = {}): string => J
 });
 
 export type ActionType =
+  | 'assistant'
   | 'awsRum'
   | 'content'
   | 'crm'
@@ -84,6 +87,7 @@ export type ActionType =
   | 'websocket';
 
 export interface ActionMap {
+  assistant: ReturnType<typeof createAssistantActions>;
   awsRum: ReturnType<typeof createAwsRumActions>;
   content: ReturnType<typeof createContentActions>;
   crm: ReturnType<typeof createCrmActions>;
@@ -110,6 +114,7 @@ export interface ActionMap {
 export type ActionReturnType<T extends ActionType> = ActionMap[T];
 
 export type ActionOptions =
+  | AssistantActionsOptions
   | AwsRumActionsOptions
   | ContentActionsOptions
   | CrmActionsOptions
@@ -136,6 +141,9 @@ const createActionByType = (
   options?: ActionOptions
 ) => {
   switch(actionType) {
+    case 'assistant':
+      return createAssistantActions(flux, options as AssistantActionsOptions);
+
     case 'awsRum': {
       const awsRumOptions = (options || {}) as AwsRumActionsOptions;
       const optionsKey = createAwsRumOptionsKey(awsRumOptions);
@@ -252,6 +260,7 @@ export const createAllActions = (
   options?: Partial<Record<ActionType, ActionOptions>>
 ): ActionMap => {
   const allActionTypes = [
+    'assistant',
     'awsRum',
     'content',
     'crm',

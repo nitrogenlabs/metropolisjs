@@ -14,6 +14,7 @@ describe('actionFactory', () => {
     const all = createAllActions(flux as any);
 
     expect(Object.keys(all).sort()).toEqual([
+      'assistant',
       'awsRum',
       'content',
       'crm',
