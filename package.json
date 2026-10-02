@@ -92,7 +92,7 @@
     "url": "https://github.com/nitrogenlabs/metropolisjs/issues"
   },
   "dependencies": {
-    "@nlabs/rip-hunter": "3.1.2",
+    "@nlabs/rip-hunter": "3.1.3",
     "@nlabs/utils": "^2.11.0",
     "i18next": "^26.4.2",
     "luxon": "^3.7.2",
@@ -105,8 +105,8 @@
     "@nlabs/arkhamjs": "3.31.16",
     "@nlabs/arkhamjs-storage-browser": "^3.30.12",
     "@nlabs/arkhamjs-utils-react": "^3.32.13",
-    "@nlabs/lex": "^2.0.8",
-    "@types/node": "^26.6.2",
+    "@nlabs/lex": "^2.0.12",
+    "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",
     "react": "^19.3.0",
     "typescript": "^7.0.2"
