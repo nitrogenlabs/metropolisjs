@@ -1,0 +1,21 @@
+<!doctype html>
+<html><body><button id="start">Start</button><button id="receive">Receive</button><button id="open">Open</button><button id="stop">Stop</button><output id="state"></output>
+<script type="module">
+import {FluxFramework} from '@nlabs/arkhamjs';
+import {createNativeNotificationController} from '../src/nativeNotifications/controller.ts';
+import {nativeNotifications, NATIVE_NOTIFICATION_CONSTANTS as C} from '../src/stores/nativeNotificationStore.ts';
+import {notifications} from '../src/stores/notificationStore.ts';
+const flux = new FluxFramework();
+await flux.addStores([nativeNotifications, notifications]);
+let registrations = 0, opened = 0;
+const note = {notification:{version:1,notificationId:'notice',kind:'MESSAGE',createdAt:'2026-10-02T12:00:00Z',title:'Message',body:'Open app'},scope:{appId:'demo',environment:'test'},recipientUserId:'user'};
+const adapter = {getPermission:async()=> 'granted',requestPermission:async()=> 'granted',getToken:async()=>({platform:'ANDROID',token:'fake-native'}),onReceived:()=>()=>{},onOpened:()=>()=>{},onTokenChanged:()=>()=>{},getInitialResponse:async()=>null,clearInitialResponse:async()=>{}};
+const controller = createNativeNotificationController({adapter,flux,actions:{register:async input=>{registrations++;return{...input,registrationId:'registration',revision:1,enabled:true,createdAt:note.notification.createdAt,updatedAt:note.notification.createdAt}},unregister:async()=>true}});
+flux.on(C.OPENED,()=>{opened++});
+const render = () => document.querySelector('#state').textContent = JSON.stringify({registrations,opened,inbox:flux.getState('notification.list').length});
+document.querySelector('#start').onclick=async()=>{await controller.start({appId:'demo',environment:'test',userId:'user',sessionId:'session',installationId:'install'});render()};
+document.querySelector('#receive').onclick=async()=>{await controller.ingest(note,'native');render()};
+document.querySelector('#open').onclick=async()=>{await controller.open(note);render()};
+document.querySelector('#stop').onclick=async()=>{await controller.stop();render()};
+render();
+</script></body></html>

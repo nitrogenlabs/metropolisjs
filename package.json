@@ -6,6 +6,14 @@
   "main": "lib/index.js",
   "module": "lib/index.js",
   "exports": {
+    "./native-notifications/expo": {
+      "types": "./lib/nativeNotifications/expo/index.d.ts",
+      "import": "./lib/nativeNotifications/expo/index.js"
+    },
+    "./native-notifications": {
+      "types": "./lib/nativeNotifications/index.d.ts",
+      "import": "./lib/nativeNotifications/index.js"
+    },
     ".": {
       "types": "./lib/index.d.ts",
       "import": "./lib/index.js",
@@ -102,6 +110,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@nlabs/arkhamjs": "3.31.16",
     "@nlabs/arkhamjs-storage-browser": "^3.30.12",
     "@nlabs/arkhamjs-utils-react": "^3.32.13",
@@ -112,10 +121,14 @@
     "typescript": "^7.0.2"
   },
   "peerDependencies": {
+    "expo-notifications": ">=0.31.0 <58",
     "@nlabs/arkhamjs": "^3.31.1",
     "@nlabs/arkhamjs-storage-browser": "^3.30.0",
     "@nlabs/arkhamjs-utils-react": "^3.32.0",
     "react": "^19.1.0"
+  },
+  "peerDependenciesMeta": {
+    "expo-notifications": {"optional": true}
   },
   "publishConfig": {
     "access": "public"
@@ -137,6 +150,8 @@
     "README.md",
     "LICENSE",
     "docs/GENERATION.md",
-    "docs/ASSISTANT.md"
+    "docs/ASSISTANT.md",
+    "docs/NATIVE_NOTIFICATIONS.md",
+    "examples/native-notifications.ts"
   ]
 }
