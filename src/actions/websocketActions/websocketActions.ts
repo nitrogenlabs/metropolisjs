@@ -4,6 +4,7 @@
  */
 import Sockette from 'sockette';
 
+import {routeNativeNotificationIngress} from '../../nativeNotifications/ingress.js';
 import {MESSAGE_CONSTANTS} from '../../stores/messageStore.js';
 import {NOTIFICATION_CONSTANTS} from '../../stores/notificationStore.js';
 import {VIDEO_CONSTANTS} from '../../stores/videoStore.js';
@@ -322,6 +323,10 @@ export const createWebsocketActions = (
     }
 
     if(String(data?.action || '') === 'notification.created') {
+      if(data?.data?.envelope) {
+        routeNativeNotificationIngress(flux, data.data.envelope);
+        return;
+      }
       const notification = data?.data?.notification;
 
       if(notification && typeof notification === 'object') {
@@ -380,11 +385,13 @@ export const createWebsocketActions = (
       return null;
     }
 
-    if(ws && activeToken === sessionToken && activePersonaId === sessionPersonaId && activeClientId === sessionClientId) {
+    if(ws && activeToken === sessionToken && activePersonaId === sessionPersonaId &&
+      activeClientId === sessionClientId) {
       return ws;
     }
 
-    if(ws && (activeToken !== sessionToken || activePersonaId !== sessionPersonaId || activeClientId !== sessionClientId)) {
+    if(ws && (activeToken !== sessionToken || activePersonaId !== sessionPersonaId ||
+      activeClientId !== sessionClientId)) {
       wsClose();
     }
 

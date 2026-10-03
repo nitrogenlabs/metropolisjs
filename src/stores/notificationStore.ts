@@ -6,7 +6,8 @@ import {withCacheIngestion} from '../utils/cacheIngestion.js';
 
 export const NOTIFICATION_CONSTANTS = {
   ADD_ITEM_SUCCESS: 'NOTIFICATION_ADD_ITEM_SUCCESS',
-  CLEAR_ITEMS: 'NOTIFICATION_CLEAR_ITEMS'
+  CLEAR_ITEMS: 'NOTIFICATION_CLEAR_ITEMS',
+  SET_NATIVE_BINDING: 'NOTIFICATION_SET_NATIVE_BINDING'
 } as const;
 
 export type NotificationType = Record<string, unknown> & {
@@ -21,6 +22,7 @@ export type NotificationType = Record<string, unknown> & {
 };
 
 export interface NotificationState {
+  readonly nativeBindingKey?: string;
   readonly list: NotificationType[];
 }
 
@@ -32,11 +34,18 @@ export const notificationStore = (
   type: string,
   data: {
     notification?: NotificationType;
+    nativeBindingKey?: string;
   },
   state = defaultValues
 ): NotificationState => {
   switch(type) {
+    case NOTIFICATION_CONSTANTS.SET_NATIVE_BINDING: {
+      return data.nativeBindingKey ? {list: [], nativeBindingKey: data.nativeBindingKey} : defaultValues;
+    }
     case NOTIFICATION_CONSTANTS.ADD_ITEM_SUCCESS: {
+      if(data.nativeBindingKey && data.nativeBindingKey !== state.nativeBindingKey) {
+        return state;
+      }
       const notification = data?.notification || {};
       const notificationId = String(notification?.notificationId || '');
 
@@ -49,14 +58,14 @@ export const notificationStore = (
           ? state.list.map((item) => (String(item?.notificationId || '') === notificationId ? {...item, ...notification} : item))
           : [notification, ...state.list];
 
-        return {list: nextList};
+        return {...state, list: nextList};
       }
 
-      return {list: [notification, ...state.list]};
+      return {...state, list: [notification, ...state.list]};
     }
 
     case NOTIFICATION_CONSTANTS.CLEAR_ITEMS: {
-      return defaultValues;
+      return state.nativeBindingKey ? {list: [], nativeBindingKey: state.nativeBindingKey} : defaultValues;
     }
 
     default: {

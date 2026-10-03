@@ -1,5 +1,10 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 
+import {bindNativeNotificationIngress} from '../../nativeNotifications/ingress.js';
+import {NOTIFICATION_CONSTANTS} from '../../stores/notificationStore.js';
+import {WEBSOCKET_CONSTANTS} from '../../stores/websocketStore.js';
+import {createWebsocketActions} from './websocketActions.js';
+
 const socketteInstances: Array<{
   close: ReturnType<typeof vi.fn>;
   json: ReturnType<typeof vi.fn>;
@@ -22,9 +27,6 @@ vi.mock('sockette', () => ({
   }
 }));
 
-const {createWebsocketActions} = await import('./websocketActions.js');
-const {NOTIFICATION_CONSTANTS} = await import('../../stores/notificationStore.js');
-const {WEBSOCKET_CONSTANTS} = await import('../../stores/websocketStore.js');
 
 const createFlux = () => ({
   dispatch: vi.fn((payload) => payload),
@@ -48,6 +50,22 @@ const createFlux = () => ({
 });
 
 describe('createWebsocketActions', () => {
+  it('routes scoped native envelopes through active ingress without echoing to the socket', () => {
+    const flux = createFlux();
+    const incoming: unknown[] = [];
+    const remove = bindNativeNotificationIngress(flux as any, async (payload) => {
+      incoming.push(payload);
+      return true;
+    });
+    const actions = createWebsocketActions(flux as any);
+    const envelope = {notification: {notificationId: 'native-1', version: 1}, recipientUserId: 'user-1', scope: {appId: 'pulsify', environment: 'dev'}};
+    actions.onReceive({data: JSON.stringify({action: 'notification.created', data: {envelope}})});
+
+    expect(incoming).toEqual([envelope]);
+
+    remove();
+  });
+
   beforeEach(() => {
     socketteInstances.length = 0;
   });
@@ -146,6 +164,7 @@ describe('createWebsocketActions', () => {
 
     const firstSocket = actions.wsInit('token-1', 'persona-1');
     const secondSocket = actions.wsInit('token-1', 'persona-1');
+
     expect(secondSocket).toBe(firstSocket);
 
     actions.onError({timeStamp: 2});
@@ -176,23 +195,26 @@ describe('createWebsocketActions', () => {
 
     expect(actions.wsInit()).toBeDefined();
     expect(socketteInstances).toHaveLength(1);
+
     const socket = socketteInstances[0];
 
     actions.wsSend({action: 'queued'});
     (socket.options.onopen as any)({timeStamp: 1});
+
     expect(socket.json).toHaveBeenCalledWith(expect.objectContaining({action: 'websocketConnect'}));
     expect(socket.json).toHaveBeenCalledWith({action: 'queued'});
 
     actions.sendTyping('conversation-1', true, {personaId: 'persona-1', userId: 'user-1', users: [{userId: 'user-2'}]});
+
     expect(socket.json).toHaveBeenCalledWith(expect.objectContaining({action: 'messageTyping'}));
 
     const notification = actions.sendNotification({content: 'Hi'} as any);
+
     expect(notification?.notificationId).toBeTruthy();
 
     actions.onReceive({data: '', timeStamp: 2});
     actions.onReceive({data: '{bad', timeStamp: 3});
     actions.onReceive({
-      timeStamp: 4,
       data: JSON.stringify({
         action: 'message.created',
         data: {
@@ -204,41 +226,43 @@ describe('createWebsocketActions', () => {
             userId: 'user-1'
           }
         }
-      })
+      }),
+      timeStamp: 4
     });
     actions.onReceive({
-      timeStamp: 5,
       data: JSON.stringify({
         action: 'message.typing',
         data: {typing: {conversationId: 'conversation-1', isTyping: true, personaId: 'persona-1'}}
-      })
+      }),
+      timeStamp: 5
     });
     actions.onReceive({
-      timeStamp: 5.5,
       data: JSON.stringify({
         action: 'message.typing',
         data: {typing: {conversationId: 'conversation-1', isTyping: false, personaId: 'persona-1'}}
-      })
+      }),
+      timeStamp: 5.5
     });
     actions.onReceive({
-      timeStamp: 6,
       data: JSON.stringify({
         action: 'notification.created',
         data: {notification: {notificationId: 'notification-1'}}
-      })
+      }),
+      timeStamp: 6
     });
     actions.onReceive({
-      timeStamp: 7,
       data: JSON.stringify({
         action: 'video.processing.completed',
         data: {video: {videoId: 'video-1'}}
-      })
+      }),
+      timeStamp: 7
     });
     vi.advanceTimersByTime(60000);
 
     actions.onError({timeStamp: 8});
     actions.onClose({timeStamp: 9});
     actions.wsClose();
+
     expect(socket.close).toHaveBeenCalledWith(1000, 'metropolis_close');
   });
 });
@@ -254,10 +278,13 @@ describe('first-message authentication', () => {
     const socket = socketteInstances.at(-1)!;
     actions.wsSend({action: 'refresh'});
     actions.onOpen({timeStamp: 1});
+
     expect(socket.url).toBe('wss://example.test/events');
     expect(socket.json).toHaveBeenNthCalledWith(1, {token: 'token-1'});
     expect(socket.json).toHaveBeenNthCalledWith(2, {action: 'refresh'});
+
     actions.onClose({code: 1008, timeStamp: 2});
+
     expect(socket.close).toHaveBeenCalled();
     expect(flux.dispatch).toHaveBeenCalledWith({code: 1008, timestamp: 2, type: WEBSOCKET_CONSTANTS.CLOSE});
   });
