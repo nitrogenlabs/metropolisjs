@@ -119,7 +119,8 @@ describe('native notification controller', () => {
   });
 
   it('reports sanitized permission and initial-response failures', async () => {
-    const {adapter, controller, flux} = await setup();
+    const {adapter, controller, flux, state} = await setup();
+    state.initial = envelope;
     const errors: unknown[] = [];
     flux.on(C.ERROR, (event) => errors.push(event.error));
     adapter.getPermission = async () => {
@@ -131,6 +132,7 @@ describe('native notification controller', () => {
     await controller.start(binding);
 
     expect(errors).toEqual(['permission_failed', 'initial_response_failed']);
+    expect(state.initial).toBeNull();
 
     await controller.stop();
   });

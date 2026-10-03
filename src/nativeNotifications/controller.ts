@@ -206,6 +206,7 @@ export const createNativeNotificationController = ({actions, actionsForBinding, 
           }
         }
       } catch{
+        await adapter.clearInitialResponse().catch(() => undefined);
         await error(g, 'initial_response_failed');
       }
     },
