@@ -27,6 +27,8 @@ export const createNativeNotificationController = ({actions, actionsForBinding, 
   let removers: (() => void)[] = [];
   let queue = Promise.resolve();
   let lastToken = '';
+  let tokenObservation = 0;
+  const inFlight = new Map<string, Promise<boolean>>();
   const received = new Map<string, number>();
   const opened = new Map<string, number>();
   const key = () => `native-${id}-${generation}`;
@@ -61,23 +63,43 @@ export const createNativeNotificationController = ({actions, actionsForBinding, 
   };
   const ingest: NativeNotificationController['ingest'] = async (payload, source) => {
     const envelope = matches(payload);
-    if(!envelope || !remember(received, envelope.notification.notificationId)) {
+    if(!envelope) {
+      return false;
+    }
+    const {notificationId} = envelope.notification;
+    const pending = inFlight.get(notificationId);
+    if(pending) {
+      await pending;
+      return false;
+    }
+    if(!remember(received, notificationId)) {
       return false;
     }
     const g = generation;
     const {notification} = envelope;
-    await flux.dispatch({
-      nativeBindingKey: key(),
-      notification: {
-        ...notification, added: Date.parse(notification.createdAt), content: notification.body, type: notification.kind
-      },
-      type: NOTIFICATION_CONSTANTS.ADD_ITEM_SUCCESS
-    });
-    if(!isActive(g)) {
-      return false;
+    const insertion = (async () => {
+      await flux.dispatch({
+        nativeBindingKey: key(),
+        notification: {
+          ...notification,
+          added: Date.parse(notification.createdAt), content: notification.body, type: notification.kind
+        },
+        type: NOTIFICATION_CONSTANTS.ADD_ITEM_SUCCESS
+      });
+      if(!isActive(g)) {
+        return false;
+      }
+      await flux.dispatch({notification, source, type: C.RECEIVED});
+      return true;
+    })();
+    inFlight.set(notificationId, insertion);
+    try {
+      return await insertion;
+    } finally {
+      if(inFlight.get(notificationId) === insertion) {
+        inFlight.delete(notificationId);
+      }
     }
-    await flux.dispatch({notification, source, type: C.RECEIVED});
-    return true;
   };
   const open: NativeNotificationController['open'] = async (payload) => {
     const envelope = matches(payload);
@@ -125,6 +147,8 @@ export const createNativeNotificationController = ({actions, actionsForBinding, 
     removers = [];
     received.clear();
     opened.clear();
+    inFlight.clear();
+    tokenObservation++;
     const local = Promise.all([
       flux.dispatch({type: NOTIFICATION_CONSTANTS.SET_NATIVE_BINDING}), flux.dispatch({type: C.RESET})
     ]).then(() => undefined);
@@ -139,9 +163,12 @@ export const createNativeNotificationController = ({actions, actionsForBinding, 
     }
     await flux.dispatch({permission, type: C.PERMISSION});
     if(permission === 'granted' && isActive(g)) {
+      const observation = ++tokenObservation;
       const token = await adapter.getToken();
-      if(isActive(g)) {
+      if(isActive(g) && tokenObservation === observation) {
         await register(token, g);
+      } else {
+        await queue;
       }
     }
     return permission;
@@ -187,6 +214,7 @@ export const createNativeNotificationController = ({actions, actionsForBinding, 
         }),
         adapter.onTokenChanged((token) => {
           if(isActive(g)) {
+            tokenObservation++;
             void register(token, g);
           }
         }),

@@ -50,6 +50,16 @@ const createFlux = () => ({
 });
 
 describe('createWebsocketActions', () => {
+  it('preserves web notification delivery when no native controller is installed', () => {
+    const flux = createFlux();
+    const notification = {content: 'hello', notificationId: 'web-1'};
+    createWebsocketActions(flux as any).onReceive({data: JSON.stringify({
+      action: 'notification.created', data: {envelope: {version: 1}, notification}
+    })});
+
+    expect(flux.dispatch).toHaveBeenCalledWith({notification, type: NOTIFICATION_CONSTANTS.ADD_ITEM_SUCCESS});
+  });
+
   it('routes scoped native envelopes through active ingress without echoing to the socket', () => {
     const flux = createFlux();
     const incoming: unknown[] = [];

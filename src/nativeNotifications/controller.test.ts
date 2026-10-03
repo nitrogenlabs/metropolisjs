@@ -2,7 +2,7 @@ import {FluxFramework} from '@nlabs/arkhamjs';
 import {describe, expect, it} from 'vitest';
 
 import {nativeNotifications, NATIVE_NOTIFICATION_CONSTANTS as C} from '../stores/nativeNotificationStore.js';
-import {notifications} from '../stores/notificationStore.js';
+import {notifications, NOTIFICATION_CONSTANTS} from '../stores/notificationStore.js';
 import {createNativeNotificationController} from './controller.js';
 
 import type {NativeNotificationAdapter, NativePushToken} from '../types/nativeNotifications.types.js';
@@ -93,6 +93,55 @@ const setup = async () => {
 };
 
 describe('native notification controller', () => {
+  it('does not register a stale token lookup after a newer rotation', async () => {
+    const {adapter, backend, controller, rotated} = await setup();
+    const lookup = deferred();
+    const started = deferred();
+    adapter.getToken = () => {
+      started.resolve();
+      return lookup.promise;
+    };
+    const start = controller.start(binding);
+    await started.promise;
+    [...rotated][0]({platform: 'ANDROID', token: 'NEW'});
+    lookup.resolve({platform: 'ANDROID', token: 'OLD'});
+    await start;
+
+    expect(backend.registrations.map((r) => r.input.token)).toEqual(['NEW']);
+
+    await controller.stop();
+  });
+
+  it('waits for a concurrent receipt to enter the inbox before opening', async () => {
+    const {controller, flux} = await setup();
+    await controller.start(binding);
+    const insertion = deferred();
+    const entered = deferred();
+    const dispatch = flux.dispatch.bind(flux);
+    flux.dispatch = async (action: any) => {
+      if(action.type === NOTIFICATION_CONSTANTS.ADD_ITEM_SUCCESS) {
+        entered.resolve();
+        await insertion.promise;
+      }
+      return dispatch(action);
+    };
+    let countOnOpen = -1;
+    flux.on(C.OPENED, () => {
+      countOnOpen = flux.getState<any[]>('notification.list').length;
+    });
+    const receipt = controller.ingest(envelope, 'native');
+    await entered.promise;
+    const tap = controller.open(envelope);
+    await Promise.resolve();
+    await Promise.resolve();
+    insertion.resolve();
+    await Promise.all([receipt, tap]);
+
+    expect(countOnOpen).toBe(1);
+
+    await controller.stop();
+  });
+
   it('handles native receipt and tap callbacks without creating duplicate inbox items', async () => {
     const {controller, flux, opened, received} = await setup();
     await controller.start(binding);

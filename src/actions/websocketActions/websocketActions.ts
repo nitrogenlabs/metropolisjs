@@ -323,8 +323,7 @@ export const createWebsocketActions = (
     }
 
     if(String(data?.action || '') === 'notification.created') {
-      if(data?.data?.envelope) {
-        routeNativeNotificationIngress(flux, data.data.envelope);
+      if(data?.data?.envelope && routeNativeNotificationIngress(flux, data.data.envelope)) {
         return;
       }
       const notification = data?.data?.notification;

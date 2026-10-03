@@ -122,7 +122,7 @@
   },
   "peerDependencies": {
     "expo-notifications": ">=0.31.0 <58",
-    "@nlabs/arkhamjs": "^3.31.1",
+    "@nlabs/arkhamjs": "^3.31.16",
     "@nlabs/arkhamjs-storage-browser": "^3.30.0",
     "@nlabs/arkhamjs-utils-react": "^3.32.0",
     "react": "^19.1.0"
