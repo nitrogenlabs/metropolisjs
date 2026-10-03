@@ -6,6 +6,7 @@
 import {ApiError, ajax, del, get, graphqlQuery, post, put} from '@nlabs/rip-hunter';
 import {camelCase, isEmpty, upperFirst} from '@nlabs/utils';
 
+import {getMinutesUntil} from '../session/sessionPolicy.js';
 import {APP_CONSTANTS} from '../stores/appStore.js';
 import {USER_CONSTANTS} from '../stores/userStore.js';
 import {getConfigFromFlux} from './configUtils.js';
@@ -89,9 +90,6 @@ export interface SessionType {
 
 const DEFAULT_SESSION_MAX_MINUTES = 15;
 
-const getMinutesUntil = (expiresAt: number): number =>
-  Math.round((expiresAt - Date.now()) / (1000 * 60));
-
 const getErrorCodes = (error: unknown): string[] => {
   if(error instanceof ApiError) {
     return error.errors;
@@ -121,17 +119,19 @@ const resolveAuthToken = async (flux: FluxFramework): Promise<string> => {
     throw new ApiError([{message: 'invalid_session'}], new Error('invalid_session'));
   }
 
-  if(authExpires > 0 && Date.now() >= authExpires) {
+  const now = Date.now();
+
+  if(authExpires > 0 && now >= authExpires) {
     throw new Error('expired_session');
   }
   const tokenExpiresAt = parseJwtExpiryMs(token);
 
-  if(tokenExpiresAt > 0 && Date.now() >= tokenExpiresAt) {
+  if(tokenExpiresAt > 0 && now >= tokenExpiresAt) {
     throw new ApiError([{message: 'expired_session'}], new Error('expired_session'));
   }
 
   const config = getConfigFromFlux(flux);
-  const minutesUntilExpiry = getMinutesUntil(Number(authExpires || 0));
+  const minutesUntilExpiry = getMinutesUntil(Number(authExpires || 0), now);
   const sessionLifetimeMinutes = Math.round((authExpires - authIssued) / (1000 * 60));
   const refreshWindowMinutes = getRefreshWindowMinutes(
     sessionLifetimeMinutes || DEFAULT_SESSION_MAX_MINUTES,
@@ -300,7 +300,8 @@ export const restRequest = async <T = ApiResultsType>(
       if(!token || token === flux.getState('user.session.token')) {
         await clearInvalidSessionState(flux);
       }
-      return {} as T;
+      const emptyResults: unknown = {};
+      return emptyResults as T;
     }
 
     throw error;

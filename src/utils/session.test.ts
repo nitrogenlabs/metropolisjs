@@ -10,6 +10,7 @@ import {
   getRefreshWindowMinutes,
   hydrateSessionFromStorage,
   isLoggedIn,
+  isValidSession,
   normalizeSession,
   readStoredSession,
   storeSession
@@ -44,6 +45,15 @@ const createMockFlux = (initialSession: Record<string, unknown> = {}) => {
 };
 
 describe('session helpers', () => {
+  it('keeps the legacy validity helper safe as an Array.filter callback', () => {
+    const sessions = [
+      {expires: Date.now() - 1000, token: 'opaque'},
+      {expires: Date.now() + 60_000, token: 'opaque'}
+    ];
+
+    expect(sessions.filter(isValidSession)).toEqual([sessions[1]]);
+  });
+
   it('hydrates a valid flux session back into state', async () => {
     const flux = createMockFlux({token, userId: 'user-storage'});
 

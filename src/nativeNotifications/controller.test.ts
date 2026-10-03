@@ -93,6 +93,67 @@ const setup = async () => {
 };
 
 describe('native notification controller', () => {
+  it('rejects opt-in when a superseding token rotation fails to register', async () => {
+    const {adapter, options, rotated, state} = await setup();
+    state.permission = 'denied';
+    const controller = createNativeNotificationController({
+      ...options,
+      actionsForBinding: () => ({
+        register: async () => {
+          throw new Error('private token');
+        },
+        unregister: async () => false
+      })
+    });
+    await controller.start(binding);
+    const lookup = deferred();
+    const entered = deferred();
+    adapter.getToken = () => {
+      entered.resolve();
+      return lookup.promise;
+    };
+    const requested = controller.requestPermission();
+    await entered.promise;
+    [...rotated][0]({platform: 'ANDROID', token: 'new-token'});
+    lookup.resolve({platform: 'ANDROID', token: 'old-token'});
+
+    await expect(requested).rejects.toThrow('Native push registration failed');
+
+    await controller.stop();
+  });
+
+  it('rejects explicit opt-in when backend registration fails and allows retry', async () => {
+    const {backend, flux, options, state} = await setup();
+    state.permission = 'denied';
+    let fail = true;
+    const actions = options.actionsForBinding(binding);
+    const controller = createNativeNotificationController({
+      ...options,
+      actionsForBinding: () => ({
+        ...actions,
+        register: async (input) => {
+          if(fail) {
+            throw new Error('private provider token');
+          }
+          return actions.register(input);
+        }
+      })
+    });
+    await controller.start(binding);
+
+    await expect(controller.requestPermission()).rejects.toThrow('Native push registration failed');
+    expect(flux.getState('nativeNotifications.permission')).toBe('granted');
+    expect(flux.getState('nativeNotifications.error')).toBe('register_failed');
+    expect(backend.registration).toBeNull();
+
+    fail = false;
+
+    await expect(controller.requestPermission()).resolves.toBe('granted');
+    expect(backend.registration.enabled).toBe(true);
+
+    await controller.stop();
+  });
+
   it('does not register a stale token lookup after a newer rotation', async () => {
     const {adapter, backend, controller, rotated} = await setup();
     const lookup = deferred();

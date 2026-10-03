@@ -3,124 +3,17 @@
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
 
+import {isValidSession as isValidSessionAt, normalizeSession} from '../session/sessionPolicy.js';
 import {USER_CONSTANTS} from '../stores/userStore.js';
 import {mergeCachedRecord} from './cacheIngestion.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
-import type {ConfigAppSessionType} from '../config/index.js';
 import type {SessionType} from './api.js';
 
-const MILLIS_THRESHOLD = 1_000_000_000_000;
-const SECONDS_THRESHOLD = 1_000_000_000;
+export {getRefreshWindowMinutes, normalizeSession, parseJwtExpiryMs, parseJwtIssuedMs} from '../session/sessionPolicy.js';
 
-const decodeJwtPayload = (token: string): Record<string, unknown> => {
-  try {
-    if(!token) {
-      return {};
-    }
-
-    const tokenParts = token.split('.');
-    if(tokenParts.length < 2 || typeof atob !== 'function') {
-      return {};
-    }
-
-    const payloadBase64 = tokenParts[1]?.replace(/-/g, '+').replace(/_/g, '/');
-    const normalized = payloadBase64?.padEnd(Math.ceil(payloadBase64.length / 4) * 4, '=');
-
-    return JSON.parse(atob(normalized || '')) as Record<string, unknown>;
-  } catch(error) {
-    return {};
-  }
-};
-
-const parseTimestampMs = (value: unknown): number => {
-  const numericValue = Number(value || 0);
-
-  if(numericValue > MILLIS_THRESHOLD) {
-    return numericValue;
-  }
-
-  if(numericValue > SECONDS_THRESHOLD) {
-    return numericValue * 1000;
-  }
-
-  return 0;
-};
-
-const getSessionToken = (session: Record<string, unknown>): string =>
-  String(
-    session.token
-    || (session.idToken as {jwtToken?: string} | undefined)?.jwtToken
-    || (session.accessToken as {jwtToken?: string} | undefined)?.jwtToken
-    || ''
-  );
-
-const buildTokenValue = (token: string, currentToken?: unknown) =>
-  (currentToken && typeof currentToken === 'object'
-    ? {...currentToken, jwtToken: token}
-    : {jwtToken: token});
-
-const getNormalizedSessionTimestamps = (session: Record<string, unknown>, token: string) => {
-  const payload = decodeJwtPayload(token);
-  const expires = parseTimestampMs(session.expires) || parseTimestampMs(payload.exp);
-  const issued = parseTimestampMs(session.issued) || parseTimestampMs(payload.iat);
-
-  return {expires, issued};
-};
-
-export const parseJwtExpiryMs = (token: string): number =>
-  parseTimestampMs(decodeJwtPayload(token).exp);
-
-export const parseJwtIssuedMs = (token: string): number =>
-  parseTimestampMs(decodeJwtPayload(token).iat);
-
-export const normalizeSession = (session: Record<string, unknown> = {}): Record<string, unknown> => {
-  const token = getSessionToken(session);
-
-  if(!token) {
-    return {};
-  }
-
-  const {expires, issued} = getNormalizedSessionTimestamps(session, token);
-
-  return {
-    ...session,
-    accessToken: buildTokenValue(token, session.accessToken),
-    expires,
-    idToken: buildTokenValue(token, session.idToken),
-    issued,
-    token
-  };
-};
-
-export const isValidSession = (session: Record<string, unknown> = {}): boolean => {
-  const normalized = normalizeSession(session);
-  const token = String(normalized?.token || '');
-
-  if(!token) {
-    return false;
-  }
-
-  const sessionExpires = Number(normalized?.expires || 0);
-  const tokenExpires = parseJwtExpiryMs(token);
-  const expiresAt = Math.min(...[sessionExpires, tokenExpires].filter((value) => value > 0));
-
-  return Number.isFinite(expiresAt) && Date.now() < expiresAt;
-};
-
-export const getRefreshWindowMinutes = (
-  sessionLifetimeMinutes: number,
-  sessionConfig: ConfigAppSessionType = {}
-): number => {
-  const lifetimeMinutes = Math.max(1, Number(sessionLifetimeMinutes || 0));
-  const refreshAfterRatio = Number(sessionConfig.refreshAfterRatio || 0);
-
-  if(refreshAfterRatio > 0 && refreshAfterRatio < 1) {
-    return Math.max(1, Math.round(lifetimeMinutes * (1 - refreshAfterRatio)));
-  }
-
-  return Math.max(1, Number(sessionConfig.minMinutes || 5));
-};
+// Keep the established one-argument utility safe when used as an array callback.
+export const isValidSession = (session: Record<string, unknown> = {}): boolean => isValidSessionAt(session);
 
 export const storeSession = (
   flux: FluxFramework,
@@ -129,11 +22,11 @@ export const storeSession = (
   const previous = flux.getState<Record<string, unknown>>('user.session', {});
   const sameUser = !session.userId || !previous.userId || session.userId === previous.userId;
   const merged = Object.keys(session).length && sameUser ? mergeCachedRecord(previous, session) : session;
-  const normalizedSession = normalizeSession(merged) as SessionType;
+  const normalizedSession: SessionType = normalizeSession(merged);
 
   if(!Object.keys(normalizedSession as Record<string, unknown>).length) {
     await clearPersistedSession(flux);
-    return {} as SessionType;
+    return {};
   }
 
   await Promise.resolve(flux.setState('user.session', normalizedSession));
@@ -141,7 +34,7 @@ export const storeSession = (
 })();
 
 export const readStoredSession = async (flux: FluxFramework): Promise<SessionType> =>
-  normalizeSession((flux.getState('user.session', {}) || {}) as Record<string, unknown>) as SessionType;
+  normalizeSession(flux.getState<Record<string, unknown>>('user.session', {}) || {});
 
 export const clearPersistedSession = async (flux: FluxFramework): Promise<void> => {
   await Promise.resolve(flux.setState('user.session', {}));
@@ -157,7 +50,7 @@ export const hydrateSessionFromStorage = async (flux: FluxFramework): Promise<Se
 
   await clearPersistedSession(flux);
   await flux.dispatch({session: {}, type: USER_CONSTANTS.SIGN_OUT_SUCCESS});
-  return {} as SessionType;
+  return {};
 };
 
 export const isLoggedIn = (flux: FluxFramework): boolean => {

@@ -1,6 +1,6 @@
 {
   "name": "@nlabs/metropolisjs",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "description": "Type-safe frontend integration for authentication, data, messaging, realtime events, billing, and Reaktor APIs.",
   "type": "module",
   "main": "lib/index.js",
@@ -43,6 +43,11 @@
       "types": "./lib/config/index.d.ts",
       "import": "./lib/config/index.js",
       "require": "./lib/config/index.js"
+    },
+    "./session": {
+      "types": "./lib/session/index.d.ts",
+      "import": "./lib/session/index.js",
+      "require": "./lib/session/index.js"
     }
   },
   "types": "./lib/index.d.ts",

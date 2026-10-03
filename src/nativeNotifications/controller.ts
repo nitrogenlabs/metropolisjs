@@ -25,7 +25,7 @@ export const createNativeNotificationController = ({actions, actionsForBinding, 
   let registration: NativePushRegistration | undefined;
   let currentActions = actions;
   let removers: (() => void)[] = [];
-  let queue = Promise.resolve();
+  let queue = Promise.resolve(true);
   let lastToken = '';
   let tokenObservation = 0;
   const inFlight = new Map<string, Promise<boolean>>();
@@ -114,23 +114,28 @@ export const createNativeNotificationController = ({actions, actionsForBinding, 
     await flux.dispatch({notification: envelope.notification, type: C.OPENED});
     return true;
   };
-  const register = (token: NativePushToken, g: number): Promise<void> => {
+  const register = (token: NativePushToken, g: number): Promise<boolean> => {
     const b = binding;
     const a = currentActions;
     const identity = JSON.stringify(token);
-    queue = queue.catch(() => undefined).then(async () => {
-      if(!b || !isActive(g) || identity === lastToken) {
-        return;
+    queue = queue.catch(() => false).then(async () => {
+      if(!b || !isActive(g)) {
+        return false;
+      }
+      if(identity === lastToken) {
+        return true;
       }
       const result = await a.register({...token, installationId: b.installationId});
       if(!isActive(g)) {
         await a.unregister(result.registrationId, result.revision).catch(() => undefined);
-        return;
+        return false;
       }
       registration = result;
       lastToken = identity;
+      return true;
     }).catch(async () => {
       await error(g, 'register_failed');
+      return false;
     });
     return queue;
   };
@@ -165,10 +170,10 @@ export const createNativeNotificationController = ({actions, actionsForBinding, 
     if(permission === 'granted' && isActive(g)) {
       const observation = ++tokenObservation;
       const token = await adapter.getToken();
-      if(isActive(g) && tokenObservation === observation) {
-        await register(token, g);
-      } else {
-        await queue;
+      const registered = isActive(g) && tokenObservation === observation
+        ? await register(token, g) : await queue;
+      if(prompt && isActive(g) && !registered) {
+        throw new Error('Native push registration failed');
       }
     }
     return permission;

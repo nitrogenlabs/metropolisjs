@@ -12,6 +12,11 @@ checks never prompt; `requestPermission()` is an explicit user action. Configure
 `setNotificationHandler` in the app, not in the library. Do not schedule a second
 local OS notification for an incoming remote push.
 
+Explicit opt-in rejects with a sanitized error if backend registration fails,
+even when OS permission was granted. Show success only after the request resolves;
+on rejection offer retry and/or device settings. Startup and token-rotation
+registration failures remain nonfatal and emit `ERROR` with `register_failed`.
+
 Persist a cryptographically random installation ID using the app's secure storage.
 Keep it across token rotation and login; reset it on a fresh install. Some iOS
 keychain values survive reinstall: choose an app-install marker if a fresh ID is
