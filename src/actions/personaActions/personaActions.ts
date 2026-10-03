@@ -17,6 +17,7 @@ import type {ActionRequestOptions} from '../../utils/requestCache.js';
 
 // Define the collection name for personas
 const DATA_TYPE = 'personas';
+const profileWrites = new WeakMap<FluxFramework, number>();
 const PERSONA_TAG_SESSION_FIELDS = ['personaId', 'tags {name, tagId}'];
 const DEFAULT_PERSONA_PROPS = [
   'imageId',
@@ -240,6 +241,7 @@ export const createPersonaActions = (
     personaProps: string[] = [],
     _requestOptions: ActionRequestOptions = {}
   ): Promise<PersonaType> => {
+    profileWrites.set(flux, (profileWrites.get(flux) || 0) + 1);
     try {
       const queryVariables = {
         persona: {
@@ -251,6 +253,7 @@ export const createPersonaActions = (
       let savedPersona: PersonaType = {};
       const onSuccess = async (data: PersonaApiResultsType) => {
         const addPersona = data?.personas?.addPersona || {};
+        profileWrites.set(flux, (profileWrites.get(flux) || 0) + 1);
         savedPersona = addPersona;
         await syncPersonaToSession(flux, addPersona);
         return flux.dispatch({persona: addPersona, type: PERSONA_CONSTANTS.ADD_ITEM_SUCCESS});
@@ -280,6 +283,12 @@ export const createPersonaActions = (
     personaProps: string[] = [],
     requestOptions: ActionRequestOptions = {}
   ): Promise<PersonaType> => {
+    const writeVersion = profileWrites.get(flux) || 0;
+    const assertProfileCurrent = (): void => {
+      if(writeVersion !== (profileWrites.get(flux) || 0)) {
+        throw new Error('session_changed');
+      }
+    };
     try {
       const cachedResult = getCachedRequest<PersonaType>(
         flux,
@@ -302,8 +311,10 @@ export const createPersonaActions = (
       let fetchedPersona: PersonaType = {};
       const onSuccess = async (data: PersonaApiResultsType) => {
         const persona = data?.personas?.getPersonaById || {};
+        assertProfileCurrent();
         fetchedPersona = persona;
         await syncPersonaToSession(flux, persona);
+        assertProfileCurrent();
         return flux.dispatch({persona, type: PERSONA_CONSTANTS.GET_ITEM_SUCCESS});
       };
 
@@ -315,6 +326,7 @@ export const createPersonaActions = (
         [...DEFAULT_PERSONA_PROPS, ...personaProps],
         {onSuccess}
       );
+      assertProfileCurrent();
       return await setCachedRequest(
         flux,
         `persona.getPersonaById:${personaId}`,
@@ -568,6 +580,7 @@ export const createPersonaActions = (
     personaProps: string[] = [],
     _requestOptions: ActionRequestOptions = {}
   ): Promise<PersonaType> => {
+    profileWrites.set(flux, (profileWrites.get(flux) || 0) + 1);
     try {
       const queryVariables = {
         persona: {
@@ -579,6 +592,7 @@ export const createPersonaActions = (
       let savedPersona: PersonaType = {};
       const onSuccess = async (data: PersonaApiResultsType) => {
         const persona = data?.personas?.updatePersona || {};
+        profileWrites.set(flux, (profileWrites.get(flux) || 0) + 1);
         savedPersona = persona;
         await syncPersonaToSession(flux, persona);
         return flux.dispatch({persona, type: PERSONA_CONSTANTS.UPDATE_ITEM_SUCCESS});

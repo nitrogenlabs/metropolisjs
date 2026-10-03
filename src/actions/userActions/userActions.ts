@@ -25,6 +25,7 @@ import type {BaseAdapterOptions} from '../../utils/validatorFactory.js';
 
 const DATA_TYPE = 'users';
 const accountRequests = new WeakMap<FluxFramework, symbol>();
+const pendingSignIns = new WeakSet<FluxFramework>();
 const DEFAULT_USER_QUERY_FIELDS = ['userId', 'username'];
 const SENSITIVE_USER_FIELDS = new Set([
   'password',
@@ -265,6 +266,7 @@ const defaultUserValidator = (input: unknown, options?: UserAdapterOptions) => {
 };
 
 export interface UserActions {
+  registerAndSignIn: (userInput: Partial<User>, expires?: number, userProps?: string[]) => Promise<SessionType>;
   addUser: (userInput: Partial<User>, userProps?: string[], requestOptions?: ActionRequestOptions) => Promise<User>;
   confirmCode: (code: number, {type, value}: {type: 'email' | 'phone'; value: string}, requestOptions?: ActionRequestOptions) => Promise<boolean>;
   confirmSignUp: (code: string, type: 'email' | 'phone', requestOptions?: ActionRequestOptions) => Promise<boolean>;
@@ -368,10 +370,11 @@ export const createUserActions = (
     }
   };
 
-  const addUser = async (
+  const createAccount = async (
     userInput: Partial<User>,
     userProps: string[] = [],
-    requestOptions: ActionRequestOptions = {}
+    requestOptions: ActionRequestOptions = {},
+    assertCurrent: () => void = () => {}
   ): Promise<User> => {
     const {username, email, password} = userInput;
     const queryVariables = {
@@ -385,12 +388,15 @@ export const createUserActions = (
       }
     };
 
-    const onSuccess = (data: UserApiResultsType): Promise<FluxAction> => {
+    const onSuccess = async (data: UserApiResultsType): Promise<FluxAction> => {
+      assertCurrent();
       const user = data?.users?.addUser || {};
-      return flux.dispatch({
+      const result = await flux.dispatch({
         type: USER_CONSTANTS.ADD_ITEM_SUCCESS,
         user
       });
+      assertCurrent();
+      return result;
     };
 
     const returnProps = sanitizeUserProps(userProps, [
@@ -413,18 +419,22 @@ export const createUserActions = (
     ]);
 
     try {
-      return await publicMutation<UserApiResultsType>(
+      const result = await publicMutation<UserApiResultsType>(
         flux,
         'addUser',
         DATA_TYPE,
         queryVariables,
         returnProps,
-        {onSuccess, ...requestOptions}
+        {onSuccess, ...requestOptions, queueOffline: false}
       );
+      assertCurrent();
+      return result;
     } finally {
       await clearUserRequestCaches();
     }
   };
+
+  const addUser = createAccount;
 
   const signUp = async (
     userInput: Partial<User>,
@@ -1148,6 +1158,9 @@ export const createUserActions = (
       throw new Error('Username, email, or phone number and password are required to sign in');
     }
 
+    const previousSession = !pendingSignIns.has(flux) && isLoggedInWithStorage(flux)
+      ? flux.getState<Record<string, unknown>>('user.session', {}) : {};
+    pendingSignIns.add(flux);
     const owner = Symbol('signIn');
     accountRequests.set(flux, owner);
     let generation = flux.getState('app.sessionGeneration', 0);
@@ -1235,10 +1248,19 @@ export const createUserActions = (
       result = await performSignIn(queryVariablesWithUserInput);
     } catch(error) {
       if(accountRequests.get(flux) === owner && generation === flux.getState('app.sessionGeneration', 0)) {
+        if(Object.keys(previousSession).length) {
+          await syncStoredSession(flux, previousSession);
+        } else {
+          await clearPersistedSession(flux);
+        }
+        assertCurrent();
         await flux.dispatch({error, type: USER_CONSTANTS.SIGN_IN_ERROR});
       }
       throw error;
     } finally {
+      if(accountRequests.get(flux) === owner) {
+        pendingSignIns.delete(flux);
+      }
       await clearUserRequestCaches(String((user as any)?.userId || ''));
     }
     assertCurrent();
@@ -1255,6 +1277,23 @@ export const createUserActions = (
     await flux.dispatch({session: {}, type: USER_CONSTANTS.SIGN_OUT_SUCCESS});
     await clearUserRequestCaches();
     return true;
+  };
+
+  const registerAndSignIn = async (
+    userInput: Partial<User>,
+    expires?: number,
+    userProps: string[] = ['email', 'userId', 'username']
+  ): Promise<SessionType> => {
+    const owner = Symbol('registerAndSignIn');
+    accountRequests.set(flux, owner);
+    const assertCurrent = (): void => {
+      if(accountRequests.get(flux) !== owner) {
+        throw new Error('session_changed');
+      }
+    };
+    await createAccount(userInput, userProps, {}, assertCurrent);
+    assertCurrent();
+    return signIn(userInput, expires);
   };
 
   const confirmSignUp = async (
@@ -1435,6 +1474,7 @@ export const createUserActions = (
     listByReactions,
     listByTags,
     refreshSession: refreshSessionAction,
+    registerAndSignIn,
     remove,
     requestPasswordReset,
     resetPassword,
