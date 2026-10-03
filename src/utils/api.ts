@@ -42,6 +42,7 @@ export type ReaktorDbCollection =
   'images' |
   'locations' |
   'messages' |
+  'nativePush' |
   'notifications' |
   'payments' |
   'permissions' |

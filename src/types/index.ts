@@ -12,4 +12,4 @@ export * from './groups.types.js';
 export * from './imageGeneration.types.js';
 export * from './subscriptions.types.js';
 export * from './videos.types.js';
-
+export * from './nativeNotifications.types.js';

@@ -11,6 +11,7 @@ export * from './higgsfieldActions/higgsfieldActions.js';
 export * from './imageActions/imageActions.js';
 export * from './locationActions/locationActions.js';
 export * from './messageActions/messageActions.js';
+export * from './nativeNotificationActions/nativeNotificationActions.js';
 export * from './permissionActions/permissionActions.js';
 export * from './postActions/postActions.js';
 export * from './personaActions/personaActions.js';

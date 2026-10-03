@@ -22,3 +22,4 @@ export {TRANSLATION_CONSTANTS, translations} from './translationStore.js';
 export {USER_CONSTANTS, users} from './userStore.js';
 export {video, VIDEO_CONSTANTS} from './videoStore.js';
 export {websocket, WEBSOCKET_CONSTANTS} from './websocketStore.js';
+export * from './nativeNotificationStore.js';
