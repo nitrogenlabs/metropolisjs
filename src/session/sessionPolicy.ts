@@ -42,9 +42,9 @@ const parseTimestampMs = (value: unknown): number => {
 
 const getSessionToken = (session: Record<string, unknown>): string =>
   String(
-    session.token
-    || (session.idToken as {jwtToken?: string} | undefined)?.jwtToken
-    || (session.accessToken as {jwtToken?: string} | undefined)?.jwtToken
+    session['token']
+    || (session['idToken'] as {jwtToken?: string} | undefined)?.jwtToken
+    || (session['accessToken'] as {jwtToken?: string} | undefined)?.jwtToken
     || ''
   );
 
@@ -55,17 +55,33 @@ const buildTokenValue = (token: string, currentToken?: unknown) =>
 
 const getNormalizedSessionTimestamps = (session: Record<string, unknown>, token: string) => {
   const payload = decodeJwtPayload(token);
-  const expires = parseTimestampMs(session.expires) || parseTimestampMs(payload.exp);
-  const issued = parseTimestampMs(session.issued) || parseTimestampMs(payload.iat);
+  const expires = parseTimestampMs(session['expires']) || parseTimestampMs(payload['exp']);
+  const issued = parseTimestampMs(session['issued']) || parseTimestampMs(payload['iat']);
 
   return {expires, issued};
 };
 
 export const parseJwtExpiryMs = (token: string): number =>
-  parseTimestampMs(decodeJwtPayload(token).exp);
+  parseTimestampMs(decodeJwtPayload(token)['exp']);
 
 export const parseJwtIssuedMs = (token: string): number =>
-  parseTimestampMs(decodeJwtPayload(token).iat);
+  parseTimestampMs(decodeJwtPayload(token)['iat']);
+
+/** Strict hosted JWT time hints in epoch seconds; decoding never verifies a signature. */
+export const parseStrictJwtTimeHints = (token: string): {expires: number; issued: number} | undefined => {
+  const payload = decodeJwtPayload(token);
+  if(!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return undefined;
+  }
+  const issued = payload['iat'];
+  const expires = payload['exp'];
+  if(typeof issued !== 'number' || typeof expires !== 'number' || !Number.isSafeInteger(issued) ||
+    !Number.isSafeInteger(expires) || issued <= 0 || expires <= 0 ||
+    issued >= MILLIS_THRESHOLD || expires >= MILLIS_THRESHOLD) {
+    return undefined;
+  }
+  return {expires: expires * 1000, issued: issued * 1000};
+};
 
 export const normalizeSession = (session: Record<string, unknown> = {}): Record<string, unknown> => {
   const token = getSessionToken(session);
@@ -78,9 +94,9 @@ export const normalizeSession = (session: Record<string, unknown> = {}): Record<
 
   return {
     ...session,
-    accessToken: buildTokenValue(token, session.accessToken),
+    accessToken: buildTokenValue(token, session['accessToken']),
     expires,
-    idToken: buildTokenValue(token, session.idToken),
+    idToken: buildTokenValue(token, session['idToken']),
     issued,
     token
   };
@@ -88,13 +104,13 @@ export const normalizeSession = (session: Record<string, unknown> = {}): Record<
 
 export const isValidSession = (session: Record<string, unknown> = {}, now = Date.now()): boolean => {
   const normalized = normalizeSession(session);
-  const token = String(normalized?.token || '');
+  const token = String(normalized?.['token'] || '');
 
   if(!token) {
     return false;
   }
 
-  const sessionExpires = Number(normalized?.expires || 0);
+  const sessionExpires = Number(normalized?.['expires'] || 0);
   const tokenExpires = parseJwtExpiryMs(token);
   const expiresAt = Math.min(...[sessionExpires, tokenExpires].filter((value) => value > 0));
 
@@ -160,12 +176,12 @@ export const shouldRefreshSession = (
   sessionConfig: SessionRefreshConfig = {},
   now = Date.now()
 ): boolean => {
-  const token = String(session?.token || '');
+  const token = String(session?.['token'] || '');
   if(!token) {
     return false;
   }
-  const expiresAt = Number(session?.expires || 0);
-  const issuedAt = Number(session?.issued || 0);
+  const expiresAt = Number(session?.['expires'] || 0);
+  const issuedAt = Number(session?.['issued'] || 0);
   const lifetime = Math.round((expiresAt - issuedAt) / 60_000);
   const window = getRefreshWindowMinutes(lifetime || Number(sessionConfig.maxMinutes || 15), sessionConfig);
   return !isValidSession(session, now)

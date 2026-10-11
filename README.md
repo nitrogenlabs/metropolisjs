@@ -1361,7 +1361,9 @@ npm test
 npm run build
 ```
 
-`npm run typecheck` checks the production source, unit and integration tests, lint inputs, and every file under `examples/`.
+`npm run typecheck` checks the production source, unit and integration tests, every file under `examples/`, and the stricter native-auth source contract without emitting files. `npm run lint` checks source and examples without modifying them; both use the shared `eslint.config.mjs`.
+
+TypeScript configuration is split by purpose: `tsconfig.json` defines source defaults, `tsconfig.build.json` controls Lex's declaration build, `tsconfig.test.json` covers source and tests (also used by ESLint), `tsconfig.examples.json` covers examples, and `tsconfig.native-auth.json` applies stricter checks to native-auth source.
 
 To contribute:
 
@@ -1567,4 +1569,38 @@ Text generation accepts `provider: "grok"`; Reaktor uses server-side `contentGen
 
 ### Assistant actions
 
-Use `createAction('assistant', flux)` for typed Reaktor chat, FAQ and support operations with scoped Flux state and events. Configure `app.api.public` for your Reaktor endpoint. See [Assistant actions](docs/ASSISTANT.md) for setup and examples.
+Use `createAction('assistant', flux)` to call Reaktor's GraphQL assistant through the standard MetropolisJS transport. Set `app.api.public` to `https://api.reaktor.io` for NitrogenX.
+
+```ts
+import {createAction} from '@nlabs/metropolisjs/utils';
+import {ASSISTANT_CONSTANTS} from '@nlabs/metropolisjs/stores';
+
+// flux is your application's initialized ArkhamJS Flux instance.
+// Configure app.api.public as 'https://api.reaktor.io'.
+const assistant = createAction('assistant', flux, {instanceId: 'site-help'});
+flux.on(ASSISTANT_CONSTANTS.CHAT_SUCCESS, ({instanceId, result}) => {
+  // assistant.instances[instanceId] is updated before this event.
+  console.log(result.answer, result.sources);
+});
+flux.on(ASSISTANT_CONSTANTS.CHAT_ERROR, ({error}) => {
+  console.error(error.message);
+});
+
+void assistant.chat({
+  context: 'nitrogen',
+  history: [],
+  language: 'en-US',
+  name: 'Alfred',
+  question: 'What does Nitrogen build?'
+}).catch(() => { /* The error event handles presentation. */ });
+```
+
+| Action | GraphQL operation | Result |
+| --- | --- | --- |
+| `assistant.chat(input)` | Mutation `assistant.chat` | Grounded answer and source links |
+| `assistant.faqs({context: 'nitrogen'})` | Query `assistant.faqs` | Public FAQ items |
+| `assistant.submitSupport(input)` | Mutation `assistant.submitSupport` | Confirmed ticket number or durable queue acknowledgement |
+
+Listen for `ASSISTANT_CONSTANTS` chat/FAQ/support success and error events. State updates before events at `assistant.instances[instanceId]`. Support requires user confirmation, valid contact details and a stable `web-UUID` request ID; retry unchanged details with the same ID. Knowledge, credentials and delivery configuration remain server-owned.
+
+See [Assistant actions](docs/ASSISTANT.md) for the complete inputs, responses, Flux events, Alfred callback mapping and support example.

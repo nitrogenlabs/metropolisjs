@@ -5,12 +5,13 @@
     "lib"
   ],
   "include": [
-    "src/**/*.test.ts",
-    "src/**/*.test.tsx",
-    "src/**/*.spec.ts",
-    "src/**/*.spec.tsx"
+    "src/**/*.ts",
+    "src/**/*.tsx"
   ],
   "compilerOptions": {
+    "emitDeclarationOnly": false,
+    "noEmit": true,
+    "skipLibCheck": false,
     "types": [
       "node",
       "vitest/globals"

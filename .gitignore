@@ -1,6 +1,32 @@
 changelog.tmp.md
 coverage
+coverage-*/
 lib
 node_modules
 package-lock.json
 .DS_Store
+
+# Temporary files and scratch directories
+*.tmp
+*.tmp.*
+*.temp
+*.temp.*
+temp_*
+tmp_*
+.temp/
+.tmp/
+temp/
+tmp/
+
+# Editor backups and caches
+*~
+*.bak
+*.swp
+*.swo
+*.tsbuildinfo
+*.log
+
+# Generated test artifacts
+test-results/
+playwright-report/
+blob-report/
