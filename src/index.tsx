@@ -14,6 +14,7 @@ import {createWebsocketActions} from './actions/websocketActions/websocketAction
 import {resolveEnvironmentConfig} from './config/index.js';
 import {
   app,
+  APP_CONSTANTS,
   assistant,
   contents,
   conversation,
@@ -222,11 +223,12 @@ export interface ComplexTranslation {
 export type ComplexTranslations = Record<string, ComplexTranslation>;
 
 export const Metropolis = ({
-  adapters, children, config = {}, translations = {}, webSession: webSessionOptions
+  adapters, children, config, translations = {}, webSession: webSessionOptions
 }: MetropolisProps) => {
   const flux = useFlux();
   const cookieActions = webSessionOptions ? createWebSessionActions(flux, webSessionOptions) : undefined;
-  const resolvedConfig = useMemo<MetropolisEnvironmentConfiguration>(() => resolveEnvironmentConfig(config), [config]);
+  const resolvedConfig = useMemo<MetropolisEnvironmentConfiguration>(
+    () => resolveEnvironmentConfig(config ?? {}), [config]);
   const mergedAdapters = useMemo(
     () => ({...resolvedConfig.adapters, ...adapters}),
     [resolvedConfig.adapters, adapters]
@@ -305,7 +307,12 @@ export const Metropolis = ({
 
     const hydration = (async () => {
       await Promise.resolve(flux.setState('app.config', resolvedConfig));
+      // Preserve consumers' pre-registered app reducers as well as our own.
       await Promise.resolve(flux.setState('app.sessionHydrated', false));
+      if(!isActive) {
+        return;
+      }
+      await flux.dispatch({type: APP_CONSTANTS.SESSION_HYDRATION_STARTED});
       if(!cookieActions) {
         await hydrateSessionFromStorage(flux);
       }
@@ -321,6 +328,10 @@ export const Metropolis = ({
       }
 
       await Promise.resolve(flux.setState('app.sessionHydrated', true));
+      if(!isActive) {
+        return;
+      }
+      await flux.dispatch({type: APP_CONSTANTS.SESSION_HYDRATION_COMPLETED});
     })();
     if(cookieActions) {
       // Cookie verification failures are represented by fail-closed runtime state.
@@ -328,6 +339,10 @@ export const Metropolis = ({
       void hydration.catch(async () => {
         if(isActive) {
           await flux.setState('app.sessionHydrated', true);
+          if(!isActive) {
+            return;
+          }
+          await flux.dispatch({type: APP_CONSTANTS.SESSION_HYDRATION_COMPLETED});
         }
       }).catch(() => {});
     } else {

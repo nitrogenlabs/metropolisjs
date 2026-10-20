@@ -182,6 +182,8 @@ export const createWebSessionActions = (flux: FluxFramework, input: WebSessionOp
         blocked = true;
         needsVerification = false;
         await publish(captured, 'blocked');
+        await flux.dispatch({scope: options.scope, type: WEB_SESSION_CONSTANTS.BLOCKED});
+        gate(captured);
         throw new Error('web_session_unavailable');
       }
     })();

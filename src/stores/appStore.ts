@@ -15,6 +15,8 @@ export const APP_CONSTANTS = {
   GET_LIST_SUCCESS: 'APP_GET_LIST_SUCCESS',
   REMOVE_ITEM_ERROR: 'APP_REMOVE_ITEM_ERROR',
   REMOVE_ITEM_SUCCESS: 'APP_REMOVE_ITEM_SUCCESS',
+  SESSION_HYDRATION_COMPLETED: 'APP_SESSION_HYDRATION_COMPLETED',
+  SESSION_HYDRATION_STARTED: 'APP_SESSION_HYDRATION_STARTED',
   UPDATE_ITEM_ERROR: 'APP_UPDATE_ITEM_ERROR',
   UPDATE_ITEM_SUCCESS: 'APP_UPDATE_ITEM_SUCCESS'
 } as const;
@@ -24,12 +26,19 @@ interface AppState {
     error?: Error;
     status?: boolean;
   };
+  sessionHydrated?: boolean;
 }
 
 export const defaultValues: AppState = {};
 
 export const appStore = (type: string, data: Partial<AppState>, state = defaultValues): AppState => {
   switch(type) {
+    case APP_CONSTANTS.SESSION_HYDRATION_STARTED: {
+      return {...state, sessionHydrated: false};
+    }
+    case APP_CONSTANTS.SESSION_HYDRATION_COMPLETED: {
+      return {...state, sessionHydrated: true};
+    }
     default: {
       return state;
     }

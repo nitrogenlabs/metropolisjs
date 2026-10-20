@@ -291,7 +291,7 @@ describe('index onInit', () => {
 
     await waitFor(() => {
       expect(flux.setState).toHaveBeenCalledWith('app.config', expect.objectContaining({app: expect.objectContaining({name: 'Local'})}));
-      expect(flux.setState).toHaveBeenCalledWith('app.sessionHydrated', true);
+      expect(flux.dispatch).toHaveBeenCalledWith({type: 'APP_SESSION_HYDRATION_COMPLETED'});
     });
 
     expect(contextValue.messages).toHaveLength(1);

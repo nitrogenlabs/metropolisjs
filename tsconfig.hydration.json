@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.web-session.json",
+  "include": [
+    "src/index.tsx",
+    "src/index.hydration.test.tsx",
+    "src/index.test.tsx",
+    "src/index.webSession.test.tsx",
+    "src/stores/appStore.test.ts",
+    "src/actions/webSessionActions/*.ts"
+  ]
+}
