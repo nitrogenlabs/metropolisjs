@@ -48,16 +48,20 @@ const descriptors: Record<string, readonly [string, string, string]> = {
   image: ['imageId', 'images', 'image'],
   message: ['messageId', 'messages', 'message'],
   notification: ['notificationId', 'notifications', 'notification'],
-  persona: ['personaId', 'listMap', 'persona'],
   permission: ['id', 'permissions', 'permission'],
+  persona: ['personaId', 'listMap', 'persona'],
   post: ['postId', 'viewed', 'post'],
   tag: ['tagId', 'tags', 'tag'],
   user: ['userId', 'users', 'user'],
   video: ['videoId', 'videos', 'video']
 };
-const keyOf = (record: CacheRecord | null | undefined, idField: string) => String(record?.[idField] || '').split('/').pop();
+const keyOf = (record: CacheRecord | null | undefined, idField: string): string =>
+  String(record?.[idField] || '').split('/').pop()!;
 
-const ingestCachedAction = (name: string, reducer: (type: string, data: CacheAction, state: CacheRecord) => CacheRecord, initialState: CacheRecord, type: string, data: CacheAction, state: CacheRecord): CacheRecord => {
+const ingestCachedAction = (
+  name: string, reducer: (type: string, data: any, state: any) => CacheRecord,
+  initialState: CacheRecord, type: string, data: CacheAction, state: CacheRecord
+): CacheRecord => {
   if(type === 'USER_SIGN_OUT_SUCCESS') {
     // Keep application configuration, but discard account-scoped request caches.
     return name === 'app' ? {...initialState, config: state.config, metropolisInitialized: true, sessionGeneration: (state.sessionGeneration || 0) + 1, sessionHydrated: true} : {...initialState};
@@ -68,17 +72,20 @@ const ingestCachedAction = (name: string, reducer: (type: string, data: CacheAct
   }
   if(name === 'reaction' && type.startsWith('REACTION_') && type.endsWith('_SUCCESS')) {
     const key = [data.itemType || '', data.itemId || '', data.personaId || '', data.name || data.reaction?.name || ''].join(':');
-    return {...state, reactions: {...state.reactions, [key]: mergeCachedRecord(state.reactions?.[key], data, data.replace === true)}};
+    return {...state,
+      reactions: {...state.reactions, [key]: mergeCachedRecord(state.reactions?.[key], data, data.replace === true)}};
   }
   if(name === 'message' && type === 'MESSAGE_GET_CONVO_LIST_SUCCESS' && (data.conversation || data.conversations)) {
     const records = data.conversations || [data.conversation];
     const conversationMap = {...state.conversationMap};
     for(const record of records) {
       if(record?.conversationId) {
-        conversationMap[record.conversationId] = mergeCachedRecord(conversationMap[record.conversationId], record, data.replace === true);
+        conversationMap[record.conversationId] = mergeCachedRecord(
+          conversationMap[record.conversationId], record, data.replace === true);
       }
     }
-    return {...state, conversationList: records.map((record) => conversationMap[record.conversationId]), conversationMap};
+    return {...state,
+      conversationList: records.map((record: CacheRecord) => conversationMap[record.conversationId]), conversationMap};
   }
   const descriptor = descriptors[name];
   if(!descriptor) {
@@ -107,7 +114,8 @@ const ingestCachedAction = (name: string, reducer: (type: string, data: CacheAct
   const isSuccess = belongsToStore && (type.endsWith('_SUCCESS') || type.endsWith('_COMPLETE'));
   const cached = {...state[mapField]};
   // Existing persisted versions may only contain list records.
-  const legacyLists = [state.list, ...Object.values(state.lists || {}), ...Object.values(state.conversations || {})].filter(Array.isArray);
+  const legacyLists = [state.list, ...Object.values(state.lists || {}), ...Object.values(state.conversations || {})]
+    .filter(Array.isArray);
   for(const item of legacyLists.flat()) {
     const id = keyOf(item, idField);
     if(id && !cached[id]) {
@@ -144,7 +152,8 @@ const ingestCachedAction = (name: string, reducer: (type: string, data: CacheAct
       return {...state, session: mergeCachedRecord(state.session, patch || {}, data.replace === true)};
     }
     if(type === 'USER_GET_SESSION_SUCCESS') {
-      return {...state, session: mergeCachedRecord(state.session, payload.session || {}, data.replace === true || !sameUser)};
+      return {...state,
+        session: mergeCachedRecord(state.session, payload.session || {}, data.replace === true || !sameUser)};
     }
     let next = reducer(type, payload, state);
     if(isSuccess && payload.user?.userId && !['USER_SIGN_IN_SUCCESS', 'USER_SIGN_UP_SUCCESS'].includes(type)) {
@@ -164,7 +173,8 @@ const ingestCachedAction = (name: string, reducer: (type: string, data: CacheAct
   }
   if(name === 'event' && data.eventRsvp?.eventId) {
     const id = keyOf(data.eventRsvp, 'eventId');
-    next = {...next, rsvpsByEvent: {...state.rsvpsByEvent, [id]: mergeCachedRecord(state.rsvpsByEvent?.[id], data.eventRsvp, data.replace === true)}};
+    next = {...next, rsvpsByEvent: {...state.rsvpsByEvent,
+      [id]: mergeCachedRecord(state.rsvpsByEvent?.[id], data.eventRsvp, data.replace === true)}};
   }
   const incomingList = payload.list || payload[`${itemField}s`];
   if(Array.isArray(incomingList)) {
@@ -190,7 +200,8 @@ const ingestCachedAction = (name: string, reducer: (type: string, data: CacheAct
     if(!isRecord(next[field])) {
       continue;
     }
-    next[field] = Object.fromEntries(Object.entries(next[field]).map(([key, value]) => [key, Array.isArray(value) ? updateList(value) : value]));
+    next[field] = Object.fromEntries(Object.entries(next[field])
+      .map(([key, value]) => [key, Array.isArray(value) ? updateList(value) : value]));
   }
   if(removedId && keyOf(next.item, idField) === removedId) {
     next.item = undefined;
@@ -266,9 +277,9 @@ export const readCachedResponse = <T>(flux: FluxFramework, scope: string, data: 
   return result as T;
 };
 
-export const withCacheIngestion = <S extends object>(
+export const withCacheIngestion = <S extends object, D = CacheAction>(
   name: string,
-  reducer: (type: string, data: CacheAction, state: S) => S,
+  reducer: (type: string, data: D, state: S) => S,
   initialState: S
 ): ((type: string, data?: CacheAction, state?: S) => S) => (
   (type, data = {}, state = initialState) => ingestCachedAction(name, reducer, initialState, type, data, state) as S

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import {renderHook} from '@testing-library/react';
-import type {ReactNode} from 'react';
-import {describe, expect, it, vi} from 'vitest';
+import {renderHook} from '@nlabs/lex/test-react';
+import {describe, expect, it, vi} from '@nlabs/lex/test-vitest';
 
 import {MetropolisContext} from './MetropolisContext.js';
+
+import type {ReactNode} from 'react';
 
 const flux = {
   dispatch: vi.fn(),
@@ -12,6 +13,8 @@ const flux = {
   setState: vi.fn()
 };
 
+// These public adapter keys are part of MetropolisAdapters.
+/* eslint-disable @typescript-eslint/naming-convention */
 const wrapper = ({children}: {children: ReactNode}) => (
   <MetropolisContext.Provider
     value={{
@@ -43,10 +46,12 @@ const wrapper = ({children}: {children: ReactNode}) => (
   </MetropolisContext.Provider>
 );
 
+/* eslint-enable @typescript-eslint/naming-convention */
+
 describe('useMetropolis', () => {
   it('creates requested action groups with adapter options', async () => {
     const {useMetropolis} = await import('./useMetropolis.js');
-    const {result} = renderHook(() => useMetropolis([
+    const useRequestedActions = () => useMetropolis([
       'awsRum',
       'content',
       'crm',
@@ -66,7 +71,8 @@ describe('useMetropolis', () => {
       'user',
       'video',
       'websocket'
-    ]), {wrapper});
+    ]);
+    const {result} = renderHook(useRequestedActions, {wrapper});
 
     expect(result.current.contentActions).toBeDefined();
     expect(result.current.awsRum).toBeDefined();
@@ -124,8 +130,29 @@ describe('useMetropolis', () => {
   it('throws when config is requested without provider config', async () => {
     const {useMetropolis, useMetropolisConfig, useMetropolisFlux} = await import('./useMetropolis.js');
 
-    expect(() => renderHook(() => useMetropolisConfig())).toThrow('useMetropolisConfig must be used');
-    expect(() => renderHook(() => useMetropolisFlux())).toThrow('useMetropolisFlux must be used');
-    expect(() => renderHook(() => useMetropolis(['user']))).toThrow('useMetropolis must be used');
+    const useConfig = () => useMetropolisConfig();
+    const useFlux = () => useMetropolisFlux();
+    const useActions = () => useMetropolis(['user']);
+
+    expect(() => renderHook(useConfig)).toThrow('useMetropolisConfig must be used');
+    expect(() => renderHook(useFlux)).toThrow('useMetropolisFlux must be used');
+    expect(() => renderHook(useActions)).toThrow('useMetropolis must be used');
+  });
+
+  it('uses shared action defaults with no adapters and enforces cookie hook binding', async () => {
+    const hooks = await import('./useMetropolis.js');
+    const sparseWrapper = ({children}: {children: ReactNode}) => (
+      <MetropolisContext.Provider value={{adapters: {}, config: {}, flux: flux as any, isAuth: () => false,
+        messages: [], notifications: [], session: {}, updateMessage: () => {}, updateNotification: () => {}}}>
+        {children}
+      </MetropolisContext.Provider>
+    );
+    const {result} = renderHook(() => hooks.useMetropolis(['user', 'higgsfield']), {wrapper: sparseWrapper});
+
+    expect(result.current.userActions).toBeDefined();
+    expect(result.current.higgsfieldActions).toBeDefined();
+    expect(renderHook(() => hooks.useHiggsfieldActions(), {wrapper: sparseWrapper}).result.current).toBeDefined();
+    expect(() => renderHook(() => hooks.useWebSessionActions(), {wrapper: sparseWrapper})).toThrow('requires Metropolis webSession');
+    expect(() => renderHook(() => hooks.useWebSessionActions())).toThrow('requires Metropolis webSession');
   });
 });

@@ -9,6 +9,7 @@ import {useEffect, useMemo, useRef} from 'react';
 import {I18nextProvider} from 'react-i18next';
 
 import {syncPersonaTagsToSession, syncPersonaToSession} from './actions/personaActions/personaActions.js';
+import {createWebSessionActions} from './actions/webSessionActions/webSessionActions.js';
 import {createWebsocketActions} from './actions/websocketActions/websocketActions.js';
 import {resolveEnvironmentConfig} from './config/index.js';
 import {
@@ -44,11 +45,13 @@ import {getConfigFromFlux} from './utils/configUtils.js';
 import {initI18n} from './utils/i18n.js';
 import {MetropolisContext} from './utils/MetropolisContext.js';
 import {getRefreshWindowMinutes, hydrateSessionFromStorage, isValidSession, parseJwtExpiryMs} from './utils/session.js';
+import {getWebSessionRuntime} from './utils/webSessionRuntime.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {AwsRumActions, AwsRumTrackInput} from './actions/awsRumActions/awsRumActions.js';
 import type {MetropolisConfiguration, MetropolisEnvironmentConfiguration} from './config/index.js';
 import type {MetropolisAdapters} from './utils/MetropolisContext.js';
+import type {WebSessionOptions} from './utils/webSessionRuntime.js';
 
 export {MetropolisContext} from './utils/MetropolisContext.js';
 
@@ -59,7 +62,9 @@ export const GOTHAM_ANALYTICS_EVENT = 'nlabs:gotham:analytics';
 
 const initializedFlux = new WeakSet<FluxFramework>();
 
-export const onInit = async (flux: FluxFramework) => {
+export const onInit = async (flux: FluxFramework, webSessionOptions?: WebSessionOptions) => {
+  const cookieActions = webSessionOptions ? createWebSessionActions(flux, webSessionOptions)
+    : getWebSessionRuntime(flux)?.actions;
   if(!initializedFlux.has(flux)) {
     flux.addMiddleware([{name: 'metropolis-cache-events', postDispatch: async (action) => cachedAction(flux, action)}]);
     await flux.addStores([
@@ -143,6 +148,10 @@ export const onInit = async (flux: FluxFramework) => {
     await Promise.resolve(flux.setState('app.metropolisInitialized', true));
   }
 
+  if(cookieActions) {
+    await cookieActions.restore();
+    return;
+  }
   const token = String(flux.getState('user.session.token') || '');
 
   if(token) {
@@ -199,6 +208,7 @@ export interface MetropolisProps {
   readonly children?: React.ReactElement | React.ReactElement[];
   readonly config?: MetropolisConfiguration;
   readonly translations?: SimpleTranslations | ComplexTranslations;
+  readonly webSession?: WebSessionOptions;
 }
 
 export type SimpleTranslations = Record<string, string>;
@@ -211,10 +221,11 @@ export interface ComplexTranslation {
 
 export type ComplexTranslations = Record<string, ComplexTranslation>;
 
-// The styleguide's local hooks rule does not recognize exported arrow-function components.
-/* eslint-disable react-hooks/rules-of-hooks */
-export const Metropolis = ({adapters, children, config = {}, translations = {}}: MetropolisProps) => {
+export const Metropolis = ({
+  adapters, children, config = {}, translations = {}, webSession: webSessionOptions
+}: MetropolisProps) => {
   const flux = useFlux();
+  const cookieActions = webSessionOptions ? createWebSessionActions(flux, webSessionOptions) : undefined;
   const resolvedConfig = useMemo<MetropolisEnvironmentConfiguration>(() => resolveEnvironmentConfig(config), [config]);
   const mergedAdapters = useMemo(
     () => ({...resolvedConfig.adapters, ...adapters}),
@@ -292,10 +303,12 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
   useEffect(() => {
     let isActive = true;
 
-    void (async () => {
+    const hydration = (async () => {
       await Promise.resolve(flux.setState('app.config', resolvedConfig));
       await Promise.resolve(flux.setState('app.sessionHydrated', false));
-      await hydrateSessionFromStorage(flux);
+      if(!cookieActions) {
+        await hydrateSessionFromStorage(flux);
+      }
 
       if(!isActive) {
         return;
@@ -309,11 +322,24 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
 
       await Promise.resolve(flux.setState('app.sessionHydrated', true));
     })();
+    if(cookieActions) {
+      // Cookie verification failures are represented by fail-closed runtime state.
+      // A background React effect must also handle rejection after local disposal.
+      void hydration.catch(async () => {
+        if(isActive) {
+          await flux.setState('app.sessionHydrated', true);
+        }
+      }).catch(() => {});
+    } else {
+      void hydration;
+    }
 
     return () => {
       isActive = false;
     };
-  }, [flux, resolvedConfig]);
+  }, [flux, resolvedConfig, cookieActions]);
+
+  useEffect(() => (cookieActions ? getWebSessionRuntime(flux)?.acquire() : undefined), [cookieActions, flux]);
 
   useEffect(() => {
     if(!sessionHydrated) {
@@ -332,10 +358,11 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
     websockets.wsClose();
   }, [websockets]);
 
-  const isAuth = useMemo(() => resolvedConfig.isAuth || (() => {
-    const sessionState = flux.getState('user.session', {});
-    return !!sessionState.userActive;
-  }), [resolvedConfig.isAuth, flux]);
+  const isAuth = useMemo(() => (cookieActions ? (() => getWebSessionRuntime(flux)?.isAuthenticated() === true)
+    : resolvedConfig.isAuth || (() => {
+      const sessionState = flux.getState('user.session', {});
+      return !!sessionState.userActive;
+    })), [cookieActions, resolvedConfig.isAuth, flux]);
 
   return (
     <MetropolisContext.Provider
@@ -356,7 +383,6 @@ export const Metropolis = ({adapters, children, config = {}, translations = {}}:
     </MetropolisContext.Provider>
   );
 };
-/* eslint-enable react-hooks/rules-of-hooks */
 
 export default Metropolis;
 
@@ -399,6 +425,7 @@ export {
   useTagActions,
   useTranslationActions,
   useUserActions,
+  useWebSessionActions,
   useWebsocketActions
 } from './utils/useMetropolis.js';
 export {

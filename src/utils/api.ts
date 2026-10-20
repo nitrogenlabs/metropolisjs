@@ -11,13 +11,14 @@ import {APP_CONSTANTS} from '../stores/appStore.js';
 import {USER_CONSTANTS} from '../stores/userStore.js';
 import {getConfigFromFlux} from './configUtils.js';
 import {clearPersistedSession, getRefreshWindowMinutes, hydrateSessionFromStorage, parseJwtExpiryMs, storeSession} from './session.js';
+import {getWebSessionRuntime, webSessionRequestOptions} from './webSessionRuntime.js';
 
 import type {FluxAction, FluxFramework} from '@nlabs/arkhamjs';
 import type {HunterOptionsType, HunterQueryType} from '@nlabs/rip-hunter';
 
 export interface ApiOptions {
   readonly queueOffline?: boolean;
-  readonly onSuccess?: (data: any) => Promise<FluxAction>;
+  readonly onSuccess?: (data: any) => Promise<FluxAction | null>;
   readonly variables?: Record<string, unknown>;
 }
 
@@ -157,34 +158,95 @@ const resolveAuthToken = async (flux: FluxFramework): Promise<string> => {
   return token;
 };
 
+type AuthPreflight = {
+  readonly generation: number;
+  readonly mode: 'bearer';
+  readonly token: string;
+} | {
+  readonly generation: number;
+  readonly mode: 'cookie';
+  readonly runtime: NonNullable<ReturnType<typeof getWebSessionRuntime>>;
+  readonly runtimeGeneration: number;
+};
+
+const authPreflight = async (flux: FluxFramework): Promise<AuthPreflight> => {
+  const runtime = getWebSessionRuntime(flux);
+  if(runtime) {
+    const runtimeGeneration = runtime.generation();
+    await runtime.actions.ensureSession();
+    if(runtimeGeneration !== runtime.generation() || getWebSessionRuntime(flux) !== runtime) {
+      throw new Error('session_changed');
+    }
+    return {generation: flux.getState<number>('app.sessionGeneration', 0), mode: 'cookie', runtime, runtimeGeneration};
+  }
+  const generation = flux.getState<number>('app.sessionGeneration', 0);
+  const token = await resolveAuthToken(flux);
+  return {generation, mode: 'bearer', token};
+};
+
+const checkAuthPreflight = (flux: FluxFramework, auth: AuthPreflight): void => {
+  if(auth.generation !== flux.getState('app.sessionGeneration', 0)
+    || (auth.mode === 'bearer' ? !flux.getState('user.session.token') :
+      getWebSessionRuntime(flux) !== auth.runtime || auth.runtimeGeneration !== auth.runtime.generation()
+      || !auth.runtime.isAuthenticated())) {
+    throw new Error('session_changed');
+  }
+};
+
+const rejectCookieSession = async (flux: FluxFramework, error: unknown): Promise<never> => {
+  const codes = getErrorCodes(error);
+  const status = (error as {status?: number})?.status;
+  if(status === 401 || status === 400 || status === 403 || status === 405
+    || codes.includes('invalid_session') || codes.includes('expired_session')) {
+    await getWebSessionRuntime(flux)?.rejectSession();
+  }
+  throw error;
+};
+
 export const getGraphql = async (
   flux: FluxFramework,
   url: string,
   authenticate: boolean,
   query: HunterQueryType | HunterQueryType[],
   options: ApiOptions
-): Promise<ApiResultsType> => {
+): Promise<ApiResultsType | null> => {
   const {onSuccess} = options;
-  const sessionGeneration = flux.getState('app.sessionGeneration', 0);
+  let sessionGeneration = flux.getState('app.sessionGeneration', 0);
+  const cookieMode = authenticate && !!getWebSessionRuntime(flux);
+  let auth: AuthPreflight | undefined;
   let token: string | undefined;
   const retry = {query, responseMethod: onSuccess || (() => {})};
   try {
     if(flux.getState('app.networkType') === 'none') {
-      if(options.queueOffline === false) {
+      if(cookieMode || options.queueOffline === false) {
         throw new Error('network_unavailable');
       }
       return flux.dispatch({retry, type: APP_CONSTANTS.API_NETWORK_ERROR});
     }
     if(authenticate) {
-      token = await resolveAuthToken(flux);
+      auth = await authPreflight(flux);
+      sessionGeneration = auth.generation;
+      token = auth.mode === 'bearer' ? auth.token : undefined;
+      checkAuthPreflight(flux, auth);
     }
-    const data = await graphqlQuery(url, query, {...(options.queueOffline === false ? {cache: false} : {}), token: token || ''});
-    if(authenticate && (sessionGeneration !== flux.getState('app.sessionGeneration', 0) || !flux.getState('user.session.token'))) {
-      throw new Error('session_changed');
+    const requestOptions = auth?.mode === 'cookie' ? webSessionRequestOptions(url, 'POST')
+      : {...(options.queueOffline === false ? {cache: false} : {}), token: token || ''};
+    const data = await graphqlQuery(url, query, requestOptions);
+    if(auth) {
+      checkAuthPreflight(flux, auth);
     }
     await flux.dispatch({type: APP_CONSTANTS.API_NETWORK_SUCCESS});
+    if(auth) {
+      checkAuthPreflight(flux, auth);
+    }
     return onSuccess ? onSuccess(data) : data;
   } catch(error) {
+    if(cookieMode) {
+      if(auth) {
+        checkAuthPreflight(flux, auth);
+      }
+      return rejectCookieSession(flux, error);
+    }
     const errors = getErrorCodes(error);
     const message = error instanceof Error ? error.message : '';
     if(authenticate && sessionGeneration !== flux.getState('app.sessionGeneration', 0)) {
@@ -235,7 +297,9 @@ export const restRequest = async <T = ApiResultsType>(
   options: RestApiOptions = {}
 ): Promise<T> => {
   const {authenticate = false, onSuccess, queueOffline = true, ...hunterOptions} = options;
-  const sessionGeneration = flux.getState('app.sessionGeneration', 0);
+  let sessionGeneration = flux.getState('app.sessionGeneration', 0);
+  const cookieMode = authenticate && !!getWebSessionRuntime(flux);
+  let auth: AuthPreflight | undefined;
   let token: string | undefined;
   const url = resolveRestEndpoint(flux, endpoint);
   const requestMethod = String(method || 'GET').toUpperCase();
@@ -248,14 +312,21 @@ export const restRequest = async <T = ApiResultsType>(
     const networkType: string = flux.getState('app.networkType') as string;
 
     if(networkType === 'none') {
-      if(!queueOffline) {
+      if(cookieMode || !queueOffline) {
         throw new Error('network_unavailable');
       }
       return flux.dispatch({retry, type: APP_CONSTANTS.API_NETWORK_ERROR}) as Promise<T>;
     }
 
-    token = authenticate ? await resolveAuthToken(flux) : hunterOptions.token;
-    const requestOptions: HunterOptionsType = {
+    if(authenticate) {
+      auth = await authPreflight(flux);
+      sessionGeneration = auth.generation;
+      token = auth.mode === 'bearer' ? auth.token : undefined;
+      checkAuthPreflight(flux, auth);
+    } else {
+      ({token} = hunterOptions);
+    }
+    const requestOptions: HunterOptionsType = auth?.mode === 'cookie' ? webSessionRequestOptions(url, requestMethod, hunterOptions) : {
       ...hunterOptions,
       ...(token ? {token} : {})
     };
@@ -283,13 +354,21 @@ export const restRequest = async <T = ApiResultsType>(
         break;
     }
 
+    if(auth) {
+      checkAuthPreflight(flux, auth);
+    }
     await flux.dispatch({type: APP_CONSTANTS.API_NETWORK_SUCCESS});
-
-    if(authenticate && (sessionGeneration !== flux.getState('app.sessionGeneration', 0) || !flux.getState('user.session.token'))) {
-      throw new Error('session_changed');
+    if(auth) {
+      checkAuthPreflight(flux, auth);
     }
     return onSuccess ? onSuccess(data) : data;
   } catch(error) {
+    if(cookieMode) {
+      if(auth) {
+        checkAuthPreflight(flux, auth);
+      }
+      return rejectCookieSession(flux, error);
+    }
     const errors = getErrorCodes(error);
     const message = error instanceof Error ? error.message : '';
 

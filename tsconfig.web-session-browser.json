@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.web-session.json",
+  "compilerOptions": {"rootDir": "."},
+  "include": ["tests/web-session-transport.e2e.ts", "playwright.web-session.config.ts"]
+}

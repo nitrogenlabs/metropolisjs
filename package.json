@@ -123,21 +123,22 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@playwright/test": "1.64.0",
     "@nlabs/arkhamjs": "3.31.16",
     "@nlabs/arkhamjs-storage-browser": "^3.31.0",
     "@nlabs/arkhamjs-utils-react": "^3.33.0",
-    "@nlabs/lex": "^2.1.0",
+    "@nlabs/lex": "2.1.2",
+    "@playwright/test": "1.64.0",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
+    "@types/react-dom": "19.3.0",
     "react": "^19.3.0",
     "typescript": "^7.0.2"
   },
   "peerDependencies": {
-    "expo-notifications": ">=0.31.0 <58",
     "@nlabs/arkhamjs": "^3.31.16",
     "@nlabs/arkhamjs-storage-browser": "^3.30.0",
     "@nlabs/arkhamjs-utils-react": "^3.32.0",
+    "expo-notifications": ">=0.31.0 <58",
     "react": "^19.1.0"
   },
   "peerDependenciesMeta": {

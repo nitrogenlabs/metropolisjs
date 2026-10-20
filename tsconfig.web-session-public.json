@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.web-session.json",
+  "compilerOptions": {"outDir": ".web-session-public-typecheck", "rootDir": ".", "types": ["node"]},
+  "include": ["src/tests/web-session-public-types.tsx"]
+}

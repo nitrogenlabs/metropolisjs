@@ -2,11 +2,22 @@ import {useContext, useMemo} from 'react';
 
 import {createActions} from '../utils/actionFactory.js';
 import {MetropolisContext} from './MetropolisContext.js';
+import {getWebSessionRuntime} from './webSessionRuntime.js';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
 import type {MetropolisEnvironmentConfiguration} from '../config/index.js';
 import type {ActionOptions, ActionType} from '../utils/actionFactory.js';
 import type {MetropolisAdapters} from './MetropolisContext.js';
+import type {WebSessionActions} from './webSessionRuntime.js';
+
+export const useWebSessionActions = (): WebSessionActions => {
+  const context = useContext(MetropolisContext);
+  const runtime = context && getWebSessionRuntime(context.flux);
+  if(!runtime) {
+    throw new Error('useWebSessionActions requires Metropolis webSession');
+  }
+  return runtime.actions;
+};
 
 /**
  * Builds action options from adapters in a type-safe way.

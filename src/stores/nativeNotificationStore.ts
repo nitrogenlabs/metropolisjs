@@ -11,9 +11,9 @@ export const NATIVE_NOTIFICATION_CONSTANTS = {
 } as const;
 
 export type NativeNotificationState = {
-  error: string | null;
-  permission: NativePermission | null;
-  registration: NativePushRegistration | null;
+  error: string | null | undefined;
+  permission: NativePermission | null | undefined;
+  registration: NativePushRegistration | null | undefined;
 };
 export const defaultNativeNotificationState: NativeNotificationState = {
   error: null, permission: null, registration: null

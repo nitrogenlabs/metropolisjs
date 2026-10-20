@@ -16,6 +16,36 @@
 
 MetropolisJS is the bridge that connects your frontend dreams to backend reality. Built on the powerful combination of **Reaktor** (backend services) and **ArkhamJS** (frontend data store), MetropolisJS provides a seamless, real-time integration layer that handles everything from user authentication to real-time messaging and notifications.
 
+## Opaque browser sessions
+
+`createWebSessionActions` is exported from the public root and `/actions`; `useWebSessionActions` is exported from the root. Pass `webSession` to `Metropolis` to use Reaktor's same-origin HttpOnly cookie profile. `onInit(flux, webSession)` supports non-React boot. The root, hook, and factory share one binding per Flux instance; conflicting scope, endpoint, or preservation callback bindings are rejected.
+
+```tsx
+const webSession: WebSessionOptions = {
+  endpoints: {
+    activity: '/auth/activity', restore: '/auth/session',
+    signIn: '/auth/signin', signOut: '/auth/signout'
+  },
+  onBeforeSessionClear: (reason, previous, scope) => {
+    // Capture a product draft in volatile owner-scoped state, if needed.
+    // Recovery requires a newly verified app/environment/owner match.
+  },
+  scope: {appId: 'vault', environment: 'production', ownerUserId: 'configured-owner'}
+};
+
+<Metropolis webSession={webSession}><Editor /></Metropolis>;
+```
+
+Call `signIn({email, password})` for explicit credential admission, `restore()` for read-only verification, `ensureSession()` before private work, and `recordActivity()` only for actual user input. Focus, visibility, polling, reload, API reads, and timers never POST activity. Input arriving while a touch is pending receives another accepted server touch. Database `observedAt`/`idleExpiresAt` define the budget; monotonic full round-trip elapsed time can only reduce it. Local deadline and foreground checks revalidate read-only. Unavailable verification blocks private work without reporting confirmed logout.
+
+Authenticated REST (`authenticate: true`) and GraphQL calls preflight this runtime, omit bearer credentials, reject denied sessions, and fence responses before cache ingestion. Cookie requests use Rip-Hunter with explicit same-origin credentials, JSON/CSRF POSTs, and no offline queue or mutation replay. Endpoints must be same-origin URLs; browsers supply Origin/Referer/Fetch Metadata. No cookie secret, password, draft, or token is stored in `webSession` state.
+
+Session endpoints use Rip-Hunter's public `/http` default native browser binding with a finite 30,000ms request/body deadline. Cookie mutations serialize per Flux, including genuine disposal/rebinding; queued superseded credential work is fenced before dispatch. This contract requires native browser fetch cancellation (qualified in Chromium and WebKit), not a custom/polyfilled fetch that ignores AbortSignal. A canceled mutation has an unknown server outcome and is never automatically replayed; cancellation is not server rollback. Older accepted activity still proves that touch succeeded, but cannot replace a newer verified same-session identity/deadline or clear its private caches. This is not cross-tab coordination.
+
+`signOut()` returns `{remote: 'revoked' | 'unknown'}` and blocks admission before remote cleanup. A dedicated Arkham Flux with the public synchronous browser adapter persists an app/environment/owner-scoped, nonexpiring local suppression marker before `WEB_SESSION_SIGNED_OUT`; only successful explicit credential sign-in clears it. Failed writes report `marker_persistence`. Identity/status state precedes `WEB_SESSION_AUTHENTICATED` listeners. The volatile preservation callback runs synchronously before account caches clear; failure cannot prevent invalidation and reports `preservation_failed`. Disposal releases local timers/listeners and fences pending work without remote logout, including React effect replay.
+
+Adoption requires compatible published packages and product editor/draft/private-asset browser acceptance. Client generation fences cannot stop browsers applying a late response's `Set-Cookie`: read-only/private authorization failures must not clear a newer session cookie. The retained Reaktor 1.20.0 candidate still has that cross-request race and is insufficient for adoption by itself.
+
 ## Why MetropolisJS?
 
 ### **Seamless Integration**

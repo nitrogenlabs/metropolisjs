@@ -4,8 +4,8 @@
  */
 
 // @vitest-environment jsdom
-import {render, waitFor} from '@testing-library/react';
-import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {render, waitFor} from '@nlabs/lex/test-react';
+import {beforeEach, describe, expect, it} from '@nlabs/lex/test-vitest';
 
 const apiMocks = vi.hoisted(() => ({
   refreshSession: vi.fn(async () => ({token: 'new-token'}))
@@ -61,7 +61,7 @@ const createFlux = (initialState: Record<string, unknown> = {}) => {
   return {
     addMiddleware: vi.fn(),
     addStores: vi.fn(),
-    dispatch: vi.fn(async (action) => action),
+    dispatch: vi.fn(async (action: {[key: string]: unknown; type: string}) => action),
     getState: vi.fn((path: string, fallback?: unknown) => state.get(path) ?? fallback),
     getStore: vi.fn(),
     on: vi.fn((type: string, handler: (payload?: any) => void | Promise<void>) => {
@@ -83,6 +83,98 @@ const createFlux = (initialState: Record<string, unknown> = {}) => {
 };
 
 describe('index onInit', () => {
+  it('preserves legacy healthy and nearing expiry bearer behavior', async () => {
+    const {onInit} = await import('./index.js');
+    await Promise.all([300000, 1800000].map(async (remaining) => {
+      const now = Date.now();
+      const flux = createFlux({
+        'app.config': {app: {session: {maxMinutes: 60}}},
+        'user.session': {expires: now + remaining, issued: now - 1800000, token: 'legacy'},
+        'user.session.token': 'legacy'
+      });
+      await onInit(flux as any);
+    }));
+
+    expect(apiMocks.refreshSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('supports JWT-derived expiry and session defaults on the legacy boot path', async () => {
+    const {onInit} = await import('./index.js');
+    const now = Date.now();
+    const token = `${btoa('{}')}.${btoa(JSON.stringify({exp: Math.floor(now / 1000) + 600}))}.sig`;
+    const jwtOnly = createFlux({'user.session': {token}, 'user.session.token': token});
+    await onInit(jwtOnly as any);
+    const sameTimestamp = createFlux({
+      'user.session': {expires: now + 120000, issued: now + 120000, token: 'legacy'},
+      'user.session.token': 'legacy'
+    });
+    await onInit(sameTimestamp as any);
+
+    expect(apiMocks.refreshSession).toHaveBeenCalledWith(jwtOnly, token, 15);
+    expect(apiMocks.refreshSession).toHaveBeenCalledWith(sameTimestamp, 'legacy', 15);
+  });
+
+  it('patches optional legacy tag fields without leaking a missing owner session', async () => {
+    const {onInit} = await import('./index.js');
+    const flux = createFlux({'user.session': {tags: [{}, {tagId: 'empty-name'}, {name: 'Z'}]}});
+    await onInit(flux as any);
+    await flux.trigger('TAG_ADD_PERSONA_SUCCESS', {tag: {tagId: 'added'}});
+    await flux.trigger('TAG_REMOVE_PERSONA_SUCCESS', {tag: {tagId: 'empty-name'}});
+
+    expect((flux.getState('user.session') as {tags: unknown[]}).tags).toHaveLength(3);
+
+    await flux.setState('user.session', false);
+    await flux.trigger('TAG_ADD_PERSONA_SUCCESS', {tag: {tagId: 'next'}});
+    await flux.setState('user.session', false);
+    await flux.trigger('TAG_REMOVE_PERSONA_SUCCESS', {tag: {tagId: 'next'}});
+
+    expect((flux.getState('user.session') as {tags: unknown[]}).tags).toEqual([]);
+  });
+
+  it('cleans up a provider unmounted while hydration is awaiting storage', async () => {
+    const {Metropolis} = await import('./index.js');
+    const flux = createFlux();
+    let release: (() => void) | undefined;
+    flux.setState.mockImplementationOnce(() => new Promise<void>((resolve) => {
+      release = resolve;
+    }));
+    reactFluxMocks.flux = flux;
+    const mounted = render(<Metropolis><div /></Metropolis>);
+    mounted.unmount();
+    release?.();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(flux.getState('app.sessionHydrated')).not.toBe(true);
+  });
+
+  it('handles persona events with embedded tags and tag patches without valid IDs', async () => {
+    const {onInit} = await import('./index.js');
+    const flux = createFlux({'user.session': {tags: [{name: 'Z', tagId: 'old'}, {name: 'A', tagId: 'new'}]}});
+    await onInit(flux as any);
+    await flux.trigger('PERSONA_ADD_ITEM_SUCCESS', {persona: {personaId: 'p', tags: []}});
+    await flux.trigger('PERSONA_UPDATE_ITEM_SUCCESS', {});
+    await flux.trigger('TAG_ADD_PERSONA_SUCCESS', {});
+    await flux.trigger('TAG_REMOVE_PERSONA_SUCCESS', {});
+    await flux.trigger('TAG_ADD_PERSONA_SUCCESS', {tag: {name: 'M', tagId: 'new'}});
+
+    expect((flux.getState('user.session') as {tags: unknown[]}).tags).toEqual([{name: 'M', tagId: 'new'}, {name: 'Z', tagId: 'old'}]);
+
+    await flux.trigger('TAG_REMOVE_PERSONA_SUCCESS', {tag: {tagId: 'old'}});
+
+    expect((flux.getState('user.session') as {tags: unknown[]}).tags).toEqual([{name: 'M', tagId: 'new'}]);
+
+    await flux.setState('user.session', undefined);
+    await flux.trigger('TAG_ADD_PERSONA_SUCCESS', {tag: {name: 'Only', tagId: 'one'}});
+
+    expect((flux.getState('user.session') as {tags: unknown[]}).tags).toEqual([{name: 'Only', tagId: 'one'}]);
+
+    await flux.setState('user.session', undefined);
+    await flux.trigger('TAG_REMOVE_PERSONA_SUCCESS', {tag: {tagId: 'one'}});
+
+    expect((flux.getState('user.session') as {tags: unknown[]}).tags).toEqual([]);
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     reactFluxMocks.flux = undefined;
@@ -231,5 +323,27 @@ describe('index onInit', () => {
     window.dispatchEvent(new Event('pagehide'));
 
     expect(rumMocks.flush).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores unrelated analytics events and visible-document changes without renewing sessions', async () => {
+    const {Metropolis, MetropolisContext} = await import('./index.js');
+    const flux = createFlux();
+    reactFluxMocks.flux = flux;
+    reactFluxMocks.state.set('app.sessionHydrated', true);
+    let context: any;
+    const mounted = render(<Metropolis config={{test: {isAuth: undefined}}}><MetropolisContext.Consumer>{(value) => {
+      context = value;
+      return <div />;
+    }}</MetropolisContext.Consumer></Metropolis>);
+    window.dispatchEvent(new Event('nlabs:gotham:analytics'));
+    document.dispatchEvent(new Event('visibilitychange'));
+    context.updateMessage({messageId: 'local'});
+
+    expect(context.isAuth()).toBe(false);
+    expect(rumMocks.track).not.toHaveBeenCalled();
+    expect(rumMocks.flush).not.toHaveBeenCalled();
+    expect(websocketMocks.wsInit).not.toHaveBeenCalled();
+
+    mounted.unmount();
   });
 });

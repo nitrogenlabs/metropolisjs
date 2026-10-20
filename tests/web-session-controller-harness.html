@@ -1,0 +1,21 @@
+<!doctype html>
+<title>Cookie controller lifecycle qualification</title>
+<h1>Cookie controller lifecycle qualification</h1>
+<script type="module">
+  import {FluxFramework} from '@nlabs/arkhamjs';
+  import {createWebSessionActions} from '../src/actions/webSessionActions/webSessionActions.ts';
+  import {app, posts, users} from '../src/stores/index.ts';
+  const flux = new FluxFramework();
+  await flux.init({stores: [app, posts, users]});
+  const prefix = new URL(location.href).searchParams.get('id');
+  const options = {
+    endpoints: {
+      activity: `/mutation/${prefix}-activity?held=headers&cookie=old-controller&identity=1`,
+      restore: `/mutation/${prefix}-restore?identity=1`,
+      signIn: `/mutation/${prefix}-signin?cookie=fresh-controller&identity=1`,
+      signOut: `/mutation/${prefix}-signout?cookie=clear`
+    },
+    scope: {appId: 'fixture', environment: 'loopback', ownerUserId: 'owner'}
+  };
+  window.fixture = {bind: () => createWebSessionActions(flux, options), controller: createWebSessionActions(flux, options), flux};
+</script>

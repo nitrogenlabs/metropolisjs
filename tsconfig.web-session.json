@@ -1,0 +1,30 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "emitDeclarationOnly": false,
+    "exactOptionalPropertyTypes": false,
+    "noEmit": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": false,
+    "noImplicitThis": true,
+    "noUncheckedIndexedAccess": false,
+    "skipLibCheck": false,
+    "strict": true,
+    "strictFunctionTypes": true,
+    "strictNullChecks": true,
+    "types": ["node", "@nlabs/lex/test-vitest/globals"]
+  },
+  "exclude": ["node_modules", "lib"],
+  "include": [
+    "src/actions/webSessionActions/*.ts",
+    "src/session/webSessionPolicy*.ts",
+    "src/stores/webSessionStore*.ts",
+    "src/utils/webSessionRuntime*.ts",
+    "src/utils/api.webSession.test.ts",
+    "src/index.webSession.test.tsx",
+    "src/index.test.tsx",
+    "src/utils/useMetropolis.test.tsx",
+    "src/utils/cacheIngestion.test.ts",
+    "src/stores/nativeNotificationStore.test.ts"
+  ]
+}
