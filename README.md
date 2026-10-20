@@ -1382,6 +1382,10 @@ Configure your environment-specific settings in the `config` prop of the `Metrop
 
 ## Contributing
 
+The shared durable-chat factories are exported from `@nlabs/metropolisjs/actions`.
+See [Durable chat protocol](docs/DURABLE_CHAT.md) for typed adapters, configurable
+selection fields, transport integration, and application ownership boundaries.
+
 Before opening a pull request, run the same quality gates used for source, tests, examples, and the published declarations:
 
 ```bash

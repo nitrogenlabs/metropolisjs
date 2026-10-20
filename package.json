@@ -173,6 +173,7 @@
     "LICENSE",
     "docs/GENERATION.md",
     "docs/ASSISTANT.md",
+    "docs/DURABLE_CHAT.md",
     "docs/NATIVE_NOTIFICATIONS.md",
     "docs/NATIVE_AUTH.md",
     "examples/native-notifications.ts"

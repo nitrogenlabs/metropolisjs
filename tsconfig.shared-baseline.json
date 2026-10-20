@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.web-session.json",
+  "include": [
+    "src/actions/durableChatActions/*.ts",
+    "src/index.sharedBaseline.test.ts"
+  ]
+}
