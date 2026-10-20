@@ -196,8 +196,7 @@ const checkAuthPreflight = (flux: FluxFramework, auth: AuthPreflight): void => {
 const rejectCookieSession = async (flux: FluxFramework, error: unknown): Promise<never> => {
   const codes = getErrorCodes(error);
   const status = (error as {status?: number})?.status;
-  if(status === 401 || status === 400 || status === 403 || status === 405
-    || codes.includes('invalid_session') || codes.includes('expired_session')) {
+  if(status === 401 || codes.includes('invalid_session') || codes.includes('expired_session')) {
     await getWebSessionRuntime(flux)?.rejectSession();
   }
   throw error;

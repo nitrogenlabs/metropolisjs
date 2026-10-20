@@ -1,7 +1,8 @@
 import {FluxFramework} from '@nlabs/arkhamjs';
 import {afterEach, beforeEach, describe, expect, it, vi} from '@nlabs/lex/test-vitest';
+import {ApiError} from '@nlabs/rip-hunter';
 
-import {createWebSessionActions} from '../actions/index.js';
+import {createRestActions, createWebSessionActions} from '../actions/index.js';
 import {app, posts, users} from '../stores/index.js';
 import {appMutation, appQuery, createMutation, createQuery, publicMutation, publicQuery, refreshSession, restRequest, rumBeaconRequest, rumMutation, rumRequest, uploadImage} from './api.js';
 
@@ -42,6 +43,114 @@ afterEach(() => {
 });
 
 describe('cookie request preflight', () => {
+  describe.each(['REST', 'GraphQL'] as const)('%s error classification', (transport) => {
+    const request = (onSuccess?: () => Promise<null>) => (transport === 'REST'
+      ? createRestActions(flux, {authenticate: true}).put('/private', {}, {onSuccess})
+      : appMutation(flux, 'save', 'posts', {}, ['postId'], {onSuccess}));
+
+    it.each([400, 403, 405, 409, 413, 422, 429, 500, 503])('retains verified identity and private cache after domain HTTP %i', async (status) => {
+      const clock = vi.spyOn(performance, 'now').mockReturnValue(0);
+      await controller.restore();
+      await flux.setState('post.viewed.private', {postId: 'private'});
+      const before = flux.getState('webSession');
+      const events: string[] = [];
+      for(const type of ['WEB_SESSION_SIGNED_OUT', 'APP_API_NETWORK_SUCCESS', 'APP_API_NETWORK_ERROR', 'REST_REQUEST_SUCCESS', 'REST_REQUEST_ERROR']) {
+        flux.on(type, () => {
+          events.push(type);
+        });
+      }
+      const body = {error: 'domain_denied'};
+      clock.mockReturnValue(1_800_000);
+      handler = () => response(body, status);
+      const success = vi.fn(async () => null);
+      const error = await request(success).catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(ApiError);
+      expect(error).toMatchObject({errors: ['http_error'], responseBody: body, source: {message: `HTTP ${status}`}, status});
+      expect(flux.getState('webSession')).toEqual(before);
+      expect(flux.getState('post.viewed.private')).toEqual({postId: 'private'});
+      expect(success).not.toHaveBeenCalled();
+      expect(events).toEqual(transport === 'REST' ? ['REST_REQUEST_ERROR'] : []);
+
+      clock.mockReturnValue(3_599_999);
+      handler = () => response(transport === 'REST' ? {postId: 'next'} : {data: {postId: 'next'}});
+
+      expect(await request()).toEqual({postId: 'next'});
+      expect(flux.getState('webSession')).toEqual(before);
+      expect(requests.map(({path}) => path)).toEqual(['/auth/session', ...Array<string>(2).fill(transport === 'REST' ? '/private' : '/graphql')]);
+
+      clock.mockReturnValue(3_600_000);
+      handler = () => response({error: 'unavailable'}, 503);
+
+      await expect(request()).rejects.toThrow();
+      expect(flux.getState('webSession.status')).toBe('blocked');
+      expect(requests.map(({path}) => path)).toEqual(['/auth/session', ...Array<string>(2).fill(transport === 'REST' ? '/private' : '/graphql'), '/auth/session']);
+    });
+
+    it.each([400, 403, 405])('rejects the exact transport error for ordinary HTTP %i', async (status) => {
+      await controller.restore();
+      const before = flux.getState('webSession');
+      const error = new ApiError([{message: 'http_error'}], new Error('domain denied'), {status});
+      handler = () => {
+        throw error;
+      };
+
+      await expect(request()).rejects.toBe(error);
+      expect(flux.getState('webSession')).toEqual(before);
+    });
+
+    it.each([
+      {code: 'http_error', status: 401},
+      {code: 'invalid_session', status: undefined},
+      {code: 'expired_session', status: undefined}
+    ])('preserves the exact $code/$status error while clearing rejected private state', async ({code, status}) => {
+      await controller.restore();
+      await flux.setState('post.viewed.private', {postId: 'private'});
+      const events: string[] = [];
+      flux.on('WEB_SESSION_SIGNED_OUT', () => {
+        expect(flux.getState('post.viewed')).toEqual({});
+
+        events.push('signedOut');
+      });
+      const error = new ApiError([{message: code}], new Error('session rejected'), status === undefined ? undefined : {status});
+      handler = () => {
+        throw error;
+      };
+      const success = vi.fn(async () => null);
+
+      await expect(request(success)).rejects.toBe(error);
+      expect(flux.getState('webSession.status')).toBe('anonymous');
+      expect(flux.getState('post.viewed')).toEqual({});
+      expect(success).not.toHaveBeenCalled();
+      expect(events).toEqual(['signedOut']);
+      expect(requests).toHaveLength(2);
+    });
+
+    it.each([401, 403])('fences an old HTTP %i denial before replacement account invalidation or ingestion', async (status) => {
+      await controller.restore();
+      let finish: ((value: Response) => void) | undefined;
+      handler = (path) => (path.startsWith('/auth') ? response({...identity, sid: 'replacement'}) : new Promise((resolve) => {
+        finish = resolve;
+      }));
+      const success = vi.fn(async () => null);
+      const pending = request(success);
+      const rejected = expect(pending).rejects.toThrow('session_changed');
+      await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
+      await controller.signIn({email: 'e', password: 'p'});
+      await flux.setState('post.viewed.private', {postId: 'replacement'});
+      const before = flux.getState('webSession');
+      const signedOut = vi.fn();
+      flux.on('WEB_SESSION_SIGNED_OUT', signedOut);
+      finish?.(response({error: 'unauthorized'}, status));
+      await rejected;
+
+      expect(flux.getState('webSession')).toEqual(before);
+      expect(flux.getState('post.viewed.private')).toEqual({postId: 'replacement'});
+      expect(success).not.toHaveBeenCalled();
+      expect(signedOut).not.toHaveBeenCalled();
+    });
+  });
+
   it('GraphQL denial invalidates and unavailable/offline failures never queue', async () => {
     await controller.restore();
     handler = () => response({error: 'unavailable'}, 503);
