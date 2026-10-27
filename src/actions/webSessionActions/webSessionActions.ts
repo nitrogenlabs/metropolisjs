@@ -14,7 +14,7 @@ import type {WebSessionEndReason, WebSessionIdentity, WebSessionObservation} fro
 import type {WebSessionActions, WebSessionOptions, WebSessionRuntime} from '../../utils/webSessionRuntime.js';
 
 export type {WebSessionEndReason, WebSessionIdentity, WebSessionScope} from '../../session/webSessionPolicy.js';
-export type {WebSessionActions, WebSessionOptions} from '../../utils/webSessionRuntime.js';
+export type {WebSessionActions, WebSessionCredentials, WebSessionOptions} from '../../utils/webSessionRuntime.js';
 
 const denied = (error: unknown): boolean => {
   const value = error as {errors?: string[]; message?: string; status?: number};
@@ -267,6 +267,17 @@ export const createWebSessionActions = (flux: FluxFramework, input: WebSessionOp
   };
   const signIn: WebSessionActions['signIn'] = async (user) => {
     gate(generation);
+    if(!user || typeof user !== 'object' || Array.isArray(user)) {
+      throw new Error('web_session_credentials');
+    }
+    const hasEmail = Object.hasOwn(user, 'email');
+    const identifier = hasEmail ? user.email : user.username;
+    const {password} = user;
+    if(hasEmail === Object.hasOwn(user, 'username') || typeof identifier !== 'string' || !identifier.trim()
+      || typeof password !== 'string' || !password) {
+      throw new Error('web_session_credentials');
+    }
+    const credentials = hasEmail ? {email: identifier, password} : {password, username: identifier};
     const captured = advanceGeneration();
     const failed = await clear('replaced');
     await publish(captured, 'anonymous');
@@ -277,7 +288,7 @@ export const createWebSessionActions = (flux: FluxFramework, input: WebSessionOp
     const value = await mutate(() => {
       gate(captured);
       started = performance.now();
-      return request(options.endpoints.signIn, 'POST', {email: user.email, password: user.password});
+      return request(options.endpoints.signIn, 'POST', credentials);
     });
     gate(captured);
     return accept(value, captured, started, true);

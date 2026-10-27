@@ -5,6 +5,7 @@ import {app, posts, users} from '../../stores/index.js';
 import * as actions from '../index.js';
 
 import type {WebSessionIdentity} from '../../session/webSessionPolicy.js';
+import type {WebSessionActions} from '../../utils/webSessionRuntime.js';
 
 // Flat identity reproduced by the isolated immutable Reaktor1.20.0 wire fixture.
 const identity: WebSessionIdentity = {
@@ -14,14 +15,7 @@ const options = {
   endpoints: {activity: '/auth/activity', restore: '/auth/session', signIn: '/auth/signin', signOut: '/auth/signout'},
   scope: {appId: 'vault', environment: 'test', ownerUserId: 'owner'}
 };
-interface Controller {
-  dispose(): void;
-  ensureSession(): Promise<WebSessionIdentity>;
-  recordActivity(): Promise<WebSessionIdentity>;
-  restore(): Promise<WebSessionIdentity | undefined>;
-  signIn(user: {email: string; password: string}): Promise<WebSessionIdentity>;
-  signOut(): Promise<{remote: 'revoked' | 'unknown'}>;
-}
+type Controller = WebSessionActions;
 const factory = (flux: FluxFramework, overrides: Partial<typeof options> & {
   onBeforeSessionClear?: (reason: string, previous: WebSessionIdentity, scope: typeof options.scope) => void;
 } = {}): Controller => (actions as unknown as {
@@ -60,6 +54,61 @@ afterEach(() => {
 });
 
 describe('cookie session lifecycle', () => {
+  it.each([
+    {email: 'Owner@example.test', password: 'private-password'},
+    {password: 'private-password', username: 'admin'},
+    {password: 'private-password', username: 'Owner@example.test'}
+  ])('serializes only the supplied credential identifier and never stores credentials: %j', async (credentials) => {
+    const {controller, flux} = await setup();
+
+    await expect(controller.signIn(credentials)).resolves.toEqual(identity);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.body).toEqual(credentials);
+    expect(Object.keys(calls[0]?.body as object).sort()).toEqual(Object.keys(credentials).sort());
+    expect(JSON.stringify(flux.getState())).not.toMatch(/private-password|Owner@example|admin/);
+    expect(JSON.stringify(localStorage)).not.toMatch(/private-password|Owner@example|admin/);
+  });
+
+  it.each([
+    null, undefined, [], {}, {password: 'p'}, {email: 'e', password: 'p', username: 'u'},
+    {email: 'e', password: 'p', username: undefined}, {email: undefined, password: 'p', username: 'u'},
+    {email: ' ', password: 'p'}, {password: 'p', username: ''}, {password: 'p', username: 42},
+    {email: 'e', password: ''}, {password: undefined, username: 'u'}
+  ])('rejects invalid or ambiguous credentials before session clear or a request: %j', async (credentials) => {
+    const {controller, flux} = await setup();
+    await controller.restore();
+    const before = structuredClone(flux.getState());
+    calls = [];
+
+    await expect(controller.signIn(credentials as Parameters<Controller['signIn']>[0])).rejects.toThrow('web_session_credentials');
+
+    expect(calls).toEqual([]);
+    expect(flux.getState()).toEqual(before);
+    expect(await controller.ensureSession()).toEqual(identity);
+  });
+
+  it('captures exclusive credentials before waiting behind an active cookie mutation', async () => {
+    const {controller} = await setup();
+    await controller.restore();
+    let finish: ((value: Response) => void) | undefined;
+    handler = (path) => (path.endsWith('activity') ? new Promise((resolve) => {
+      finish = resolve;
+    }) : response(identity));
+    const activity = controller.recordActivity().catch((error: Error) => error.message);
+    await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
+    const credentials = {password: 'original-password', username: 'original-user'};
+    const signin = controller.signIn(credentials);
+    credentials.username = 'changed-user';
+    credentials.password = 'changed-password';
+    finish?.(response(identity));
+    await activity;
+    await signin;
+
+    expect(calls.filter(({path}) => path.endsWith('signin')).map(({body}) => body))
+      .toEqual([{password: 'original-password', username: 'original-user'}]);
+  });
+
   it('native-fetch-semantic timeout settles cancellation before a newer cookie writer; no replay', async () => {
     vi.useFakeTimers();
     const {controller} = await setup();

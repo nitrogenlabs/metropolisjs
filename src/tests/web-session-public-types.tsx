@@ -3,7 +3,7 @@ import {createDurableChatActions as chatActionsFactory, createWebSessionActions 
 import {observeWebSession} from '@nlabs/metropolisjs/session';
 
 import type {FluxFramework} from '@nlabs/arkhamjs';
-import type {DurableChatProtocol, WebSessionIdentity, WebSessionOptions} from '@nlabs/metropolisjs';
+import type {DurableChatProtocol, WebSessionCredentials, WebSessionIdentity, WebSessionOptions} from '@nlabs/metropolisjs';
 import type {ComponentProps, ReactElement} from 'react';
 
 declare const flux: FluxFramework;
@@ -60,3 +60,15 @@ void chat.request('history', {wrongInput: true}, flux);
 // @ts-expect-error The caller's per-call context is preserved in emitted declarations.
 void chat.request('history', {conversationId: 'room'}, 'wrong-context');
 void [history, sameChatFactory];
+
+const usernameCredentials: WebSessionCredentials = {password: 'synthetic', username: 'admin'};
+const emailCredentials: WebSessionCredentials = {email: 'synthetic@example.test', password: 'synthetic'};
+const usernameSignIn: Promise<WebSessionIdentity> = sameContract.signIn(usernameCredentials);
+const emailSignIn: Promise<WebSessionIdentity> = controller.signIn(emailCredentials);
+// @ts-expect-error Exactly one identifier is accepted, even when credentials are stored in a variable.
+const ambiguousCredentials: WebSessionCredentials = {email: 'e', password: 'p', username: 'u'};
+// @ts-expect-error An identifier is required.
+void controller.signIn({password: 'p'});
+// @ts-expect-error The public factory preserves credential exclusivity.
+void sameContract.signIn({email: 'e', password: 'p', username: 'u'});
+void [usernameSignIn, emailSignIn, ambiguousCredentials];

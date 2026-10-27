@@ -150,3 +150,33 @@ test('actual controller disposal/rebind preserves the native cookie mutation tai
   expect(outcomes.identity.sid).toBe('fixture-session');
   expect((await context.cookies()).find(({name}) => name === 'fixture_session')?.value).toBe('fresh-controller');
 });
+
+
+for(const [kind, credentials] of Object.entries({
+  email: {email: 'synthetic@example.test', password: 'synthetic-password'},
+  username: {password: 'synthetic-password', username: 'synthetic-admin'},
+  usernameEmail: {password: 'synthetic-password', username: 'synthetic@example.test'}
+})) {
+  test(`actual controller sends exclusive credentials for ${kind} without storing them`, async ({context, page}, testInfo) => {
+    const id = `${testInfo.project.name}-credentials-${kind}`;
+    await page.goto(`/tests/web-session-controller-harness.html?id=${id}`);
+    await page.waitForFunction('Boolean(window.fixture)');
+    const sent = page.waitForRequest((request) => request.method() === 'POST'
+      && new URL(request.url()).pathname === `/mutation/${id}-signin`);
+    const accepted = await page.evaluate(async (input) => {
+      const {fixture} = window as unknown as {fixture: ControllerFixture};
+      return fixture.controller.signIn(input);
+    }, credentials);
+
+    expect((await sent).postDataJSON()).toEqual(credentials);
+    expect(accepted.userId).toBe('owner');
+    expect((await context.cookies()).find(({name}) => name === 'fixture_session')?.value).toBe('fresh-controller');
+
+    const stored = await page.evaluate(() => {
+      const {fixture} = window as unknown as {fixture: ControllerFixture & {flux: {getState: () => unknown}}};
+      return JSON.stringify({state: fixture.flux.getState(), storage: localStorage});
+    });
+
+    expect(stored).not.toMatch(/synthetic-password|synthetic-admin|synthetic@example/);
+  });
+}

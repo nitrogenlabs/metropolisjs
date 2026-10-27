@@ -19,12 +19,17 @@ export interface WebSessionOptions {
   readonly scope: WebSessionScope;
 }
 
+/** Supply one identifier; username accepts a username or email through Reaktor. */
+export type WebSessionCredentials = {readonly password: string} & (
+  {readonly email: string; readonly username?: never} | {readonly email?: never; readonly username: string}
+);
+
 export interface WebSessionActions {
   dispose(): void;
   ensureSession(): Promise<WebSessionIdentity>;
   recordActivity(): Promise<WebSessionIdentity>;
   restore(): Promise<WebSessionIdentity | undefined>;
-  signIn(user: {readonly email: string; readonly password: string}): Promise<WebSessionIdentity>;
+  signIn(user: WebSessionCredentials): Promise<WebSessionIdentity>;
   signOut(): Promise<{readonly remote: 'revoked' | 'unknown'}>;
 }
 
