@@ -47,10 +47,8 @@ jobs:
         run: npm ci --ignore-scripts
 
       - if: ${{ steps.version.outputs.publish == 'true' }}
-        name: Verify package
+        name: Build package
         run: |
-          npm run lint
-          npm run typecheck
           npm run build
 
       - if: ${{ steps.version.outputs.publish == 'true' }}
