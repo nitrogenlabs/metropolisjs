@@ -121,7 +121,7 @@ export const createWebSessionActions = (flux: FluxFramework, input: WebSessionOp
   ): Promise<WebSessionIdentity> => {
     gate(captured);
     const next = observeWebSession(value, options.scope.ownerUserId, started, performance.now(),
-      signingIn ? undefined : observation);
+      signingIn ? undefined : observation, options.idleMs);
     if(!observation) {
       await flux.dispatch({session: {}, type: USER_CONSTANTS.SIGN_OUT_SUCCESS});
       gate(captured);
@@ -237,7 +237,9 @@ export const createWebSessionActions = (flux: FluxFramework, input: WebSessionOp
             return request(options.endpoints.activity, 'POST', {});
           });
           gate(captured);
-          const accepted = observeWebSession(value, options.scope.ownerUserId, started, performance.now());
+          const accepted = observeWebSession(
+            value, options.scope.ownerUserId, started, performance.now(), undefined, options.idleMs
+          );
           if(observation && accepted.identity.sid === observation.identity.sid
             && accepted.identity.observedAt < observation.identity.observedAt) {
             // The explicit touch succeeded, but its older metadata cannot replace

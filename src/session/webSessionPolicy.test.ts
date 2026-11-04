@@ -4,7 +4,7 @@ import * as policy from './index.js';
 
 type Policy = {
   observeWebSession: (value: unknown, owner: string, started: number, received: number,
-    previous?: {identity: Identity; deadline: number}) => {identity: Identity; deadline: number};
+    previous?: {identity: Identity; deadline: number}, idleMs?: number) => {identity: Identity; deadline: number};
   webSessionNeedsVerification: (deadline: number, now: number, resumed: boolean) => boolean;
 };
 interface Identity {
@@ -32,6 +32,15 @@ describe('database web-session observations', () => {
   it('RTT never extends idle budget', () => {
     expect(subject.observeWebSession({...identity, idleExpiresAt: 6000}, 'owner', 10, 2010).deadline).toBe(5010);
     expect(() => subject.observeWebSession({...identity, idleExpiresAt: 6000}, 'owner', 0, 5000)).toThrow('invalid_session');
+  });
+
+  it('honors a configured 3 hour idle window and rejects invalid windows', () => {
+    const three = {...identity, idleExpiresAt: 1000 + 10_800_000};
+    expect(subject.observeWebSession(three, 'owner', 0, 0, undefined, 10_800_000).deadline).toBe(10_800_000);
+    expect(() => subject.observeWebSession(three, 'owner', 0, 0)).toThrow('invalid_session');
+    [0, 59_999, 86_400_001].forEach((idleMs) => {
+      expect(() => subject.observeWebSession(identity, 'owner', 0, 0, undefined, idleMs)).toThrow('invalid_session');
+    });
   });
 
   it('exact3600000 boundary', () => {

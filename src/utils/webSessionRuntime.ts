@@ -1,6 +1,7 @@
 import {FluxFramework} from '@nlabs/arkhamjs';
 import {BrowserStorage} from '@nlabs/arkhamjs-storage-browser';
 
+import {validWebSessionIdleMs} from '../session/webSessionPolicy.js';
 import {webSessionSuppression} from '../stores/webSessionStore.js';
 
 import type {HunterOptionsType} from '@nlabs/rip-hunter';
@@ -13,6 +14,8 @@ export interface WebSessionOptions {
     readonly signIn: string;
     readonly signOut: string;
   };
+  /** Longest idle window the server may grant, in ms (default 1 hour, max 24 hours). Must match Reaktor's idleMs. */
+  readonly idleMs?: number;
   readonly onBeforeSessionClear?: (
     reason: WebSessionEndReason, previous: WebSessionIdentity, scope: WebSessionScope
   ) => void;
@@ -66,6 +69,7 @@ export const captureWebSessionOptions = (options: WebSessionOptions): WebSession
   const scope = options?.scope;
   if(!scope || [scope.appId, scope.environment, scope.ownerUserId].some((value) =>
     typeof value !== 'string' || !value.trim() || value.length > 256)
+    || (options.idleMs !== undefined && !validWebSessionIdleMs(options.idleMs))
     || (options.onBeforeSessionClear !== undefined && typeof options.onBeforeSessionClear !== 'function')) {
     throw new Error('web_session_configuration');
   }
@@ -75,6 +79,7 @@ export const captureWebSessionOptions = (options: WebSessionOptions): WebSession
   }
   return Object.freeze({
     endpoints: Object.freeze({...endpoints}),
+    ...(options.idleMs === undefined ? {} : {idleMs: options.idleMs}),
     ...(options.onBeforeSessionClear ? {onBeforeSessionClear: options.onBeforeSessionClear} : {}),
     scope: Object.freeze({appId: scope.appId, environment: scope.environment, ownerUserId: scope.ownerUserId})
   });
@@ -98,6 +103,7 @@ export const sameWebSessionOptions = (left: WebSessionOptions, right: WebSession
   left.scope.appId === right.scope.appId && left.scope.environment === right.scope.environment
   && left.scope.ownerUserId === right.scope.ownerUserId
   && left.onBeforeSessionClear === right.onBeforeSessionClear
+  && left.idleMs === right.idleMs
   && (Object.keys(left.endpoints) as Array<keyof WebSessionOptions['endpoints']>)
     .every((key) => left.endpoints[key] === right.endpoints[key]);
 
