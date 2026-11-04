@@ -1,0 +1,95 @@
+name: Release MetropolisJS Package
+
+# Publishes the version in package.json when it is not yet on the registry.
+# Bump the version (npm version ...) in the change that should be released.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: metropolisjs-package-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          cache: npm
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Check whether this version is already published
+        id: version
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          printf 'name=%s\nversion=%s\n' "$NAME" "$VERSION" >> "$GITHUB_OUTPUT"
+          if npm view "$NAME@$VERSION" version --registry=https://registry.npmjs.org > /dev/null 2>&1; then
+            echo "$NAME@$VERSION is already published; nothing to release."
+            echo 'publish=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'publish=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: ${{ steps.version.outputs.publish == 'true' }}
+        name: Install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
+        run: npm ci --ignore-scripts
+
+      - if: ${{ steps.version.outputs.publish == 'true' }}
+        name: Verify package
+        run: |
+          npm run lint
+          npm run typecheck
+          npm run build
+
+      - if: ${{ steps.version.outputs.publish == 'true' }}
+        name: Freeze verified package
+        id: package
+        run: |
+          mkdir -p "$RUNNER_TEMP/release"
+          npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP/release"
+          ARCHIVE=$(ls "$RUNNER_TEMP"/release/*.tgz)
+          test -f "$ARCHIVE"
+          sha256sum "$ARCHIVE" > "$RUNNER_TEMP/release/SHA256SUMS"
+          printf 'path=%s\n' "$ARCHIVE" >> "$GITHUB_OUTPUT"
+
+      - if: ${{ steps.version.outputs.publish == 'true' }}
+        name: Publish package
+        env:
+          ARCHIVE: ${{ steps.package.outputs.path }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          sha256sum --check "$RUNNER_TEMP/release/SHA256SUMS"
+          npx --no-install lex publish --packagePath "$ARCHIVE" --tag latest
+          sha256sum --check "$RUNNER_TEMP/release/SHA256SUMS"
+
+      - if: ${{ steps.version.outputs.publish == 'true' }}
+        name: Verify registry publication
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            LATEST=$(npm view "${{ steps.version.outputs.name }}" dist-tags.latest --prefer-online --registry=https://registry.npmjs.org || true)
+            if [ "$LATEST" = "${{ steps.version.outputs.version }}" ]; then
+              echo "Published ${{ steps.version.outputs.name }}@$LATEST"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "Registry latest is '$LATEST', expected ${{ steps.version.outputs.version }}" >&2
+          exit 1
+
+      - if: ${{ steps.version.outputs.publish == 'true' }}
+        name: Tag release
+        run: |
+          git tag "v${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
