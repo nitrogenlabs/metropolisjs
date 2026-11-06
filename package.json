@@ -78,7 +78,10 @@
     "test": "lex test",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json && tsc -p tsconfig.examples.json && tsc -p tsconfig.native-auth.json --noEmit",
     "update": "lex update --interactive",
-    "watch": "lex compile --watch"
+    "watch": "lex compile --watch",
+    "test:precommit": "npm run test --ignore-scripts",
+    "hooks:install": "node -e \"const fs = require('node:fs'); if (process.env.GITHUB_ACTIONS !== 'true' && fs.existsSync('.git') && fs.existsSync('.githooks/pre-commit')) require('node:child_process').execFileSync('git', ['config', '--local', 'core.hooksPath', '.githooks']);\"",
+    "prepare": "npm run hooks:install"
   },
   "repository": {
     "type": "git",
