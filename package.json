@@ -113,7 +113,7 @@
     "url": "https://github.com/nitrogenlabs/metropolisjs/issues"
   },
   "dependencies": {
-    "@nlabs/rip-hunter": "3.3.0",
+    "@nlabs/rip-hunter": "3.5.0",
     "@nlabs/utils": "^2.11.0",
     "i18next": "^26.4.3",
     "luxon": "^3.7.2",
