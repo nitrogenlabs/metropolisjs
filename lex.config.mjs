@@ -49,7 +49,7 @@ export default Config.create({
     },
     globals: true,
     hookTimeout: 120000,
-    testEnvironment: 'jsdom',
+    environment: 'jsdom',
     testTimeout: 120000
   }
 });
