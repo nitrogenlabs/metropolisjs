@@ -148,10 +148,11 @@ describe('shared durable chat public API', () => {
     expect(request).toHaveBeenCalledTimes(1);
   });
 
-  it.each([undefined, null, []])('passes null results through caller validation when errors are %j', async (errors) => {
-    await expect(setup({data: {history: null}, errors}).client.request('history', {}, undefined))
-      .resolves.toEqual({validated: null});
-  });
+  it.each([{errors: undefined}, {errors: null}, {errors: []}])(
+    'passes null results through caller validation when errors are %j', async ({errors}) => {
+      await expect(setup({data: {history: null}, errors}).client.request('history', {}, undefined))
+        .resolves.toEqual({validated: null});
+    });
 
   it('does not conceal application validation failures', async () => {
     const client = createDurableChatActions({

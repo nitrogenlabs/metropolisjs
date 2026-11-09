@@ -1,0 +1,1 @@
+{"compilerOptions":{"declaration":false,"jsx":"react-jsx","module":"NodeNext","moduleResolution":"NodeNext","outDir":".tmp/vault-public","rootDir":"test-utils","skipLibCheck":false,"strict":true,"target":"ES2022","types":["node","react"]},"include":["test-utils/vaultTransportPublicConsumer.mts"]}

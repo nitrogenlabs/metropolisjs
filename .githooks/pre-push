@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+changes=$(mktemp "${METROPOLIS_HOOK_TEMP_ROOT:-${TMPDIR:-/tmp}}/metropolis-prepush.XXXXXX")
+trap 'rm -f "$changes"' EXIT
+zero=0000000000000000000000000000000000000000
+required=false
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [[ "$local_sha" = "$zero" ]]; then continue; fi
+  base="$remote_sha"
+  if [[ "$remote_sha" = "$zero" ]]; then
+    if ! base=$(git merge-base "$local_sha" origin/main 2>/dev/null || git merge-base "$local_sha" origin/master 2>/dev/null); then
+      required=true
+      continue
+    fi
+  fi
+  # Every pushed commit matters, including reverted changes and merge-only resolutions.
+  if ! git log --format= --name-only --no-renames --diff-merges=first-parent -z "$base..$local_sha" > "$changes" 2>/dev/null; then
+    required=true
+    continue
+  fi
+  while IFS= read -r -d '' change_path; do
+    case "$change_path" in
+      *.ts|*.tsx|*.js|*.jsx|*.mjs|*.cjs|*.mts|*.cts|*.css) required=true; break ;;
+    esac
+  done < "$changes"
+done
+if "$required"; then
+  npm run test:e2e
+else
+  echo 'No pushed JavaScript, TypeScript or CSS; skipping end-to-end tests.'
+fi

@@ -1,42 +1,80 @@
-import {describe, expect, it, vi} from 'vitest';
+// @vitest-environment node
+import {FluxFramework} from '@nlabs/arkhamjs';
+import {afterEach, beforeEach, describe, expect, it} from '@nlabs/lex/test-vitest';
 
-const apiMocks = vi.hoisted(() => ({
-  appQuery: vi.fn()
-}));
+import {autoCompleteLocation, searchLocations} from './location.js';
 
-vi.mock('./api.js', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./api.js')>()),
-  appQuery: apiMocks.appQuery
-}));
+import type {parseLocation} from '../adapters/locationAdapter/locationAdapter.js';
+
+let flux: FluxFramework;
+const apiMocks = vi.hoisted(() => ({appQuery: vi.fn()}));
+vi.mock('./api.js', () => ({appQuery: apiMocks.appQuery}));
+
+beforeEach(() => {
+  flux = new FluxFramework();
+  vi.resetAllMocks();
+  vi.useFakeTimers();
+});
+
+afterEach(() => {
+  vi.clearAllTimers();
+  vi.useRealTimers();
+});
 
 describe('location utilities', () => {
-  it('searches locations and handles empty/error responses', async () => {
-    const {autoCompleteLocation, searchLocations} = await import('./location.js');
-    const flux = {};
+  it('does not query an empty search', async () => {
+    expect(await searchLocations(flux, '')).toEqual([]);
+    expect(apiMocks.appQuery).not.toHaveBeenCalled();
+  });
 
-    expect(await searchLocations(flux as any, '')).toEqual([]);
-    await expect(autoCompleteLocation(flux as any, '')).resolves.toEqual([]);
+  it('does not query empty autocomplete after its debounce', async () => {
+    const pending = autoCompleteLocation(flux, '');
 
-    apiMocks.appQuery.mockResolvedValueOnce({
-      autoCompleteLocation: [{address: '123 Main', latitude: 1, longitude: 2}]
-    });
-    const customParser = vi.fn((location) => ({...location, parsed: true}));
-    await expect(searchLocations(flux as any, '123 Main', 1, 2, ['id'], customParser as any)).resolves.toEqual([
+    expect(apiMocks.appQuery).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(500);
+
+    await expect(pending).resolves.toEqual([]);
+    expect(apiMocks.appQuery).not.toHaveBeenCalled();
+  });
+
+  it('maps search results through the supplied parser', async () => {
+    apiMocks.appQuery.mockResolvedValue({autoCompleteLocation: [{address: '123 Main', latitude: 1, longitude: 2}]});
+    const customParser = vi.fn<typeof parseLocation>((location) => ({...location, parsed: true}));
+
+    await expect(searchLocations(flux, '123 Main', 1, 2, ['id'], customParser)).resolves.toEqual([
       {address: '123 Main', latitude: 1, longitude: 2, parsed: true}
     ]);
     expect(customParser).toHaveBeenCalled();
+  });
 
-    apiMocks.appQuery.mockRejectedValueOnce(new Error('network'));
-    await expect(searchLocations(flux as any, 'broken')).resolves.toEqual([]);
+  it('returns no search results when the query rejects', async () => {
+    apiMocks.appQuery.mockRejectedValue(new Error('network'));
 
-    apiMocks.appQuery.mockResolvedValueOnce({
-      autoCompleteLocation: [{address: '456 State'}]
-    });
-    await expect(autoCompleteLocation(flux as any, '456 State', undefined, undefined, [], customParser as any)).resolves.toEqual([
-      {address: '456 State', parsed: true}
-    ]);
+    await expect(searchLocations(flux, 'broken')).resolves.toEqual([]);
+  });
 
-    apiMocks.appQuery.mockRejectedValueOnce(new Error('network'));
-    await expect(autoCompleteLocation(flux as any, 'broken')).resolves.toEqual([]);
+  it('maps autocomplete results through the supplied parser after its debounce', async () => {
+    apiMocks.appQuery.mockResolvedValue({autoCompleteLocation: [{address: '456 State'}]});
+    const customParser = vi.fn<typeof parseLocation>((location) => ({...location, parsed: true}));
+    const pending = autoCompleteLocation(flux, '456 State', undefined, undefined, [], customParser);
+
+    expect(apiMocks.appQuery).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(500);
+
+    await expect(pending).resolves.toEqual([{address: '456 State', parsed: true}]);
+    expect(customParser).toHaveBeenCalled();
+  });
+
+  it('returns no autocomplete results when the debounced query rejects', async () => {
+    apiMocks.appQuery.mockRejectedValue(new Error('network'));
+    const pending = autoCompleteLocation(flux, 'broken');
+
+    expect(apiMocks.appQuery).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(500);
+
+    await expect(pending).resolves.toEqual([]);
   });
 });

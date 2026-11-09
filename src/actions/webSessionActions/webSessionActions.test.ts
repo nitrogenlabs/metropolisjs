@@ -5,7 +5,7 @@ import {app, posts, users} from '../../stores/index.js';
 import * as actions from '../index.js';
 
 import type {WebSessionIdentity} from '../../session/webSessionPolicy.js';
-import type {WebSessionActions} from '../../utils/webSessionRuntime.js';
+import type {WebSessionActions, WebSessionCredentials} from '../../utils/webSessionRuntime.js';
 
 // Flat identity reproduced by the isolated immutable Reaktor1.20.0 wire fixture.
 const identity: WebSessionIdentity = {
@@ -54,21 +54,24 @@ afterEach(() => {
 });
 
 describe('cookie session lifecycle', () => {
-  it.each([
+  const validCredentials: WebSessionCredentials[] = [
     {email: 'Owner@example.test', password: 'private-password'},
     {password: 'private-password', username: 'admin'},
     {password: 'private-password', username: 'Owner@example.test'}
-  ])('serializes only the supplied credential identifier and never stores credentials: %j', async (credentials) => {
-    const {controller, flux} = await setup();
+  ];
 
-    await expect(controller.signIn(credentials)).resolves.toEqual(identity);
+  it.each(validCredentials)(
+    'serializes only the supplied credential identifier and never stores credentials: %j', async (credentials) => {
+      const {controller, flux} = await setup();
 
-    expect(calls).toHaveLength(1);
-    expect(calls[0]?.body).toEqual(credentials);
-    expect(Object.keys(calls[0]?.body as object).sort()).toEqual(Object.keys(credentials).sort());
-    expect(JSON.stringify(flux.getState())).not.toMatch(/private-password|Owner@example|admin/);
-    expect(JSON.stringify(localStorage)).not.toMatch(/private-password|Owner@example|admin/);
-  });
+      await expect(controller.signIn(credentials)).resolves.toEqual(identity);
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0]?.body).toEqual(credentials);
+      expect(Object.keys(calls[0]?.body as object).sort()).toEqual(Object.keys(credentials).sort());
+      expect(JSON.stringify(flux.getState())).not.toMatch(/private-password|Owner@example|admin/);
+      expect(JSON.stringify(localStorage)).not.toMatch(/private-password|Owner@example|admin/);
+    });
 
   it.each([
     null, undefined, [], {}, {password: 'p'}, {email: 'e', password: 'p', username: 'u'},

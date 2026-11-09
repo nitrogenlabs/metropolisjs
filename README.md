@@ -1642,3 +1642,13 @@ void assistant.chat({
 Listen for `ASSISTANT_CONSTANTS` chat/FAQ/support success and error events. State updates before events at `assistant.instances[instanceId]`. Support requires user confirmation, valid contact details and a stable `web-UUID` request ID; retry unchanged details with the same ID. Knowledge, credentials and delivery configuration remain server-owned.
 
 See [Assistant actions](docs/ASSISTANT.md) for the complete inputs, responses, Flux events, Alfred callback mapping and support example.
+
+### Vault transport qualification
+
+The Vault compatibility candidate uses the published Rip-Hunter `^3.5.1` contract. Its release consumer pins the same public transport version and checks that REST refusals retain `ApiError` identity, status and parsed JSON without replaying requests. Qualification also checks strict NodeNext/Bundler declarations and the installed runner/compiler graph. The `vault-cutover` distribution tag does not promote `latest`.
+
+After cloning, run `git config core.hooksPath .githooks` once to install the repository hooks.
+
+`npm test` runs only unit tests. `npm run test:e2e` builds the package with Lex and runs both existing browser suites. Git hooks select units from staged JavaScript/TypeScript and browser checks from all pushed JavaScript/TypeScript/CSS commits. Documentation and JSON changes do not trigger either suite. Hook rules have regression tests using the actual scripts in temporary repositories with npm stubbed.
+
+The build uses Lex directly; the obsolete unlisted `tsc-esm-fix` postbuild download is removed. The public consumer verifies that generated runtime imports and declarations resolve without an extension-repair script.

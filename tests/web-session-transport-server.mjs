@@ -2,7 +2,6 @@ import {readFile} from 'node:fs/promises';
 import {createServer} from 'node:http';
 import {createServer as createViteServer} from 'vite';
 
-const httpEntry = import.meta.resolve('@nlabs/rip-hunter/http');
 // Existing repository E2E workflow uses Vite; no new runner or dependency.
 const vite = await createViteServer({appType: 'custom', configFile: false, server: {middlewareMode: true}});
 const pending = new Map();
@@ -20,12 +19,12 @@ const server = createServer(async (request, response) => {
   }
   if(url.pathname === '/') {
     response.setHeader('Content-Type', 'text/html');
-    response.end('<!doctype html><title>Native cookie transport qualification</title><h1>Native cookie transport qualification</h1><script type="module">import {httpRequest} from "/rip/http.js"; window.httpRequest = httpRequest;</script>');
-    return;
-  }
-  if(['/rip/http.js', '/rip/deadline.js', '/rip/binaryResponse.js'].includes(url.pathname)) {
-    response.setHeader('Content-Type', 'text/javascript');
-    response.end(await readFile(new URL(url.pathname.slice(5), httpEntry)));
+    response.end(await vite.transformIndexHtml(url.pathname, [
+      '<!doctype html><title>Native cookie transport qualification</title>',
+      '<h1>Native cookie transport qualification</h1>',
+      '<script type="module">import {httpRequest} from "@nlabs/rip-hunter/http"; ',
+      'window.httpRequest = httpRequest;</script>'
+    ].join('')));
     return;
   }
   if(url.pathname === '/events') {

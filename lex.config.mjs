@@ -47,9 +47,7 @@ export default Config.create({
         statements: 90
       }
     },
-    globals: true,
-    hookTimeout: 120000,
-    testEnvironment: 'jsdom',
-    testTimeout: 120000
+    environment: 'jsdom',
+    globals: true
   }
 });

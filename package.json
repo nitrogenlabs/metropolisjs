@@ -1,6 +1,6 @@
 {
   "name": "@nlabs/metropolisjs",
-  "version": "1.8.4",
+  "version": "1.8.5",
   "description": "Type-safe frontend integration for authentication, data, messaging, realtime events, billing, and Reaktor APIs.",
   "type": "module",
   "main": "lib/index.js",
@@ -62,7 +62,6 @@
   "scripts": {
     "build": "lex compile --remove",
     "build:dev": "NODE_ENV=development lex compile --remove",
-    "postbuild": "npx tsc-esm-fix lib",
     "clean": "lex clean",
     "dev": "lex dev --remove",
     "format": "npm run prettier && npm run lint",
@@ -75,7 +74,8 @@
     "publish:patch": "npm version patch && npm run publish:tags && npm publish",
     "publish:tags": "git push --tags && git push origin HEAD",
     "start": "lex dev -r -o",
-    "test": "lex test",
+    "test": "lex test --unit",
+    "test:e2e": "npm run build && lex test --e2e --e2eConfig playwright.web-session.config.ts && lex test --e2e --e2eConfig playwright.native-notifications.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json && tsc -p tsconfig.examples.json && tsc -p tsconfig.native-auth.json --noEmit",
     "update": "lex update --interactive",
     "watch": "lex compile --watch"
@@ -113,7 +113,7 @@
     "url": "https://github.com/nitrogenlabs/metropolisjs/issues"
   },
   "dependencies": {
-    "@nlabs/rip-hunter": "3.3.0",
+    "@nlabs/rip-hunter": "^3.5.1",
     "@nlabs/utils": "^2.11.0",
     "i18next": "^26.4.3",
     "luxon": "^3.7.2",
@@ -131,8 +131,10 @@
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "19.3.0",
+    "@vitest/coverage-v8": "4.1.11",
     "react": "^19.3.0",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "4.1.11"
   },
   "peerDependencies": {
     "@nlabs/arkhamjs": "^3.31.16",

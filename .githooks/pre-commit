@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+changes=$(mktemp "${METROPOLIS_HOOK_TEMP_ROOT:-${TMPDIR:-/tmp}}/metropolis-precommit.XXXXXX")
+trap 'rm -f "$changes"' EXIT
+# Preserve both paths of renames and literal filenames, including quotes and newlines.
+git diff --cached --name-only --no-renames -z > "$changes"
+required=false
+while IFS= read -r -d '' change_path; do
+  case "$change_path" in
+    *.ts|*.tsx|*.js|*.jsx|*.mjs|*.cjs|*.mts|*.cts) required=true; break ;;
+  esac
+done < "$changes"
+if "$required"; then
+  npm test
+else
+  echo 'No staged JavaScript or TypeScript; skipping unit tests.'
+fi
