@@ -2,7 +2,7 @@ name: Publish qualified MetropolisJS Vault transport
 
 on:
   push:
-    branches: [codex/vault-metropolis-transport-release]
+    branches: [codex/vault-metropolis-opaque-sockets-release]
     paths:
       - '**/*.ts'
       - '**/*.tsx'
@@ -20,6 +20,10 @@ concurrency:
   cancel-in-progress: false
   group: metropolisjs-package-release
 
+env:
+  METROPOLIS_ARCHIVE: releases/vault-cutover/nlabs-metropolisjs-1.8.6.tgz
+  METROPOLIS_DESCRIPTOR: releases/vault-cutover/metropolisjs-1.8.6.json
+
 jobs:
   publish:
     runs-on: ubuntu-26.04
@@ -27,72 +31,90 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           ref: ${{ github.sha }}
       - uses: actions/setup-node@v7
         with:
           cache: npm
           node-version: 24
           registry-url: https://registry.npmjs.org
-      - name: Verify exact candidate intent and authenticated baseline
+      - name: Verify committed archive and authenticated publication intent
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
-          test "$GITHUB_REF" = refs/heads/codex/vault-metropolis-transport-release
+          test "$GITHUB_REF" = refs/heads/codex/vault-metropolis-opaque-sockets-release
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(node -p "require('./package.json').name")" = @nlabs/metropolisjs
-          test "$(node -p "require('./package.json').version")" = 1.8.5
-          test "$(node -p "require('./package-lock.json').packages[''].version")" = 1.8.5
           mkdir -p "$RUNNER_TEMP/metropolis-release"
           npm whoami > /dev/null
           npm view @nlabs/metropolisjs dist-tags --json --prefer-online > "$RUNNER_TEMP/metropolis-release/tags-before.json"
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
           import {readFileSync} from 'node:fs';
-          import {spawnSync} from 'node:child_process';
-          assert.equal(JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/metropolis-release/tags-before.json`)).latest, '1.8.4');
-          const result = spawnSync('npm', ['view', '@nlabs/metropolisjs@1.8.5', 'version', '--json', '--prefer-online'], {encoding: 'utf8'});
-          assert.notEqual(result.status, 0, 'Version exists; do not repeat publication.');
-          assert.equal(JSON.parse(result.stdout).error.code, 'E404');
+          import {execFileSync, spawnSync} from 'node:child_process';
+          const intent = JSON.parse(readFileSync(process.env.METROPOLIS_DESCRIPTOR));
+          assert.equal(intent.package, '@nlabs/metropolisjs');
+          assert.equal(intent.version, '1.8.6');
+          assert.equal(intent.tag, 'vault-cutover');
+          assert.equal(intent.branch, 'codex/vault-metropolis-opaque-sockets-release');
+          assert.equal(intent.archive, process.env.METROPOLIS_ARCHIVE);
+          assert.match(intent.sourceCommit, /^[a-f0-9]{40}$/);
+          execFileSync('git', ['merge-base', '--is-ancestor', intent.sourceCommit, 'HEAD']);
+          const frozenOnly = execFileSync('git', ['diff', '--name-only', intent.sourceCommit, 'HEAD'], {encoding: 'utf8'}).trim().split('\n');
+          assert.deepEqual(frozenOnly.sort(), [intent.archive, process.env.METROPOLIS_DESCRIPTOR].sort());
+          execFileSync('git', ['ls-files', '--error-unmatch', intent.archive, process.env.METROPOLIS_DESCRIPTOR]);
+          const bytes = readFileSync(intent.archive);
+          assert.equal(bytes.length, intent.bytes);
+          assert.equal(createHash('sha256').update(bytes).digest('hex'), intent.sha256);
+          assert.equal('sha512-' + createHash('sha512').update(bytes).digest('base64'), intent.integrity);
+          const payload = JSON.parse(execFileSync('tar', ['-xOf', intent.archive, 'package/package.json'], {encoding: 'utf8'}));
+          const manifest = JSON.parse(readFileSync('package.json'));
+          const lock = JSON.parse(readFileSync('package-lock.json'));
+          assert.deepEqual(payload, manifest);
+          assert.equal(manifest.name, intent.package);
+          assert.equal(lock.name, intent.package);
+          assert.equal(lock.packages[''].name, intent.package);
+          assert.equal(manifest.version, intent.version);
+          assert.equal(lock.packages[''].version, intent.version);
+          assert.equal(manifest.dependencies['@nlabs/rip-hunter'], '^3.5.2');
+          assert.equal(lock.packages['node_modules/@nlabs/rip-hunter'].version, '3.5.2');
+          assert.deepEqual(JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/metropolis-release/tags-before.json`)), intent.tagsBefore);
+          const absent = spawnSync('npm', ['view', '@nlabs/metropolisjs@1.8.6', 'version', '--json', '--prefer-online'], {encoding: 'utf8'});
+          assert.notEqual(absent.status, 0, 'Version exists; do not repeat publication.');
+          assert.equal(JSON.parse(absent.stdout).error.code, 'E404');
           NODE
       - name: Install without lifecycle scripts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm ci --ignore-scripts
-      - name: Verify owner tests, build and public declarations
+      - name: Verify owner tests, source build and public declarations
         run: |
           set -euo pipefail
           npm test
+          npm test -- --config vitest.websocket-connection.config.mts
           npm run build
           npm run typecheck
+          npm exec -- lex lint --check --config eslint.vault-transport.config.mjs --maxWarnings 0
           node --input-type=module <<'NODE'
           import {resolveBinaryPath} from '@nlabs/lex';
           import {spawnSync} from 'node:child_process';
           for(const [binary, owner, args] of [
             ['tsc', 'typescript', ['-p', 'tsconfig.vault-public.json']],
             ['tsc', 'typescript', ['-p', 'tsconfig.vault-public.json', '--module', 'Preserve', '--moduleResolution', 'Bundler', '--noEmit']],
-            ['eslint', 'eslint', ['--config', 'eslint.vault-transport.config.mjs', 'eslint.vault-transport.config.mjs', 'lex.config.mjs', 'src/actions/durableChatActions/durableChatActions.test.ts', 'src/actions/webSessionActions/webSessionActions.test.ts', 'src/githooks.test.ts', 'src/utils/location.test.ts', 'src/utils/api.credentials.test.ts', 'test-utils/vaultTransportPublicConsumer.mts', 'tests/web-session-transport-server.mjs', '--max-warnings', '0']]
+            ['eslint', 'eslint', ['--config', 'eslint.vault-transport.config.mjs', 'eslint.vault-transport.config.mjs', 'lex.config.mjs', 'src/actions/websocketActions/websocketActions.ts', 'src/actions/websocketActions/websocketActions.connection.test.ts', 'src/actions/durableChatActions/durableChatActions.test.ts', 'src/actions/webSessionActions/webSessionActions.test.ts', 'src/githooks.test.ts', 'src/utils/location.test.ts', 'src/utils/api.credentials.test.ts', 'test-utils/vaultTransportPublicConsumer.mts', 'tests/web-session-transport-server.mjs', '--max-warnings', '0']]
           ]) {
             const result = spawnSync(process.execPath, [resolveBinaryPath(binary, owner), ...args], {stdio: 'inherit'});
             if(result.status !== 0) process.exit(result.status ?? 1);
           }
           NODE
           node .tmp/vault-public/vaultTransportPublicConsumer.mjs
-      - name: Freeze immutable publication artifact
-        id: archive
-        run: |
-          set -euo pipefail
-          npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP/metropolis-release"
-          METROPOLIS_ARCHIVE="$RUNNER_TEMP/metropolis-release/nlabs-metropolisjs-1.8.5.tgz"
-          sha256sum "$METROPOLIS_ARCHIVE" > "$RUNNER_TEMP/metropolis-release/SHA256SUMS"
-          printf 'path=%s\n' "$METROPOLIS_ARCHIVE" >> "$GITHUB_OUTPUT"
-          printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/metropolis-release/source-sha.txt"
-      - name: Qualify exact archive in independent public consumer
+      - name: Qualify committed archive in independent public consumer
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          METROPOLIS_ARCHIVE: ${{ steps.archive.outputs.path }}
         run: |
           set -euo pipefail
+          export METROPOLIS_ARCHIVE="$GITHUB_WORKSPACE/$METROPOLIS_ARCHIVE"
           mkdir "$RUNNER_TEMP/metropolis-public-consumer"
           cp test-utils/vaultTransportPublicConsumer.mts "$RUNNER_TEMP/metropolis-public-consumer/contract.mts"
           cd "$RUNNER_TEMP/metropolis-public-consumer"
@@ -101,14 +123,14 @@ jobs:
           writeFileSync('package.json', JSON.stringify({private: true, type: 'module', dependencies: {
             '@nlabs/arkhamjs': '3.31.16', '@nlabs/arkhamjs-storage-browser': '3.31.0',
             '@nlabs/arkhamjs-utils-react': '3.33.0', '@nlabs/metropolisjs': process.env.METROPOLIS_ARCHIVE,
-            '@nlabs/rip-hunter': '3.5.1', react: '19.3.1'
+            '@nlabs/rip-hunter': '3.5.2', react: '19.3.1'
           }, devDependencies: {'@nlabs/lex': '2.1.2', '@types/node': '26.6.6', '@types/react': '19.3.0'}}));
           writeFileSync('tsconfig.json', JSON.stringify({compilerOptions: {jsx: 'react-jsx', module: 'NodeNext',
             moduleResolution: 'NodeNext', outDir: 'dist', skipLibCheck: false, strict: true,
             target: 'ES2022', types: ['node', 'react']}, include: ['contract.mts']}));
           NODE
-          npm install --ignore-scripts --no-audit --no-fund
-          npm ls @nlabs/rip-hunter @nlabs/arkhamjs @nlabs/arkhamjs-utils-react react vitest @vitest/coverage-v8 typescript --all
+          npm install --ignore-scripts --install-strategy=nested --no-audit --no-fund
+          npm ls @nlabs/metropolisjs @nlabs/rip-hunter @nlabs/arkhamjs @nlabs/arkhamjs-storage-browser @nlabs/arkhamjs-utils-react react vitest @vitest/coverage-v8 typescript --all
           node --input-type=module <<'NODE'
           import {resolveBinaryPath} from '@nlabs/lex';
           import {spawnSync} from 'node:child_process';
@@ -118,56 +140,74 @@ jobs:
           }
           NODE
           node dist/contract.mjs
-          sha256sum --check "$RUNNER_TEMP/metropolis-release/SHA256SUMS"
-      - name: Retain qualified archive
-        uses: actions/upload-artifact@v7
-        with:
-          compression-level: 0
-          if-no-files-found: error
-          name: metropolis-vault-publication
-          path: ${{ runner.temp }}/metropolis-release/
-      - name: Publish exact archive with explicit candidate tag
+          test ! -L node_modules/@nlabs/metropolisjs
+      - name: Publish exact committed archive with explicit candidate tag
         env:
-          METROPOLIS_ARCHIVE: ${{ steps.archive.outputs.path }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
-          sha256sum --check "$RUNNER_TEMP/metropolis-release/SHA256SUMS"
-          npm exec -- lex publish --packagePath "$METROPOLIS_ARCHIVE" --tag vault-cutover
-          sha256sum --check "$RUNNER_TEMP/metropolis-release/SHA256SUMS"
-      - name: Verify registry payload and tags without repeating publication
-        env:
-          METROPOLIS_ARCHIVE: ${{ steps.archive.outputs.path }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          set -euo pipefail
-          deadline=$((SECONDS + 600))
-          until npm view @nlabs/metropolisjs@1.8.5 version dist.integrity --json --prefer-online --fetch-retries=0 --fetch-timeout=20000 > "$RUNNER_TEMP/metropolis-release/registry.json"; do
-            if ((SECONDS >= deadline)); then echo 'Publication visibility unresolved; do not republish.' >&2; exit 1; fi
-            sleep 20
-          done
-          mkdir "$RUNNER_TEMP/metropolis-release/registry"
-          npm pack @nlabs/metropolisjs@1.8.5 --ignore-scripts --pack-destination "$RUNNER_TEMP/metropolis-release/registry"
-          cmp "$METROPOLIS_ARCHIVE" "$RUNNER_TEMP/metropolis-release/registry/nlabs-metropolisjs-1.8.5.tgz"
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
           import {createHash} from 'node:crypto';
           import {readFileSync} from 'node:fs';
+          const intent = JSON.parse(readFileSync(process.env.METROPOLIS_DESCRIPTOR));
+          const bytes = readFileSync(intent.archive);
+          assert.equal(bytes.length, intent.bytes);
+          assert.equal(createHash('sha256').update(bytes).digest('hex'), intent.sha256);
+          assert.equal('sha512-' + createHash('sha512').update(bytes).digest('base64'), intent.integrity);
+          NODE
+          npm view @nlabs/metropolisjs dist-tags --json --prefer-online > "$RUNNER_TEMP/metropolis-release/tags-at-publication.json"
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFileSync} from 'node:fs';
+          import {spawnSync} from 'node:child_process';
+          const intent = JSON.parse(readFileSync(process.env.METROPOLIS_DESCRIPTOR));
+          assert.deepEqual(JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/metropolis-release/tags-at-publication.json`)), intent.tagsBefore);
+          const absent = spawnSync('npm', ['view', '@nlabs/metropolisjs@1.8.6', 'version', '--json', '--prefer-online'], {encoding: 'utf8'});
+          assert.notEqual(absent.status, 0, 'Version exists; do not repeat publication.');
+          assert.equal(JSON.parse(absent.stdout).error.code, 'E404');
+          NODE
+          npm exec -- lex publish --packagePath "$METROPOLIS_ARCHIVE" --tag vault-cutover
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          import {readFileSync} from 'node:fs';
+          const intent = JSON.parse(readFileSync(process.env.METROPOLIS_DESCRIPTOR));
+          const bytes = readFileSync(intent.archive);
+          assert.equal(bytes.length, intent.bytes);
+          assert.equal(createHash('sha256').update(bytes).digest('hex'), intent.sha256);
+          assert.equal('sha512-' + createHash('sha512').update(bytes).digest('base64'), intent.integrity);
+          NODE
+      - name: Verify registry payload and all tags without repeating publication
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          deadline=$((SECONDS + 600))
+          until npm view @nlabs/metropolisjs@1.8.6 version dist.integrity --json --prefer-online --fetch-retries=0 --fetch-timeout=20000 > "$RUNNER_TEMP/metropolis-release/registry.json"; do
+            if ((SECONDS >= deadline)); then echo 'Publication visibility unresolved; do not republish.' >&2; exit 1; fi
+            sleep 20
+          done
+          mkdir "$RUNNER_TEMP/metropolis-release/registry"
+          npm pack @nlabs/metropolisjs@1.8.6 --ignore-scripts --pack-destination "$RUNNER_TEMP/metropolis-release/registry"
+          cmp "$METROPOLIS_ARCHIVE" "$RUNNER_TEMP/metropolis-release/registry/nlabs-metropolisjs-1.8.6.tgz"
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFileSync} from 'node:fs';
+          const intent = JSON.parse(readFileSync(process.env.METROPOLIS_DESCRIPTOR));
           const registry = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/metropolis-release/registry.json`));
-          assert.equal(registry.version, '1.8.5');
-          assert.equal(registry['dist.integrity'], 'sha512-' + createHash('sha512').update(readFileSync(process.env.METROPOLIS_ARCHIVE)).digest('base64'));
+          assert.equal(registry.version, intent.version);
+          assert.equal(registry['dist.integrity'], intent.integrity);
           NODE
           while true; do
             if npm view @nlabs/metropolisjs dist-tags --json --prefer-online --fetch-retries=0 --fetch-timeout=20000 > "$RUNNER_TEMP/metropolis-release/tags-after.json"; then
               if node --input-type=module <<'NODE'
           import {readFileSync} from 'node:fs';
           import {isDeepStrictEqual} from 'node:util';
-          const directory = `${process.env.RUNNER_TEMP}/metropolis-release`;
-          const read = (name) => JSON.parse(readFileSync(`${directory}/${name}`));
-          const before = read('tags-before.json');
-          const after = read('tags-after.json');
-          if(isDeepStrictEqual(after, {...before, 'vault-cutover': '1.8.5'})) process.exit(0);
-          if(isDeepStrictEqual(after, before)) process.exit(75);
+          const intent = JSON.parse(readFileSync(process.env.METROPOLIS_DESCRIPTOR));
+          const after = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/metropolis-release/tags-after.json`));
+          if(isDeepStrictEqual(after, {...intent.tagsBefore, [intent.tag]: intent.version})) process.exit(0);
+          if(isDeepStrictEqual(after, intent.tagsBefore)) process.exit(75);
           console.error('Registry tags conflict with the reviewed intent.');
           process.exit(1);
           NODE
@@ -186,4 +226,6 @@ jobs:
           compression-level: 0
           if-no-files-found: warn
           name: metropolis-vault-release-evidence
-          path: ${{ runner.temp }}/metropolis-release/
+          path: |
+            ${{ runner.temp }}/metropolis-release/
+            releases/vault-cutover/

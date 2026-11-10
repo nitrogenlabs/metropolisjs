@@ -2,6 +2,7 @@
  * Copyright (c) 2019-Present, Nitrogen Labs, Inc.
  * Copyrights licensed under the MIT License. See the accompanying LICENSE file for terms.
  */
+import {scheduleDeadline} from '@nlabs/rip-hunter/deadline';
 import Sockette from 'sockette';
 
 import {routeNativeNotificationIngress} from '../../nativeNotifications/ingress.js';
@@ -21,8 +22,16 @@ export interface WebSocketMessage {
 }
 
 export interface WebsocketActionsOptions {
-  authentication?: 'query' | 'message';
+  authentication?: 'query' | 'message' | 'none';
   authenticateMessage?: (token: string) => Record<string, unknown>;
+  /** Absolute URL-resolution/open budget; zero disables it. Defaults to 5000 milliseconds. */
+  connectTimeoutMs?: number;
+  /** False prevents reuse of an issued URL after transport failure. Defaults to true. */
+  reconnect?: boolean;
+  /** False disables the session registration frame. Defaults to true. */
+  register?: boolean;
+  /** Resolve a fresh complete URL for each explicit connection, for example a cookie-authenticated ticket. */
+  resolveUrl?: () => Promise<string | undefined>;
   url?: string;
 }
 
@@ -41,6 +50,8 @@ export interface WebsocketActions {
   ) => void;
   readonly wsSend: (message: WebSocketMessage) => void;
   readonly wsClose: () => void;
+  /** Single-flight connection that resolves on open, or null on failure, close or deadline. */
+  readonly wsConnect: () => Promise<Sockette | null>;
   readonly onReceive: (event: any) => void;
   readonly onClose: (event: any) => void;
   readonly onError: (event: any) => void;
@@ -60,7 +71,15 @@ const createWebsocketClientId = (): string => {
 export const createWebsocketActions = (
   flux: FluxFramework, options: WebsocketActionsOptions = {}
 ): WebsocketActions => {
+  const connectTimeoutMs = options.connectTimeoutMs ?? 5000;
+  if(!Number.isFinite(connectTimeoutMs) || connectTimeoutMs < 0) {
+    throw new Error('Invalid WebSocket connect timeout');
+  }
   let ws: Sockette | null = null;
+  let revision = 0;
+  let resolvedUrl: string | undefined;
+  let pendingConnection: Promise<Sockette | null> | undefined;
+  let finishConnection: ((socket: Sockette | null) => void) | undefined;
   let activeClientId = '';
   let activeToken = '';
   let activePersonaId = '';
@@ -98,7 +117,7 @@ export const createWebsocketActions = (
     }
   };
   const sendRegistration = () => {
-    if(!ws || !socketIsOpen) {
+    if(!ws || !socketIsOpen || options.register === false) {
       return;
     }
 
@@ -180,7 +199,10 @@ export const createWebsocketActions = (
     }
   };
 
-  const wsClose = () => {
+  const closeSocket = (announce: boolean) => {
+    revision++;
+    resolvedUrl = undefined;
+    finishConnection?.(null);
     for(const timeoutId of typingTimeouts.values()) {
       clearTimeout(timeoutId);
     }
@@ -198,8 +220,12 @@ export const createWebsocketActions = (
       activePersonaId = '';
       activeToken = '';
       previousSocket.close(1000, 'metropolis_close');
+      if(announce) {
+        flux.dispatch({code: 1000, timestamp: performance.now(), type: WEBSOCKET_CONSTANTS.CLOSE});
+      }
     }
   };
+  const wsClose = () => closeSocket(true);
 
   const sendTyping = (
     conversationId: string,
@@ -351,8 +377,9 @@ export const createWebsocketActions = (
     socketIsOpen = false;
     socketIsConnecting = Boolean(activeToken) && !closeRequested;
     closeRequested = false;
-    if(event.code === 1008) {
-      wsClose();
+    if(event.code === 1008 || options.reconnect === false || pendingConnection) {
+      // This native callback publishes its own CLOSE below; owner-initiated close publishes separately.
+      closeSocket(false);
     }
     flux.dispatch({code: event.code, timestamp, type: WEBSOCKET_CONSTANTS.CLOSE});
   };
@@ -360,6 +387,9 @@ export const createWebsocketActions = (
   const onError = (event: any) => {
     const {timeStamp: timestamp} = event;
     socketIsOpen = false;
+    if(options.reconnect === false || pendingConnection) {
+      wsClose();
+    }
     flux.dispatch({timestamp, type: WEBSOCKET_CONSTANTS.ERROR});
   };
 
@@ -371,16 +401,18 @@ export const createWebsocketActions = (
     sendRegistration();
     flushPendingMessages();
     flux.dispatch({timestamp, type: WEBSOCKET_CONSTANTS.OPEN});
+    finishConnection?.(ws);
   };
 
   const wsInit = (token?: string, personaId?: string): Sockette | null => {
     const config = getConfigFromFlux(flux);
-    const websocketUrl = options.url || config.app?.urls?.websocket || '';
-    const sessionClientId = getClientId();
-    const sessionToken = String(token || flux.getState('user.session.token') || '');
-    const sessionPersonaId = String(personaId || flux.getState('user.session.personaId') || '');
+    const websocketUrl = options.resolveUrl ? resolvedUrl : options.url || config.app?.urls?.websocket || '';
+    const anonymous = options.authentication === 'none';
+    const sessionClientId = anonymous ? '' : getClientId();
+    const sessionToken = anonymous ? '' : String(token || flux.getState('user.session.token') || '');
+    const sessionPersonaId = anonymous ? '' : String(personaId || flux.getState('user.session.personaId') || '');
 
-    if(!sessionToken || !websocketUrl) {
+    if((!anonymous && !sessionToken) || !websocketUrl) {
       return null;
     }
 
@@ -410,19 +442,93 @@ export const createWebsocketActions = (
     }
 
 
-    const connectionUrl = options.authentication === 'message'
+    const connectionUrl = options.authentication === 'message' || anonymous
       ? websocketUrl
       : `${websocketUrl}${websocketUrl.includes('?') ? '&' : '?'}${websocketParams.toString()}`;
+    const captured = revision;
     ws = new Sockette(connectionUrl, {
-      maxAttempts: 5,
-      onclose: onClose,
-      onerror: onError,
-      onmessage: onReceive,
-      onopen: onOpen,
+      // Sockette treats zero as Infinity. A negative bound permits no retry attempts.
+      maxAttempts: options.reconnect === false ? -1 : 5,
+      onclose: (event) => {
+        if(captured === revision) {
+          onClose(event);
+        }
+      },
+      onerror: (event) => {
+        if(captured === revision) {
+          onError(event);
+        }
+      },
+      onmessage: (event) => {
+        if(captured === revision) {
+          onReceive(event);
+        }
+      },
+      onopen: (event) => {
+        if(captured === revision) {
+          onOpen(event);
+        }
+      },
       timeout: 60000
     });
 
     return ws;
+  };
+
+  const wsConnect = (): Promise<Sockette | null> => {
+    if(pendingConnection) {
+      return pendingConnection;
+    }
+    if(ws && socketIsOpen) {
+      return Promise.resolve(ws);
+    }
+    const captured = revision;
+    let resolveAttempt!: (socket: Sockette | null) => void;
+    const attempt = new Promise<Sockette | null>((resolve) => {
+      resolveAttempt = resolve;
+    });
+    pendingConnection = attempt;
+    let cancelDeadline = () => {};
+    finishConnection = (socket) => {
+      if(pendingConnection !== attempt) {
+        return;
+      }
+      cancelDeadline();
+      finishConnection = undefined;
+      pendingConnection = undefined;
+      resolveAttempt(socket);
+    };
+    if(connectTimeoutMs > 0) {
+      cancelDeadline = scheduleDeadline(connectTimeoutMs, () => {
+        if(pendingConnection === attempt && captured === revision) {
+          wsClose();
+        }
+      });
+      // The deadline port can expire synchronously before returning its cancellation handle.
+      if(pendingConnection !== attempt) {
+        cancelDeadline();
+        return attempt;
+      }
+    }
+    void Promise.resolve().then(() => {
+      if(pendingConnection === attempt && captured === revision) {
+        return options.resolveUrl?.();
+      }
+      return undefined;
+    }).then((url) => {
+      if(pendingConnection !== attempt || captured !== revision) {
+        return;
+      }
+      resolvedUrl = url;
+      if(!wsInit()) {
+        wsClose();
+      }
+    }).catch(() => {
+      if(pendingConnection === attempt && captured === revision) {
+        wsClose();
+      }
+    });
+    return attempt;
   };
 
   return {
@@ -433,6 +539,7 @@ export const createWebsocketActions = (
     sendNotification,
     sendTyping,
     wsClose,
+    wsConnect,
     wsInit,
     wsSend
   };
