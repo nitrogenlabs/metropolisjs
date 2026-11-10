@@ -115,6 +115,7 @@
   "dependencies": {
     "@nlabs/rip-hunter": "^3.5.2",
     "@nlabs/utils": "^2.11.0",
+    "@types/luxon": "3.7.5",
     "i18next": "^26.4.3",
     "luxon": "^3.7.2",
     "p-debounce": "^5.1.1",
