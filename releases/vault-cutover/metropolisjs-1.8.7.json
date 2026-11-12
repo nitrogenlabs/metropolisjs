@@ -1,0 +1,16 @@
+{
+  "archive": "releases/vault-cutover/nlabs-metropolisjs-1.8.7.tgz",
+  "branch": "codex/vault-metropolis-opaque-sockets-release",
+  "bytes": 650692,
+  "integrity": "sha512-8IJk/7i/cBgZDWsuQ1fdQaLoXI+pfBDnc19EHqToknHlaBFbv/PcssfvqtFspKFQHeNkxUPXzQO5nSsTj0OvHg==",
+  "package": "@nlabs/metropolisjs",
+  "sha256": "e70983e6080457345fc7ab8cef074834061907b55fa714d7271ed538e41cadcf",
+  "sourceCommit": "ff3c310dd2e9ef81006aad0d2ab3b4460ebb111c",
+  "tag": "vault-cutover",
+  "tagsBefore": {
+    "vault-migration": "1.8.3",
+    "latest": "1.8.4",
+    "vault-cutover": "1.8.6"
+  },
+  "version": "1.8.7"
+}
