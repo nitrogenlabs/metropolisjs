@@ -70,7 +70,7 @@ describe('MetropolisJS actual pre-commit hook', () => {
     write(`src/new.${extension}`);
     git('add', '-A');
 
-    expect(run('pre-commit')).toEqual({calls: ['test'], status: 0});
+    expect(run('pre-commit')).toEqual({calls: ['test -- --onlyChanged --passWithNoTests'], status: 0});
   });
 
   it.each(['README.md', 'package.json', 'data.json', 'logo.png', 'style.css', 'style.scss', 'index.html'])(
@@ -85,19 +85,19 @@ describe('MetropolisJS actual pre-commit hook', () => {
   it('counts staged code deletions', () => {
     git('rm', 'src/seed.js');
 
-    expect(run('pre-commit').calls).toEqual(['test']);
+    expect(run('pre-commit').calls).toEqual(['test -- --onlyChanged --passWithNoTests']);
   });
 
   it('counts staged code renames', () => {
     git('mv', 'src/seed.js', 'src/renamed.js');
 
-    expect(run('pre-commit').calls).toEqual(['test']);
+    expect(run('pre-commit').calls).toEqual(['test -- --onlyChanged --passWithNoTests']);
   });
 
   it('counts a source rename to another extension', () => {
     git('mv', 'src/seed.js', 'src/seed.txt');
 
-    expect(run('pre-commit').calls).toEqual(['test']);
+    expect(run('pre-commit').calls).toEqual(['test -- --onlyChanged --passWithNoTests']);
   });
 
   it.each(['src/café.ts', 'src/quote".ts', 'src/line\nbreak.ts'])(
@@ -105,7 +105,7 @@ describe('MetropolisJS actual pre-commit hook', () => {
       write(name);
       git('add', '-A');
 
-      expect(run('pre-commit').calls).toEqual(['test']);
+      expect(run('pre-commit').calls).toEqual(['test -- --onlyChanged --passWithNoTests']);
     }
   );
 
@@ -117,7 +117,7 @@ describe('MetropolisJS actual pre-commit hook', () => {
       git('add', '-A');
 
       expect(git('rev-parse', '--show-toplevel')).toBe(realpathSync(repository));
-      expect(run('pre-commit')).toEqual({calls: ['test'], status: 0});
+      expect(run('pre-commit')).toEqual({calls: ['test -- --onlyChanged --passWithNoTests'], status: 0});
     } finally {
       vi.unstubAllEnvs();
     }
@@ -133,7 +133,7 @@ describe('MetropolisJS actual pre-commit hook', () => {
     write('src/seed.js', 'changed');
     git('add', '-A');
 
-    expect(run('pre-commit', '', 17)).toEqual({calls: ['test'], status: 17});
+    expect(run('pre-commit', '', 17)).toEqual({calls: ['test -- --onlyChanged --passWithNoTests'], status: 17});
   });
 });
 

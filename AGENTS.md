@@ -98,3 +98,16 @@ These apply to every unit test in every project. Tests that touch real I/O, real
 - Define the end-to-end suite explicitly (one script that runs it) so the pre-push hook has a single entry point. Do not leave end-to-end configs unreferenced.
 - A hook is never skipped to get a change in. Fix the cause or report the failing test.
 <!-- END SHARED ARCHITECTURE GUARDRAILS -->
+
+
+## Session response ownership lesson (2026-11-12)
+
+The original cookie-session non-success callback threw `{status}` without consuming or cancelling its response. Rip-Hunter owns late responses before consumer entry; an entered consumer must await its own cleanup inside the existing request deadline. Preserve the HTTP status error if cancellation rejects, and preserve the transport deadline/reason if cancellation remains held. Regressions must prove request-once, cleanup-once, actual native-body cancellation, held cleanup and late rejection without real network or time. Git blame points to `be33f923`; assistant authorship is not established. Source evidence is in `.artifacts/session-response-cleanup/report.md`; publication/adoption/browser acceptance are still pending.
+
+For these native-ESM tests, inspect the installed runner before choosing instrumentation: namespace exports cannot be spied on, and Lex's re-exported `vi` is not recognized by Vitest's hoist transform. Use supported global `vi` with `importOriginal` when observing the real public transport. Read initial store state before asserting a transition; anonymous is the default, so the cleanup barrier is the actual signed-out event/public promise. The failed fixture preparations remain recorded separately from the genuine RED.
+
+## Affected pre-commit qualification lesson (2026-11-12)
+
+Keep `npm test` as the complete unit entry; the pre-commit hook forwards `-- --onlyChanged --passWithNoTests` through that entry. Real-hook temporary-Git/npm-stub tests cover argument forwarding and admission, while the installed public Lex fixture proves changed-source coverage excludes unrelated files and an unchanged project passes with zero tests. A mutation control is valid only after checking it executed the intended assertions: an overescaped test-name expression initially selected zero tests, was rejected and retained separately, then corrected before all three guard controls produced the intended executed assertion failures. Evidence: `.artifacts/metropolis187-release-qualification/report.md`.
+
+Browser qualification must create a controller after the fixture page has loaded before measuring an explicit command: legitimate pageshow/focus restoration otherwise adds a read that a strict mock must account for. Inspect renderer cancellation and the exact synthetic server response independently from Playwright inspector completion. Await and catch every inspector promise through page close; a detached `response.finished()` can reject during teardown even after native cleanup assertions pass. The held-body fixture verifies native cancellation, exact HTTP error identity and server close before navigation; finite-response Chromium inspector completion remains a separately recorded limitation.

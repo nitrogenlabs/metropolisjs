@@ -108,7 +108,14 @@ export const createWebSessionActions = (flux: FluxFramework, input: WebSessionOp
     const value = await httpRequest(endpoint, method === 'POST' ? {...requestOptions, json: params} : requestOptions,
       async (response) => {
         if(!response.ok) {
-          throw {status: response.status};
+          const error = {status: response.status};
+          try {
+            // Entered consumers own body cleanup within the same request deadline.
+            await response.body?.cancel();
+          } catch{
+            // Cleanup failure must not replace the original HTTP admission error.
+          }
+          throw error;
         }
         return response.json();
       });

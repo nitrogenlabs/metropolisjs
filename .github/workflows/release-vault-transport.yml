@@ -21,8 +21,8 @@ concurrency:
   group: metropolisjs-package-release
 
 env:
-  METROPOLIS_ARCHIVE: releases/vault-cutover/nlabs-metropolisjs-1.8.6.tgz
-  METROPOLIS_DESCRIPTOR: releases/vault-cutover/metropolisjs-1.8.6.json
+  METROPOLIS_ARCHIVE: releases/vault-cutover/nlabs-metropolisjs-1.8.7.tgz
+  METROPOLIS_DESCRIPTOR: releases/vault-cutover/metropolisjs-1.8.7.json
 
 jobs:
   publish:
@@ -55,7 +55,7 @@ jobs:
           import {execFileSync, spawnSync} from 'node:child_process';
           const intent = JSON.parse(readFileSync(process.env.METROPOLIS_DESCRIPTOR));
           assert.equal(intent.package, '@nlabs/metropolisjs');
-          assert.equal(intent.version, '1.8.6');
+          assert.equal(intent.version, '1.8.7');
           assert.equal(intent.tag, 'vault-cutover');
           assert.equal(intent.branch, 'codex/vault-metropolis-opaque-sockets-release');
           assert.equal(intent.archive, process.env.METROPOLIS_ARCHIVE);
@@ -80,7 +80,7 @@ jobs:
           assert.equal(manifest.dependencies['@nlabs/rip-hunter'], '^3.5.2');
           assert.equal(lock.packages['node_modules/@nlabs/rip-hunter'].version, '3.5.2');
           assert.deepEqual(JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/metropolis-release/tags-before.json`)), intent.tagsBefore);
-          const absent = spawnSync('npm', ['view', '@nlabs/metropolisjs@1.8.6', 'version', '--json', '--prefer-online'], {encoding: 'utf8'});
+          const absent = spawnSync('npm', ['view', '@nlabs/metropolisjs@1.8.7', 'version', '--json', '--prefer-online'], {encoding: 'utf8'});
           assert.notEqual(absent.status, 0, 'Version exists; do not repeat publication.');
           assert.equal(JSON.parse(absent.stdout).error.code, 'E404');
           NODE
@@ -102,7 +102,7 @@ jobs:
           for(const [binary, owner, args] of [
             ['tsc', 'typescript', ['-p', 'tsconfig.vault-public.json']],
             ['tsc', 'typescript', ['-p', 'tsconfig.vault-public.json', '--module', 'Preserve', '--moduleResolution', 'Bundler', '--noEmit']],
-            ['eslint', 'eslint', ['--config', 'eslint.vault-transport.config.mjs', 'eslint.vault-transport.config.mjs', 'lex.config.mjs', 'src/actions/websocketActions/websocketActions.ts', 'src/actions/websocketActions/websocketActions.connection.test.ts', 'src/actions/durableChatActions/durableChatActions.test.ts', 'src/actions/webSessionActions/webSessionActions.test.ts', 'src/githooks.test.ts', 'src/utils/location.test.ts', 'src/utils/api.credentials.test.ts', 'test-utils/vaultTransportPublicConsumer.mts', 'tests/web-session-transport-server.mjs', '--max-warnings', '0']]
+            ['eslint', 'eslint', ['--config', 'eslint.vault-transport.config.mjs', 'eslint.vault-transport.config.mjs', 'lex.config.mjs', 'src/actions/websocketActions/websocketActions.ts', 'src/actions/websocketActions/websocketActions.connection.test.ts', 'src/actions/durableChatActions/durableChatActions.test.ts', 'src/actions/webSessionActions/webSessionActions.ts', 'src/actions/webSessionActions/webSessionActions.cleanup.test.ts', 'src/actions/webSessionActions/webSessionActions.test.ts', 'src/githooks.test.ts', 'src/utils/location.test.ts', 'src/utils/api.credentials.test.ts', 'test-utils/vaultTransportPublicConsumer.mts', 'tests/web-session-transport-server.mjs', '--max-warnings', '0']]
           ]) {
             const result = spawnSync(process.execPath, [resolveBinaryPath(binary, owner), ...args], {stdio: 'inherit'});
             if(result.status !== 0) process.exit(result.status ?? 1);
@@ -163,7 +163,7 @@ jobs:
           import {spawnSync} from 'node:child_process';
           const intent = JSON.parse(readFileSync(process.env.METROPOLIS_DESCRIPTOR));
           assert.deepEqual(JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/metropolis-release/tags-at-publication.json`)), intent.tagsBefore);
-          const absent = spawnSync('npm', ['view', '@nlabs/metropolisjs@1.8.6', 'version', '--json', '--prefer-online'], {encoding: 'utf8'});
+          const absent = spawnSync('npm', ['view', '@nlabs/metropolisjs@1.8.7', 'version', '--json', '--prefer-online'], {encoding: 'utf8'});
           assert.notEqual(absent.status, 0, 'Version exists; do not repeat publication.');
           assert.equal(JSON.parse(absent.stdout).error.code, 'E404');
           NODE
@@ -184,13 +184,13 @@ jobs:
         run: |
           set -euo pipefail
           deadline=$((SECONDS + 600))
-          until npm view @nlabs/metropolisjs@1.8.6 version dist.integrity --json --prefer-online --fetch-retries=0 --fetch-timeout=20000 > "$RUNNER_TEMP/metropolis-release/registry.json"; do
+          until npm view @nlabs/metropolisjs@1.8.7 version dist.integrity --json --prefer-online --fetch-retries=0 --fetch-timeout=20000 > "$RUNNER_TEMP/metropolis-release/registry.json"; do
             if ((SECONDS >= deadline)); then echo 'Publication visibility unresolved; do not republish.' >&2; exit 1; fi
             sleep 20
           done
           mkdir "$RUNNER_TEMP/metropolis-release/registry"
-          npm pack @nlabs/metropolisjs@1.8.6 --ignore-scripts --pack-destination "$RUNNER_TEMP/metropolis-release/registry"
-          cmp "$METROPOLIS_ARCHIVE" "$RUNNER_TEMP/metropolis-release/registry/nlabs-metropolisjs-1.8.6.tgz"
+          npm pack @nlabs/metropolisjs@1.8.7 --ignore-scripts --pack-destination "$RUNNER_TEMP/metropolis-release/registry"
+          cmp "$METROPOLIS_ARCHIVE" "$RUNNER_TEMP/metropolis-release/registry/nlabs-metropolisjs-1.8.7.tgz"
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
           import {readFileSync} from 'node:fs';
